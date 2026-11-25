@@ -43,6 +43,20 @@ const PlazCodeWorkshopUI = (() => {
 
 
 
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
   ;
 
 
@@ -171,8 +185,19 @@ const PlazCodeWorkshopUI = (() => {
 .ws-owner-confirm{display:grid;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.28)}
 .ws-count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--red,#ff696c);color:#09111d;font:700 10.5px/1 var(--pz-mono,monospace)}
 .ws-note-bar{padding:9px 12px;border-radius:10px;border:1px solid var(--pz-line,#253650);background:rgb(255 255 255/.03);font-size:12px;color:var(--ink-soft,#9aa8be)}
+.ws-uid-chip{appearance:none;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid rgb(var(--pz-rgb,255 146 38)/.42);background:rgb(var(--pz-rgb,255 146 38)/.1);color:var(--orange2,#ffd08a);font:700 11px/1.3 var(--pz-mono,ui-monospace,Consolas,monospace);cursor:pointer}
+.ws-uid-chip:hover{background:rgb(var(--pz-rgb,255 146 38)/.22);border-color:var(--orange2,#ffd08a)}
+.ws-uid-copy{appearance:none;padding:2px 7px;border-radius:999px;border:1px solid var(--pz-line,#2b3952);background:transparent;color:var(--ink-soft,#9aa8be);font-size:10.5px;font-weight:600;cursor:pointer}
+.ws-uid-copy:hover{color:var(--text,#f5f8ff);border-color:var(--orange2,#ffd08a)}
+.ws-grants-box{display:grid;gap:8px;padding:12px;border-radius:12px;border:1px solid var(--pz-line,#253650);background:var(--surface,#131d2f)}
+.ws-grants-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ws-grants-form input{flex:1 1 220px;min-width:180px;padding:7px 10px;border-radius:9px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.22);color:var(--text,#f5f8ff);font-size:12.5px}
+.ws-grants-list{display:flex;flex-wrap:wrap;gap:6px}
+.ws-grant-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid var(--pz-line,#2b3952);background:rgb(255 255 255/.04);font-size:11.5px;color:var(--text,#f5f8ff)}
+.ws-grant-revoke{appearance:none;border:none;background:transparent;color:var(--red,#ff696c);font-weight:700;cursor:pointer;padding:0 2px;font-size:13px;line-height:1}
 .ws-owner-view{display:grid;gap:12px}
-.ws-owner-view[hidden]{display:none}
+.ws-owner-view[hidden],.ws-count-pill[hidden],.ws-uid-banner[hidden]{display:none}
+.ws-uid-banner{display:flex;justify-content:space-between;align-items:center;gap:8px}
 </style>`;
 
   function mount(host, api, getPreferences, setPreferences, goPage) {
@@ -190,10 +215,10 @@ const PlazCodeWorkshopUI = (() => {
     <div class="ws-banner-info">
       <span class="ws-dot" data-ws="reg-dot"></span>
       <strong>Public Registry</strong>
-      <span data-ws="reg-text" style="color:var(--ink-soft,#9aa8be)">Offline starter catalog · Set a Cloudflare Worker URL to browse and publish live</span>
+      <span data-ws="reg-text" style="color:var(--ink-soft,#9aa8be)">Offline starter catalog · Live Workshop unavailable right now</span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button type="button" class="softbtn" data-ws="reg-config">Configure Registry</button>
+      <button type="button" class="softbtn" data-ws="reg-config" hidden>Configure Registry</button>
       <button type="button" class="softbtn" data-ws="reg-settings" hidden>Settings</button>
       <button type="button" class="accentbtn" data-ws="open-owner" hidden>Owner Panel <span data-ws="owner-badge" class="ws-count-pill" hidden>0</span></button>
       <button type="button" class="softbtn" data-ws="owner-unlock-btn" title="Owner access (Ctrl+Shift+O)" aria-label="Owner access">
@@ -351,26 +376,41 @@ const PlazCodeWorkshopUI = (() => {
       </div>
 
       <section data-ws="owner-users-view" class="ws-owner-view">
-        <div class="ws-note-bar">Passwords are encrypted with one-way scrypt hashing and cannot be viewed by anyone, including the owner.</div>
+        <div class="ws-note-bar">Passwords are encrypted with one-way scrypt hashing and cannot be viewed by anyone, including the owner. Click any User ID chip to view all profiles sharing that account.</div>
+        <div class="ws-grants-box" data-ws="owner-grants-box">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:13px">Owner Panel Access Grants</strong>
+            <small style="color:var(--ink-soft,#9aa8be)">Grant by Account User ID (PC-XXXX-XXXX) or username</small>
+          </div>
+          <div class="ws-grants-form">
+            <input type="text" data-ws="owner-grant-input" placeholder="Enter User ID (PC-XXXX-XXXX) or username" aria-label="User ID or username to grant owner access">
+            <button type="button" class="accentbtn" data-ws="owner-grant-add">Grant Owner</button>
+          </div>
+          <div class="ws-grants-list" data-ws="owner-grants-list"></div>
+        </div>
         <div class="ws-toolbar">
           <div class="ws-pills" role="group" aria-label="Filter users">
             <button type="button" data-ws-ufilter="all" aria-pressed="true">All</button>
             <button type="button" data-ws-ufilter="online" aria-pressed="false">Online Now</button>
             <button type="button" data-ws-ufilter="banned" aria-pressed="false">Banned</button>
           </div>
-          <input type="search" class="ws-search" data-ws="owner-user-search" placeholder="Search usernames..." aria-label="Search usernames">
+          <input type="search" class="ws-search" data-ws="owner-user-search" placeholder="Search username or User ID (PC-...)..." aria-label="Search username or User ID">
+        </div>
+        <div class="ws-note-bar ws-uid-banner" data-ws="owner-uid-banner" hidden>
+          <span data-ws="owner-uid-banner-text"></span>
+          <button type="button" class="softbtn" data-ws="owner-uid-clear" style="padding:3px 9px;font-size:11.5px">Show all profiles</button>
         </div>
         <div class="ws-owner-list" data-ws="owner-users-list"></div>
       </section>
 
       <section data-ws="owner-banned-view" class="ws-owner-view" hidden>
-        <div class="ws-note-bar">Banned users are locked out from creating new profiles or using Guest mode. You can unban a banned profile to restore access, or permanently terminate it (cannot be unbanned).</div>
+        <div class="ws-note-bar">Banned users and all linked profiles on the same Account User ID are locked out from creating new profiles or using Guest mode. You can unban a banned profile to restore access, or permanently terminate it (cannot be unbanned).</div>
         <div class="ws-toolbar">
           <div class="ws-pills" role="group" aria-label="Filter banned profiles">
             <button type="button" data-ws-bfilter="banned" aria-pressed="true">All Banned</button>
             <button type="button" data-ws-bfilter="terminated" aria-pressed="false">Terminated (No Unban)</button>
           </div>
-          <input type="search" class="ws-search" data-ws="owner-banned-search" placeholder="Look up banned usernames..." aria-label="Look up banned usernames">
+          <input type="search" class="ws-search" data-ws="owner-banned-search" placeholder="Look up banned username or User ID..." aria-label="Look up banned username or User ID">
         </div>
         <div class="ws-owner-list" data-ws="owner-banned-list"></div>
       </section>
@@ -404,6 +444,8 @@ const PlazCodeWorkshopUI = (() => {
     let ownerStatus = {};
     let ownerTab = 'users';
     let userFilter = 'all';
+    let activeUserIdFilter = '';
+    let ownerGrants = [];
     let bannedSubFilter = 'banned';
     let wsModFilter = 'pending';
     let ownerUsers = [];
@@ -568,16 +610,27 @@ const PlazCodeWorkshopUI = (() => {
       localRatings = res?.local_ratings || {};
       localSkills = res?.local_skills || [];
 
-      const regUrl = String(res?.registry_url || getPreferences()?.workshopRegistryUrl || '');
+      const regUrl = String(res?.registry_url || '');
       const regState = String(res?.registry_status || 'offline');
+      let canConfigure = Boolean(res?.can_configure_registry);
       const dot = find('reg-dot');
       dot.className = 'ws-dot' + (regState === 'connected' ? ' on' : '');
-      find('reg-text').textContent = regState === 'connected'
-        ? `Connected to ${regUrl} · Browse and publish live`
-        : (regUrl ? `Registry offline (${res?.registry_error || 'unreachable'}) · Showing built-in starter catalog` : 'Offline starter catalog · Configure a Cloudflare Worker URL to browse & publish live');
+      const updateRegBanner = (allowUrl) => {
+        const displayUrl = allowUrl ? (regUrl || String(getPreferences()?.workshopRegistryUrl || '')) : '';
+        find('reg-config').hidden = !allowUrl;
+        find('reg-settings').hidden = !(allowUrl && Boolean(goPage));
+        find('reg-text').textContent = regState === 'connected'
+          ? (allowUrl && displayUrl ? `Connected to ${displayUrl} · Browse and publish live` : 'Connected to PlazCode Workshop · Browse and publish live')
+          : (allowUrl && displayUrl
+              ? `Registry offline (${res?.registry_error || 'unreachable'}) · Showing built-in starter catalog`
+              : 'Offline starter catalog · Live Workshop unavailable right now');
+      };
+      updateRegBanner(canConfigure);
 
       renderGrid();
       await refreshOwnerStatus();
+      canConfigure = Boolean(res?.can_configure_registry || ownerStatus.is_owner || ownerStatus.unlocked);
+      updateRegBanner(canConfigure);
     }
 
     function populateUploadSkills() {
@@ -696,7 +749,6 @@ const PlazCodeWorkshopUI = (() => {
       find('reg-modal').hidden = false;
     };
     if (goPage) {
-      find('reg-settings').hidden = false;
       find('reg-settings').onclick = () => goPage('settings', 'general');
     }
     find('reg-close').onclick = () => { find('reg-modal').hidden = true; };
@@ -798,10 +850,31 @@ const PlazCodeWorkshopUI = (() => {
         nameEl.textContent = u.username;
         titleRow.appendChild(nameEl);
 
+        if (u.user_id) {
+          const uidBtn = document.createElement('button');
+          uidBtn.type = 'button';
+          uidBtn.className = 'ws-uid-chip';
+          uidBtn.setAttribute('data-ws-uid-filter', u.user_id);
+          uidBtn.title = 'Click to view all profiles sharing this Account User ID';
+          uidBtn.textContent = u.user_id;
+          uidBtn.onclick = run(async () => {
+            activeUserIdFilter = activeUserIdFilter === u.user_id ? '' : (u.user_id || '');
+            await loadOwnerUsers();
+          });
+          const copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'ws-uid-copy';
+          copyBtn.textContent = 'Copy';
+          copyBtn.onclick = () => {
+            navigator.clipboard?.writeText(u.user_id || '').then(() => setOwnerStatusLine(`Copied User ID ${u.user_id}`)).catch(() => {});
+          };
+          titleRow.append(uidBtn, copyBtn);
+        }
+
         if (u.is_owner) {
           const ownerTag = document.createElement('span');
           ownerTag.className = 'ws-pill-tag ok';
-          ownerTag.textContent = 'Owner';
+          ownerTag.textContent = u.primary_owner ? 'Primary Owner' : 'Owner';
           titleRow.appendChild(ownerTag);
         }
         if (u.terminated) {
@@ -828,7 +901,10 @@ const PlazCodeWorkshopUI = (() => {
 
         const joined = document.createElement('small');
         joined.style.color = 'var(--ink-soft,#9aa8be)';
-        joined.textContent = `Joined ${formatDateTime(u.created_at)}${u.banned && u.ban_reason ? ' · Ban reason: ' + u.ban_reason : ''}`;
+        const linkedInfo = (u.linked_profile_count || 0) > 1
+          ? ` · ${u.linked_profile_count} linked profiles (${(u.linked_usernames || []).join(', ')})`
+          : '';
+        joined.textContent = `Joined ${formatDateTime(u.created_at)}${u.user_id ? ' · User ID: ' + u.user_id : ''}${linkedInfo}${u.banned && u.ban_reason ? ' · Ban reason: ' + u.ban_reason : ''}`;
 
         info.append(titleRow, presence, joined);
         left.appendChild(info);
@@ -1153,9 +1229,66 @@ const PlazCodeWorkshopUI = (() => {
       }
     }
 
+    function renderOwnerGrants() {
+      const box = find('owner-grants-box');
+      const list = find('owner-grants-list');
+      if (!box || !list) return;
+      box.hidden = !ownerStatus.account_owner;
+      list.replaceChildren();
+      if (!ownerGrants.length) {
+        const none = document.createElement('small');
+        none.style.color = 'var(--ink-soft,#9aa8be)';
+        none.textContent = 'No delegated owner grants yet.';
+        list.appendChild(none);
+        return;
+      }
+      for (const g of ownerGrants) {
+        const pill = document.createElement('span');
+        pill.className = 'ws-grant-pill';
+        const label = g.target_type === 'user_id'
+          ? `${g.user_id || g.target_key.replace(/^uid:/, '')}${g.linked_usernames?.length ? ' (' + g.linked_usernames.join(', ') + ')' : ''}`
+          : `${g.username || g.target_key.replace(/^user:/, '')}${g.user_id ? ' · ' + g.user_id : ''}`;
+        const txt = document.createElement('span');
+        txt.textContent = label;
+        const revokeBtn = document.createElement('button');
+        revokeBtn.type = 'button';
+        revokeBtn.className = 'ws-grant-revoke';
+        revokeBtn.title = 'Revoke owner access';
+        revokeBtn.setAttribute('aria-label', `Revoke owner access for ${label}`);
+        revokeBtn.setAttribute('data-ws-grant-revoke', g.target_key);
+        revokeBtn.textContent = '×';
+        revokeBtn.onclick = run(async () => {
+          await api('/api/owner/grants/revoke', {
+            method: 'POST',
+            body: JSON.stringify({ target_key: g.target_key }),
+          });
+          setOwnerStatusLine(`Revoked Owner Panel access for ${label}.`);
+          await Promise.all([loadOwnerGrants(), loadOwnerUsers()]);
+        });
+        pill.append(txt, revokeBtn);
+        list.appendChild(pill);
+      }
+    }
+
+    async function loadOwnerGrants() {
+      if (!ownerStatus.account_owner) {
+        ownerGrants = [];
+        renderOwnerGrants();
+        return;
+      }
+      try {
+        const res = await api('/api/owner/grants');
+        ownerGrants = res?.grants || [];
+      } catch {
+        ownerGrants = [];
+      }
+      renderOwnerGrants();
+    }
+
     async function loadOwnerUsers() {
       if (!ownerStatus.account_owner) {
         ownerUsers = [];
+        renderOwnerGrants();
         find('owner-users-list').replaceChildren();
         const msg = document.createElement('p');
         msg.style.color = 'var(--ink-soft,#9aa8be)';
@@ -1164,7 +1297,15 @@ const PlazCodeWorkshopUI = (() => {
         return;
       }
       const q = encodeURIComponent(find('owner-user-search').value.trim());
-      const res = await api(`/api/owner/users?filter=${encodeURIComponent(userFilter)}&q=${q}`);
+      const uidParam = activeUserIdFilter ? `&user_id=${encodeURIComponent(activeUserIdFilter)}` : '';
+      const banner = find('owner-uid-banner');
+      if (banner) {
+        banner.hidden = !activeUserIdFilter;
+        if (activeUserIdFilter) {
+          find('owner-uid-banner-text').textContent = `Showing all profiles linked to User ID ${activeUserIdFilter}`;
+        }
+      }
+      const res = await api(`/api/owner/users?filter=${encodeURIComponent(userFilter)}&q=${q}${uidParam}`);
       ownerUsers = res?.users || [];
       ownerUserCounts = res?.counts || {};
       const bannedCount = Number(ownerUserCounts.banned || 0);
@@ -1216,6 +1357,20 @@ const PlazCodeWorkshopUI = (() => {
         nameEl.textContent = u.username;
         titleRow.appendChild(nameEl);
 
+        if (u.user_id) {
+          const uidBtn = document.createElement('button');
+          uidBtn.type = 'button';
+          uidBtn.className = 'ws-uid-chip';
+          uidBtn.textContent = u.user_id;
+          uidBtn.title = 'Click to view all profiles sharing this Account User ID';
+          uidBtn.onclick = run(async () => {
+            activeUserIdFilter = u.user_id || '';
+            selectOwnerTab('users');
+            await loadOwnerUsers();
+          });
+          titleRow.appendChild(uidBtn);
+        }
+
         const pill = document.createElement('span');
         pill.className = 'ws-pill-tag bad';
         pill.textContent = u.terminated ? 'Permanently Terminated · No Unban' : 'Banned';
@@ -1224,7 +1379,8 @@ const PlazCodeWorkshopUI = (() => {
         const meta = document.createElement('small');
         meta.style.color = 'var(--ink-soft,#9aa8be)';
         const when = u.terminated && u.terminated_at ? `Terminated ${formatDateTime(u.terminated_at)}` : (u.banned_at ? `Banned ${formatDateTime(u.banned_at)}` : `Joined ${formatDateTime(u.created_at)}`);
-        meta.textContent = `${when}${u.ban_reason ? ' · Reason: ' + u.ban_reason : ''}`;
+        const linkedText = (u.linked_profile_count || 0) > 1 ? ` · ${u.linked_profile_count} linked profiles (${(u.linked_usernames || []).join(', ')})` : '';
+        meta.textContent = `${when}${u.user_id ? ' · User ID: ' + u.user_id : ''}${linkedText}${u.ban_reason ? ' · Reason: ' + u.ban_reason : ''}`;
         info.append(titleRow, meta);
         left.appendChild(info);
 
@@ -1359,14 +1515,32 @@ const PlazCodeWorkshopUI = (() => {
       }
       find('owner-panel').hidden = false;
       selectOwnerTab(ownerTab);
-      await Promise.all([loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
+      await Promise.all([loadOwnerGrants(), loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
     }
 
     find('open-owner').onclick = run(openOwnerPanel);
     find('owner-close').onclick = () => { find('owner-panel').hidden = true; };
     find('owner-refresh').onclick = run(async () => {
-      await Promise.all([loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
+      await Promise.all([loadOwnerGrants(), loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
       setOwnerStatusLine('Owner panel refreshed.');
+    });
+    find('owner-grant-add').onclick = run(async () => {
+      const inp = find('owner-grant-input');
+      const target = inp.value.trim();
+      if (!target) throw Error('Enter a User ID (PC-XXXX-XXXX) or username first.');
+      const res = await api('/api/owner/grants', {
+        method: 'POST',
+        body: JSON.stringify({ target }),
+      });
+      inp.value = '';
+      const g = res?.grant;
+      const who = g?.user_id || g?.username || target;
+      setOwnerStatusLine(`Granted Owner Panel access to ${who}.`);
+      await Promise.all([loadOwnerGrants(), loadOwnerUsers()]);
+    });
+    find('owner-uid-clear').onclick = run(async () => {
+      activeUserIdFilter = '';
+      await loadOwnerUsers();
     });
     const doOwnerLock = run(async () => {
       await api('/api/owner/lock', { method: 'POST', body: JSON.stringify({}) });

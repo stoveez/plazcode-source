@@ -427,9 +427,8 @@ const PlazCodeByokChatUI = (() => {
     };
 
     const renderComposerHtml = (sticky: boolean): string => {
-      const st = opts.getState ? opts.getState() || {} : {};
-      const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : t('No workspace folder');
       const sending = !!activeRunId;
+      const isLocal = chatMode === 'local';
       return (
         '<div class="byok-composer' + (sticky ? ' is-sticky' : '') + '">' +
         renderAttachmentsHtml() +
@@ -438,20 +437,21 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-composer-left">' +
         '<label class="softbtn byok-attach-btn" title="' + esc(t('Attach files or images')) + '">+<input type="file" multiple hidden data-byok-file></label>' +
         renderModelSelectorHtml() +
-        '<select class="byok-pill-sel" data-byok-perm aria-label="Permissions">' +
-        '<option value="sandbox"' + (permMode === 'sandbox' ? ' selected' : '') + '>' + esc(t('Sandbox')) + '</option>' +
-        '<option value="ask"' + (permMode === 'ask' ? ' selected' : '') + '>' + esc(t('Ask')) + '</option>' +
-        '<option value="full"' + (permMode === 'full' ? ' selected' : '') + '>' + esc(t('Full')) + '</option>' +
-        '</select>' +
+        (isLocal
+          ? '<select class="byok-pill-sel" data-byok-perm aria-label="Permissions">' +
+            '<option value="sandbox"' + (permMode === 'sandbox' ? ' selected' : '') + '>' + esc(t('Access: Sandbox')) + '</option>' +
+            '<option value="ask"' + (permMode === 'ask' ? ' selected' : '') + '>' + esc(t('Access: Ask')) + '</option>' +
+            '<option value="full"' + (permMode === 'full' ? ' selected' : '') + '>' + esc(t('Access: Full')) + '</option>' +
+            '</select>'
+          : '') +
         '<button type="button" class="byok-pill-btn' + (planMode ? ' active' : '') + '" data-byok-plan aria-pressed="' + (planMode ? 'true' : 'false') + '" data-pc-i18n>' + esc(t('Plan')) + '</button>' +
         '<select class="byok-pill-sel" data-byok-effort aria-label="Effort">' +
-        '<option value="default"' + (effort === 'default' ? ' selected' : '') + '>' + esc(t('Default')) + '</option>' +
-        '<option value="low"' + (effort === 'low' ? ' selected' : '') + '>' + esc(t('Low')) + '</option>' +
-        '<option value="mid"' + (effort === 'mid' ? ' selected' : '') + '>' + esc(t('Medium')) + '</option>' +
-        '<option value="high"' + (effort === 'high' ? ' selected' : '') + '>' + esc(t('High')) + '</option>' +
-        '<option value="max"' + (effort === 'max' ? ' selected' : '') + '>' + esc(t('Max')) + '</option>' +
+        '<option value="default"' + (effort === 'default' ? ' selected' : '') + '>' + esc(t('Effort: Default')) + '</option>' +
+        '<option value="low"' + (effort === 'low' ? ' selected' : '') + '>' + esc(t('Effort: Low')) + '</option>' +
+        '<option value="mid"' + (effort === 'mid' ? ' selected' : '') + '>' + esc(t('Effort: Medium')) + '</option>' +
+        '<option value="high"' + (effort === 'high' ? ' selected' : '') + '>' + esc(t('Effort: High')) + '</option>' +
+        '<option value="max"' + (effort === 'max' ? ' selected' : '') + '>' + esc(t('Effort: Max')) + '</option>' +
         '</select>' +
-        '<span class="byok-ws-pill" title="' + esc(wsRoot) + '" data-i18n-user-content>' + esc(wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) + '</span>' +
         '</div>' +
         '<div class="byok-composer-right">' +
         (sending
@@ -497,10 +497,14 @@ const PlazCodeByokChatUI = (() => {
         b.classList.toggle('active', b.getAttribute('data-drawer-tab') === drawerTab);
       });
       if (drawerTab === 'files') {
+        const st = opts.getState ? opts.getState() || {} : {};
+        const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
+        const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
         const list = workspaceFiles.length
           ? workspaceFiles.map((f) => '<button type="button" class="byok-file-item" data-insert-file="' + esc(f) + '" data-i18n-user-content dir="ltr">' + esc(f) + '</button>').join('')
           : '<div class="byok-drawer-empty" data-pc-i18n>' + esc(t('No workspace files found')) + '</div>';
         body.innerHTML =
+          '<div class="byok-ws-sub" style="text-align:left;margin:0 0 6px" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <strong data-i18n-user-content>' + esc(wsShort) + '</strong></div>' +
           '<input class="search byok-file-search" data-byok-file-search value="' + esc(fileQuery) + '" placeholder="' + esc(t('Search workspace files…')) + '">' +
           '<div class="byok-file-list">' + list + '</div>';
       } else {
@@ -534,6 +538,12 @@ const PlazCodeByokChatUI = (() => {
 
       let mainHtml = '';
       if (!hasMsgs) {
+        const st = opts.getState ? opts.getState() || {} : {};
+        const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
+        const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
+        const wsNote = chatMode === 'local'
+          ? '<div class="byok-ws-sub" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <span data-i18n-user-content>' + esc(wsShort) + '</span></div>'
+          : '';
         mainHtml =
           '<div class="byok-empty-view">' +
           '<div class="byok-mode-switch" role="group">' +
@@ -542,6 +552,7 @@ const PlazCodeByokChatUI = (() => {
           '</div>' +
           '<h1 class="byok-hero-title" data-pc-i18n>' + esc(t("Hi, what's your plan for today?")) + '</h1>' +
           renderComposerHtml(false) +
+          wsNote +
           '<div class="byok-starters">' +
           starters.map((s) => '<button type="button" class="softbtn byok-starter-chip" data-byok-starter="' + esc(s) + '">' + esc(s) + '</button>').join('') +
           '</div></div>';

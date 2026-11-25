@@ -806,7 +806,7 @@ html[data-desktop-glow=off] .pc-profile-login{box-shadow:inset 0 1px 0 #ffffff80
 .pc-profile-create-icon svg{display:block;flex:none}
 /* Profile pictures retain the theme border and the original animated GIF bytes. */
 .pc-profile-avatar,.nx-avatar{overflow:hidden}.pc-profile-avatar img,.nx-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.pc-picture-actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:16px 0 8px}.pc-picture-actions .nx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;box-shadow:inset 0 1px 0 #ffffff12,0 0 18px rgb(var(--nx-rgb)/.09)}.pc-picture-actions svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.pc-picture-remove{color:#f0a6b2!important;border-color:#d3607040!important}#profileSyncStatus{font-weight:700}
+.pc-picture-actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:16px 0 8px}.pc-picture-actions .nx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;box-shadow:inset 0 1px 0 #ffffff12,0 0 18px rgb(var(--nx-rgb)/.09)}.pc-picture-actions svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.pc-picture-remove{color:#f0a6b2!important;border-color:#d3607040!important}#profileSyncStatus{font-weight:700}.pc-uid-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}.pc-uid-row[hidden]{display:none!important}
 .pc-picture-hint{font-size:11px;color:var(--ink-soft);margin:5px 0}.pc-picture-status{font-size:12px;color:var(--orange2);margin:6px 0 14px;min-height:0}.pc-picture-status:empty{display:none}
 /* Compact profile rectangles match the owner's reference. */
 .pc-profile-list{grid-template-columns:minmax(0,1fr);gap:12px;max-height:min(340px,38vh)}
@@ -1544,27 +1544,35 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
 .byok-rail-del:hover,.byok-att-rm:hover,.byok-alert-close:hover{color:var(--red,#ff696c)}
 .byok-rail-empty,.byok-drawer-empty,.byok-models-empty{padding:18px 10px;text-align:center;font-size:12px;color:var(--ink-soft,#9299aa)}
 .byok-chat-stage{display:flex;flex-direction:column;min-width:0;min-height:0;border-radius:var(--nx-r,14px);border:var(--nx-bw,1px) solid var(--stroke,#2b303b);background:var(--pz-card,var(--surface,#12151c));overflow:hidden}
-.byok-empty-view{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;max-width:780px;width:100%;margin:0 auto}
+.byok-empty-view{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;padding:clamp(22px,4.5vh,42px) 16px 24px;max-width:780px;width:100%;margin:0 auto}
 .byok-hero-title{margin:0;font-size:26px;font-weight:800;letter-spacing:-.5px;text-align:center}
 .byok-mode-switch{display:inline-flex;gap:4px;padding:4px;border-radius:999px;border:1px solid var(--stroke,#2b303b);background:var(--canvas,#090b10)}
 .byok-mode-pill{border:none;background:transparent;color:var(--ink-soft,#9299aa);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,color .15s}
 .byok-mode-pill.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#111}
 .byok-mode-switch.compact .byok-mode-pill{padding:4px 10px;font-size:11px}
-.byok-composer{width:100%;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid var(--stroke,#2b303b);background:var(--canvas,#090b10)}
+.byok-composer{width:100%;display:flex;flex-direction:column;gap:10px;padding:12px 13px;border-radius:16px;border:1px solid var(--stroke,#2b303b);background:var(--canvas,#090b10);box-sizing:border-box}
 .byok-composer.is-sticky{border-radius:0;border-left:none;border-right:none;border-bottom:none}
-.byok-input{width:100%;resize:none;border:none;outline:none;background:transparent;color:var(--text,#f5f8ff);font:inherit;font-size:13.5px;line-height:1.5}
+.page .byok-composer .byok-input,html[data-desktop-theme] .page .byok-composer .byok-input{width:100%;min-height:0!important;resize:none;border:none!important;outline:none!important;background:transparent!important;box-shadow:none!important;padding:2px 2px!important;border-radius:6px!important;color:var(--text,#f5f8ff);font:inherit;font-size:13.5px;line-height:1.5}
+.page .byok-composer .byok-input:focus,html[data-desktop-theme] .page .byok-composer .byok-input:focus{outline:none!important;border:none!important;box-shadow:none!important}
 .byok-composer-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.byok-composer-left,.byok-composer-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.byok-attach-btn{width:30px;height:30px;padding:0;display:inline-grid;place-items:center;font-size:16px;font-weight:700;border-radius:999px;cursor:pointer}
-.byok-pill-sel,.byok-pill-btn{height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--stroke,#2b303b);background:var(--raised,#191d26);color:var(--text,#f5f8ff);font-size:11.5px;font-weight:600;cursor:pointer}
-.byok-pill-btn.active{border-color:var(--orange2);background:rgb(var(--nx-rgb,var(--theme-rgb))/.18);color:var(--orange2)}
-.byok-ws-pill{font-size:11px;color:var(--ink-soft,#9299aa);padding:4px 9px;border-radius:999px;border:1px dashed var(--stroke,#2b303b);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.byok-composer-left{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;flex:1 1 auto}
+.byok-composer-right{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto}
+.byok-attach-btn{width:30px;height:30px;min-height:30px;padding:0;display:inline-grid;place-items:center;font-size:16px;font-weight:700;border-radius:999px;cursor:pointer;flex:0 0 auto}
+.byok-pill-sel,.byok-pill-btn,.page select.byok-pill-sel,html[data-desktop-theme] .page select.byok-pill-sel{height:30px;min-height:30px!important;min-width:0!important;padding:0 10px!important;border-radius:999px!important;border:1px solid var(--stroke,#2b303b)!important;background:var(--raised,#191d26)!important;background-image:none!important;box-shadow:none!important;color:var(--text,#f5f8ff);font-size:11.5px;font-weight:600;cursor:pointer;line-height:28px;white-space:nowrap}
+.byok-composer-left .pc-effort-picker{min-width:0!important;flex:0 0 auto}
+.byok-composer-left .pc-effort-trigger{height:30px!important;min-height:30px!important;width:auto!important;padding:0 10px!important;border-radius:999px!important;border:1px solid var(--stroke,#2b303b)!important;background:var(--raised,#191d26)!important;box-shadow:none!important;color:var(--text,#f5f8ff);font-size:11.5px!important;font-weight:600;gap:4px!important;white-space:nowrap}
+.byok-composer-left .pc-effort-trigger>span:nth-child(2){margin:-3px 1px 0 4px!important}
+.byok-composer-left .pc-effort-options{min-width:165px}
+.page select.byok-pill-sel,html[data-desktop-theme] .page select.byok-pill-sel{padding:0 24px 0 10px!important;background-image:linear-gradient(45deg,transparent 50%,var(--orange2,#ffbc67) 50%),linear-gradient(135deg,var(--orange2,#ffbc67) 50%,transparent 50%)!important;background-position:calc(100% - 13px) 52%,calc(100% - 8px) 52%!important;background-size:5px 5px,5px 5px!important;background-repeat:no-repeat!important}
+.byok-pill-btn.active{border-color:var(--orange2)!important;background:rgb(var(--nx-rgb,var(--theme-rgb))/.18)!important;color:var(--orange2)}
+.byok-model-dd{position:relative;flex:0 0 auto}
+.byok-model-trigger{display:inline-flex;align-items:center;gap:5px;height:30px;min-height:30px;padding:0 10px;font-size:11.5px;border-radius:999px;white-space:nowrap}
+.byok-send-btn,.byok-stop-btn{height:32px;min-height:32px;padding:0 15px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.byok-ws-sub{width:100%;margin-top:-6px;font-size:11px;color:var(--ink-soft,#9299aa);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .byok-starters{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .byok-starter-chip{font-size:12px;padding:7px 12px;border-radius:999px}
 .byok-att-row{display:flex;flex-wrap:wrap;gap:6px}
 .byok-att-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:8px;background:var(--raised,#191d26);border:1px solid var(--stroke,#2b303b);font-size:11.5px}
-.byok-model-dd{position:relative}
-.byok-model-trigger{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;font-size:11.5px;border-radius:999px}
 .byok-model-trigger-plat{opacity:.65;font-size:10.5px}
 .byok-dd-menu{position:absolute;bottom:calc(100% + 6px);left:0;min-width:250px;max-height:280px;display:flex;flex-direction:column;border-radius:12px;border:1px solid var(--stroke,#2b303b);background:var(--surface,#12151c);box-shadow:0 16px 36px #0008;z-index:40;overflow:hidden}
 .byok-chat-topbar .byok-dd-menu{bottom:auto;top:calc(100% + 6px);right:0;left:auto}
@@ -1990,7 +1998,7 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
       </section>
       <section class="page" id="page-account">
         <div class="nx-pagehead"><div><h1>Account</h1><p>Your profile and sync.</p></div></div>
-        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="pc-picture-actions"><button type="button" class="nx-btn" id="changeProfilePicture"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg><span>Change profile picture</span></button><button type="button" class="nx-btn pc-picture-remove" id="removeProfilePicture" hidden>Remove picture</button></div><input type="file" id="profilePictureFile" accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif" hidden><p class="pc-picture-hint">JPEG, PNG or GIF · GIFs up to 1 MB</p><p id="profilePictureStatus" class="pc-picture-status" role="status" aria-live="polite"></p><div class="nx-v" style="justify-content:center" data-profile-name data-i18n-user-content dir="auto">PlazCode</div><div class="nx-s" id="profileDataDescription">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSyncNow">Sync now</button> <button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
+        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="pc-picture-actions"><button type="button" class="nx-btn" id="changeProfilePicture"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg><span>Change profile picture</span></button><button type="button" class="nx-btn pc-picture-remove" id="removeProfilePicture" hidden>Remove picture</button></div><input type="file" id="profilePictureFile" accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif" hidden><p class="pc-picture-hint">JPEG, PNG or GIF · GIFs up to 1 MB</p><p id="profilePictureStatus" class="pc-picture-status" role="status" aria-live="polite"></p><div class="nx-v" style="justify-content:center" data-profile-name data-i18n-user-content dir="auto">PlazCode</div><div id="profileUserIdRow" class="pc-uid-row" hidden><span class="nx-s" style="margin:0"><span data-pc-i18n>User ID</span>: <strong id="profileUserIdValue" data-i18n-user-content style="font-family:var(--mono,ui-monospace,Consolas,monospace);letter-spacing:.4px"></strong></span><button type="button" class="softbtn" id="copyProfileUserId" style="padding:3px 9px;min-height:24px;font-size:11px">Copy</button></div><div class="nx-s" id="profileDataDescription">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSyncNow">Sync now</button> <button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
         
         <p class="nx-s" style="margin:12px 2px">Switching profiles stops current tools. Removing a saved profile only forgets its sign-in on this computer.</p>
       </section>
@@ -2062,7 +2070,7 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
             <p class="settinghelp" id="dockHotkeyStatus" role="status" hidden></p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="softbtn" type="button" id="resetStudioDockPos">Reset dock position</button><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
           </div>
-          <div class="settingcard" id="workshopRegistrySettings"><h3>Workshop</h3><p>Connect to a PlazCode Workshop Cloudflare Worker to browse community skills and publish your own.</p>
+          <div class="settingcard" id="workshopRegistrySettings" hidden><h3>Workshop</h3><p>Connect to a PlazCode Workshop Cloudflare Worker to browse community skills and publish your own.</p>
             <input type="url" id="workshopRegistryUrlInput" data-i18n-user-content dir="ltr" placeholder="https://plazcode-workshop.plazcode-stoveez.workers.dev" aria-label="Workshop registry URL" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--text)">
             <div class="instructions-actions"><button class="softbtn" type="button" id="saveWorkshopRegistryUrl">Save</button><span class="instructions-status" id="workshopRegistryStatus" role="status"></span></div>
           </div>
@@ -3189,6 +3197,17 @@ __PLAZCODE_BACKDROP_FX__
         return HandleAccountLockout(Nextstate.account_warning);
       }
       State = Nextstate;
+      if(Nextstate.profile){
+        ProfileContext = Nextstate.profile;
+        var UidRow=Byid("profileUserIdRow"), UidVal=Byid("profileUserIdValue");
+        if(UidRow&&UidVal){
+          var Uid=!Nextstate.profile.guest&&Nextstate.profile.user_id?String(Nextstate.profile.user_id):"";
+          UidVal.textContent=Uid;
+          UidRow.hidden=!Uid;
+        }
+      }
+      var WsRegCard=Byid("workshopRegistrySettings");
+      if(WsRegCard)WsRegCard.hidden=!(Boolean(Nextstate.profile&&Nextstate.profile.is_owner)||Boolean(Nextstate.owner_unlocked));
       if(Byid("profileSyncStatus"))Byid("profileSyncStatus").textContent=State.account_sync||"";
       Render();
       Homesetupcheck();
@@ -3638,6 +3657,7 @@ __PLAZCODE_BACKDROP_FX__
       }
       Byid('profileGuest').hidden=Locked||Mode==='remove';
       Byid('profileCreate').hidden=Locked;
+      if(Locked)Byid('profileUseExisting').hidden=true;
       Byid('profileCreate').disabled=Locked;
       Byid('profileUseExisting').hidden=Locked;
     }
@@ -3666,7 +3686,7 @@ __PLAZCODE_BACKDROP_FX__
     List.onkeydown=function(Event){if(!['ArrowDown','ArrowUp','Home','End'].includes(Event.key))return;var Cards=Array.from(List.querySelectorAll('button'));if(!Cards.length)return;Event.preventDefault();var Index=Cards.indexOf(document.activeElement);Cards[Event.key==='Home'?0:Event.key==='End'?Cards.length-1:(Index+(Event.key==='ArrowDown'?1:-1)+Cards.length)%Cards.length].focus();};
     Host.onkeydown=function(Event){Host.dataset.profilePointerFocus='false';if(Event.key==='Escape'&&!Busy&&Mode!=='picker'){Event.preventDefault();Password.value='';View('picker');Render();}};
     var Logo=document.querySelector('.nx-splash-mark svg');if(Logo&&!Byid('profileBrandMark').children.length)Byid('profileBrandMark').appendChild(Logo.cloneNode(true));Byid('profileSignInVersion').textContent='__PLAZCODE_VERSION__';
-    async function Open(State){Profiles=State.profiles||[];Selected=null;Previousfocus=document.activeElement;Host.hidden=false;Host.classList.remove('is-visible');ApplyDeviceBan(State.device_ban||null);View('picker');Render();document.querySelector('.app').inert=true;Host.getBoundingClientRect();requestAnimationFrame(function(){Host.classList.add('is-visible');var First=List.querySelector('button')||(!ActiveDeviceBan&&Byid('profileCreate'))||CheckBanBtn;if(First)First.focus();});if(!ActiveDeviceBan)Byid('profileUseExisting').hidden=!!State.localOnly;Status.textContent=State.warning||'';return Host;}
+    async function Open(State){Profiles=State.profiles||[];Selected=null;Previousfocus=document.activeElement;Host.hidden=false;Host.classList.remove('is-visible');ApplyDeviceBan(State.device_ban||null);View('picker');Render();document.querySelector('.app').inert=true;Host.getBoundingClientRect();requestAnimationFrame(function(){Host.classList.add('is-visible');var First=List.querySelector('button')||(!ActiveDeviceBan&&Byid('profileCreate'))||CheckBanBtn;if(First)First.focus();});if(!ActiveDeviceBan)Byid('profileUseExisting').hidden=!!State.localOnly;Status.textContent=State.warning||'';if(!ActiveDeviceBan&&typeof Backend.checkBan==='function'){Backend.checkBan().then(function(Res){if(Res&&Res.banned&&Res.device_ban){ApplyDeviceBan(Res.device_ban);Render();}}).catch(function(){});}return Host;}
     async function Close(){Host.classList.remove('is-visible');await new Promise(function(Resolve){window.setTimeout(Resolve,450);});Host.hidden=true;document.querySelector('.app').inert=false;if(Previousfocus&&Previousfocus.isConnected)Previousfocus.focus();}
     return {open:Open,close:Close,isOpen:function(){return !Host.hidden;},refresh:function(State){Profiles=State.profiles||[];ApplyDeviceBan(State.device_ban||null);Render();}};
   }
@@ -4797,6 +4817,9 @@ __PLAZCODE_BACKDROP_FX__
         function SignedInLabels(){document.querySelectorAll('.nx-account small,#profileOverviewState').forEach(function(N){var Label=ProfileContext.guest?'Guest on this computer':'Signed in';N.textContent=I18n?I18n.t(Label):Label;});}SignedInLabels();if(I18n)I18n.onChange(SignedInLabels);
         document.querySelectorAll('.nx-account .nx-avatar,#profileAccountAvatar').forEach(function(N){N.textContent=Array.from(ProfileContext.username).slice(0,2).join('').toUpperCase();});
         if(ProfileContext.guest){Byid('profileSyncNow').hidden=true;Byid('profileDataDescription').textContent=I18n?I18n.t('Your guest settings, skills and memory are saved on this computer. Guest data does not sync to an account.'):'Your guest settings, skills and memory are saved on this computer. Guest data does not sync to an account.';Byid('profileSignOut').textContent=I18n?I18n.t('Switch profile'):'Switch profile';}
+        if(Byid('profileUserIdRow')&&Byid('profileUserIdValue')&&!ProfileContext.guest&&ProfileContext.user_id){Byid('profileUserIdValue').textContent=ProfileContext.user_id;Byid('profileUserIdRow').hidden=false;}
+        if(Byid('workshopRegistrySettings')){Byid('workshopRegistrySettings').hidden=!ProfileContext.is_owner;}
+        if(Byid('copyProfileUserId')){Byid('copyProfileUserId').onclick=async function(){var Uid=(ProfileContext&&ProfileContext.user_id)||Byid('profileUserIdValue').textContent||'';if(!Uid)return;try{await navigator.clipboard.writeText(Uid);Byid('profileSyncStatus').textContent=(I18n?I18n.t('Copied User ID'):'Copied User ID')+': '+Uid;}catch(_){}};}
         ProfilePictures.bind();
         Byid('profileSyncNow').onclick=async function(){try{var R=await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'sync'})});Byid('profileSyncStatus').textContent=R.status;Refresh();}catch(Error){Byid('profileSyncStatus').textContent=Error.message;}};
         Byid('profileSignOut').onclick=async function(){try{await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.setItem('plazcode-profile-context','locked');location.reload();}catch(Error){Showerror(Error);}};

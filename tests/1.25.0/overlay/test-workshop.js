@@ -102,15 +102,16 @@ const WorkshopUI = require("./core/workshop-ui.js");
 
   // 3. Dedicated Workshop page + Owner Panel DOM + interactions test
   const wsCalls = [];
-  let prefs = { workshopRegistryUrl: "" };
+  let prefs = { workshopRegistryUrl: "https://plazcode-workshop.workers.dev" };
   let ownerUnlocked = false;
+  let ownerGrantsState = [];
   let ownerSkillsState = [
     { id: "pend-1", slug: "pend-1", kind: "skill", title: "Pending Obby Kit", summary: "Needs owner check.", author: "TestPlayer", author_key: "acct:u-1", version: "1.0.0", category: "Scripting", engine: "roblox", tags: [], badge: "COMMUNITY", status: "pending", featured: false, review_status: "community, not checked by PlazCode", body_bytes: 512, file_count: 1, rating_avg: 0, rating_count: 0, report_count: 2, install_count: 0, created_at: 1795400000000 },
   ];
   let ownerBannedState = [{ author_key: "acct:spam-1", reason: "Spam", banned_at: 1795400000000 }];
   let ownerUsersState = [
-    { id: "u-1", username: "TestPlayer", created_at: 1795390000000, last_seen_at: 1795400000000, online: true, app_version: "1.25.0", banned: false, is_owner: false, profile_picture: "data:image/png;base64,iVBORw0KGgo=" },
-    { id: "u-2", username: "BannedPlayer", created_at: 1795380000000, last_seen_at: 0, online: false, app_version: "", banned: true, ban_reason: "Abuse", is_owner: false, profile_picture: null },
+    { id: "u-1", username: "TestPlayer", user_id: "PC-AAAA-BBBB", linked_profile_count: 2, linked_usernames: ["TestPlayer", "TestAlt"], created_at: 1795390000000, last_seen_at: 1795400000000, online: true, app_version: "1.25.0", banned: false, is_owner: false, profile_picture: "data:image/png;base64,iVBORw0KGgo=" },
+    { id: "u-2", username: "BannedPlayer", user_id: "PC-CCCC-DDDD", linked_profile_count: 1, linked_usernames: ["BannedPlayer"], created_at: 1795380000000, last_seen_at: 0, online: false, app_version: "", banned: true, ban_reason: "Abuse", is_owner: false, profile_picture: null },
   ];
   const sampleItems = [
     { id: "plazcode-spec-ui-designer", slug: "ui-designer", kind: "specialist", title: "Roblox UI Designer", summary: "Responsive Scale UI.", author: "PlazCode (built-in)", version: "1.25.0", category: "Interface", engine: "roblox", tags: ["ui", "specialist"], badge: "FEATURED", review_status: "reviewed by PlazCode", body_bytes: 4096, file_count: 2, rating_avg: 4.9, rating_count: 24, install_count: 420 },
@@ -124,7 +125,16 @@ const WorkshopUI = require("./core/workshop-ui.js");
       const kind = u.searchParams.get("kind") || "all";
       const cat = u.searchParams.get("category") || "All categories";
       const filtered = sampleItems.filter((i) => (kind === "all" || i.kind === kind) && (cat === "All categories" || i.category === cat));
-      return { ok: true, registry_url: prefs.workshopRegistryUrl, registry_status: prefs.workshopRegistryUrl ? "connected" : "offline", items: filtered, installed_ids: [], local_ratings: {}, local_skills: [{ id: "roblox-animation", title: "roblox-animation", description: "Anim", domain: "roblox", files: [{ path: "SKILL.md" }] }] };
+      return {
+        ok: true,
+        can_configure_registry: ownerUnlocked,
+        registry_url: ownerUnlocked ? prefs.workshopRegistryUrl : "",
+        registry_status: prefs.workshopRegistryUrl ? "connected" : "offline",
+        items: filtered,
+        installed_ids: [],
+        local_ratings: {},
+        local_skills: [{ id: "roblox-animation", title: "roblox-animation", description: "Anim", domain: "roblox", files: [{ path: "SKILL.md" }] }]
+      };
     }
     if (url === "/api/workshop/install") return { ok: true, installed: { id: "community-" + body.id, title: "Roblox UI Designer" } };
     if (url === "/api/workshop/rate") return { ok: true, rating_avg: body.stars };
@@ -143,14 +153,32 @@ const WorkshopUI = require("./core/workshop-ui.js");
       ownerUnlocked = false;
       return { ok: true, unlocked: false };
     }
+    if (url === "/api/owner/grants" && (!opts?.method || opts.method === "GET")) {
+      return { ok: true, primary_owners: ["stoveez"], grants: ownerGrantsState };
+    }
+    if (url === "/api/owner/grants" && opts?.method === "POST") {
+      const t = String(body.target || "").trim();
+      const isUid = /^PC-/i.test(t);
+      const grant = isUid
+        ? { target_key: "uid:" + t.toUpperCase(), target_type: "user_id", user_id: t.toUpperCase(), username: "TestPlayer", linked_usernames: ["TestPlayer", "TestAlt"], granted_by: "stoveez", granted_at: 1795400000000 }
+        : { target_key: "user:" + t.toLowerCase(), target_type: "username", user_id: "", username: t, linked_usernames: [t], granted_by: "stoveez", granted_at: 1795400000000 };
+      ownerGrantsState = [...ownerGrantsState.filter((g) => g.target_key !== grant.target_key), grant];
+      return { ok: true, grant };
+    }
+    if (url === "/api/owner/grants/revoke") {
+      ownerGrantsState = ownerGrantsState.filter((g) => g.target_key !== body.target_key);
+      return { ok: true, revoked: true };
+    }
     if (url.startsWith("/api/owner/users?")) {
       const u = new URL("http://localhost" + url);
       const q = (u.searchParams.get("q") || "").toLowerCase();
+      const uid = (u.searchParams.get("user_id") || "").toUpperCase();
       const flt = u.searchParams.get("filter") || "all";
       const list = ownerUsersState.filter((usr) => {
+        if (uid && usr.user_id !== uid) return false;
         if (flt === "online" && !usr.online) return false;
         if (flt === "banned" && !usr.banned) return false;
-        if (q && !usr.username.toLowerCase().includes(q)) return false;
+        if (q && !usr.username.toLowerCase().includes(q) && !(usr.user_id || "").toLowerCase().includes(q)) return false;
         return true;
       });
       return { ok: true, users: list, counts: { total: ownerUsersState.length, online: 1, banned: 1 } };
@@ -213,14 +241,12 @@ const WorkshopUI = require("./core/workshop-ui.js");
   assert(wsCalls.some((c) => c.url === "/api/workshop/upload"));
   assert.match(wq('[data-ws="status"]').textContent, /owner approval/i);
 
-  // Registry URL configuration
-  wq('[data-ws="reg-config"]').click();
-  wq('[data-ws="reg-input"]').value = "https://plazcode-workshop.workers.dev";
-  wq('[data-ws="reg-save"]').click();
-  await new Promise((r) => setTimeout(r, 20));
-  assert.equal(prefs.workshopRegistryUrl, "https://plazcode-workshop.workers.dev");
+  // Registry URL & Configure Registry must stay hidden for non-owners
+  assert.equal(wq('[data-ws="reg-config"]').hidden, true, "Configure Registry hidden for non-owners");
+  assert.equal(wq('[data-ws="reg-settings"]').hidden, true, "Workshop Settings shortcut hidden for non-owners");
+  assert(!wq('[data-ws="reg-text"]').textContent.includes("workers.dev"), "non-owners do not see raw Worker URL");
 
-  // Owner Panel: hidden before unlock -> unlock rejected -> unlock succeeds -> Users & Workshop Moderation
+  // Owner Panel: hidden before unlock -> unlock rejected -> unlock succeeds -> Users, Grants, & Workshop Moderation
   assert.equal(wq('[data-ws="open-owner"]').hidden, true, "Owner Panel hidden for non-owners before unlock");
   wq('[data-ws="owner-unlock-btn"]').click();
   await new Promise((r) => setTimeout(r, 20));
@@ -234,12 +260,39 @@ const WorkshopUI = require("./core/workshop-ui.js");
   wq('[data-ws="unlock-ws-token"]').value = "valid-ws-tok";
   wq('[data-ws="unlock-submit"]').click();
   await new Promise((r) => setTimeout(r, 30));
+  await ws.refresh();
+  assert.equal(wq('[data-ws="reg-config"]').hidden, false, "Configure Registry visible for unlocked owner");
+  wq('[data-ws="reg-config"]').click();
+  wq('[data-ws="reg-input"]').value = "https://plazcode-workshop.workers.dev";
+  wq('[data-ws="reg-save"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(prefs.workshopRegistryUrl, "https://plazcode-workshop.workers.dev");
   assert.equal(wq('[data-ws="open-owner"]').hidden, false, "Owner Panel button visible after unlock");
   assert.equal(wq('[data-ws="owner-panel"]').hidden, false, "Owner Panel opens after unlock");
   assert.match(wq('[data-ws="owner-users-view"]').textContent, /scrypt/);
   assert.match(wq('[data-ws="owner-users-list"]').textContent, /TestPlayer/);
+  assert.match(wq('[data-ws="owner-users-list"]').textContent, /PC-AAAA-BBBB/);
   assert.match(wq('[data-ws="owner-users-list"]').textContent, /Using PlazCode now/);
   assert(wq('[data-ws="owner-users-list"] img.ws-avatar-img'), "renders validated profile picture");
+
+  // Click User ID chip to filter by shared User ID -> clear filter
+  wq('[data-ws-uid-filter="PC-AAAA-BBBB"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(wq('[data-ws="owner-uid-banner"]').hidden, false, "User ID filter banner shown");
+  assert(!wq('[data-ws="owner-users-list"]').textContent.includes("BannedPlayer"), "UID filter narrows to shared account profiles");
+  wq('[data-ws="owner-uid-clear"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(wq('[data-ws="owner-uid-banner"]').hidden, true);
+
+  // Grant Owner Panel access by User ID and revoke
+  wq('[data-ws="owner-grant-input"]').value = "PC-AAAA-BBBB";
+  wq('[data-ws="owner-grant-add"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(wsCalls.some((c) => c.url === "/api/owner/grants" && c.body?.target === "PC-AAAA-BBBB"));
+  assert(wq('[data-ws-grant-revoke="uid:PC-AAAA-BBBB"]'), "renders dynamic User ID owner grant");
+  wq('[data-ws-grant-revoke="uid:PC-AAAA-BBBB"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(wsCalls.some((c) => c.url === "/api/owner/grants/revoke" && c.body?.target_key === "uid:PC-AAAA-BBBB"));
 
   // Ban confirmation + Remove confirmation
   wq('[data-ws-user-ban="u-1"]').click();

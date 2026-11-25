@@ -1523,6 +1523,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/owner/users/unban", post(owner_user_unban_handler))
         .route("/api/owner/users/terminate", post(owner_user_terminate_handler))
         .route("/api/owner/users/remove", post(owner_user_remove_handler))
+        .route("/api/owner/grants", get(owner_grants_handler).post(owner_grant_add_handler))
+        .route("/api/owner/grants/revoke", post(owner_grant_revoke_handler))
         .route("/api/owner/workshop/skills", get(owner_workshop_skills_handler))
         .route("/api/owner/workshop/action", post(owner_workshop_action_handler))
         .route("/api/explorer", post(explorer::post).layer(axum::extract::DefaultBodyLimit::max(3 * 1024 * 1024)))
@@ -2457,6 +2459,13 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         .map(|value| value.iter().cloned().collect::<Vec<_>>())
         .unwrap_or_default();
     let fatal = state.ui.fatal.lock().ok().and_then(|value| value.clone());
+    let owner_auth = is_owner_authorized(&state).await;
+    let mut prefs_val = serde_json::to_value(state.preferences.snapshot()).unwrap_or_default();
+    if !owner_auth {
+        if let Some(obj) = prefs_val.as_object_mut() {
+            obj.remove("workshopRegistryUrl");
+        }
+    }
     Json(serde_json::json!({
         "ok": true,
         "version": env!("CARGO_PKG_VERSION"),
@@ -2476,7 +2485,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "servers": servers,
         "logs": logs,
         "fatal": fatal,
-        "preferences": state.preferences.snapshot(),
+        "preferences": prefs_val,
         "hotkeyError": state.ui.studio_dock.hotkey_error(),
         "browser_agent": state.ui.browser_agent_snapshot(),
         "telemetry": telemetry::snapshot(),
@@ -2489,7 +2498,18 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-async fn desktop_preferences_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+async fn is_owner_authorized(state: &AppState) -> bool {
+    state.accounts.active().is_some_and(|p| p.is_owner)
+        || state.owner_account_token.read().await.is_some()
+        || state.owner_workshop_token.read().await.is_some()
+}
+
+async fn desktop_preferences_handler(State(state): State<AppState>, Json(mut req): Json<serde_json::Value>) -> impl IntoResponse {
+    if !is_owner_authorized(&state).await {
+        if let Some(obj) = req.as_object_mut() {
+            obj.remove("workshopRegistryUrl");
+        }
+    }
     let outcome = state.preferences.patch_synced(req.clone());
     preferences_response(&state, &req, outcome)
 }
@@ -2769,6 +2789,9 @@ async fn owner_users_handler(State(state): State<AppState>, Query(params): Query
             if let Some(q) = params.get("q").map(String::as_str).map(str::trim).filter(|s| !s.is_empty()) {
                 qp.append_pair("q", q);
             }
+            if let Some(uid) = params.get("user_id").map(String::as_str).map(str::trim).filter(|s| !s.is_empty()) {
+                qp.append_pair("user_id", uid);
+            }
             if let Some(f) = params.get("filter").map(String::as_str).map(str::trim).filter(|s| !s.is_empty()) {
                 qp.append_pair("filter", f);
             }
@@ -2789,6 +2812,37 @@ async fn owner_users_handler(State(state): State<AppState>, Query(params): Query
     }
 }
 
+async fn sync_workshop_author_moderation(state: &AppState, action: &str, primary_id: &str, username: &str, reason: Option<&str>, affected_ids: Option<&Vec<serde_json::Value>>) -> serde_json::Value {
+    let mut keys: Vec<String> = Vec::new();
+    if let Some(arr) = affected_ids {
+        for v in arr {
+            if let Some(id) = v.as_str().map(str::trim).filter(|s| !s.is_empty()) {
+                if !keys.iter().any(|k| k == id) {
+                    keys.push(id.to_string());
+                }
+            }
+        }
+    }
+    if !primary_id.is_empty() && !keys.iter().any(|k| k == primary_id) {
+        keys.push(primary_id.to_string());
+    }
+    let mut last = serde_json::json!({"ok": true});
+    for key_id in keys {
+        let mut payload = serde_json::json!({
+            "author": username,
+            "author_key": format!("acct:{key_id}")
+        });
+        if let Some(r) = reason {
+            payload["reason"] = serde_json::json!(r);
+        }
+        last = match workshop::owner_action(state, action, payload).await {
+            Ok(v) => v,
+            Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
+        };
+    }
+    last
+}
+
 async fn owner_user_ban_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
     let result: anyhow::Result<serde_json::Value> = async {
         let id = req["id"].as_str().map(str::trim).unwrap_or("");
@@ -2804,15 +2858,8 @@ async fn owner_user_ban_handler(State(state): State<AppState>, Json(req): Json<s
             tok.as_deref(),
         ).await?;
         if remove_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
-            let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
-                "author": username,
-                "author_key": format!("acct:{id}"),
-                "reason": reason
-            })).await;
-            res["workshop_result"] = match ws_res {
-                Ok(v) => v,
-                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
-            };
+            let affected = res["affected_ids"].as_array().cloned();
+            res["workshop_result"] = sync_workshop_author_moderation(&state, "ban", id, username, Some(reason), affected.as_ref()).await;
         }
         Ok(res)
     }.await;
@@ -2836,14 +2883,8 @@ async fn owner_user_unban_handler(State(state): State<AppState>, Json(req): Json
             tok.as_deref(),
         ).await?;
         if unban_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
-            let ws_res = workshop::owner_action(&state, "unban", serde_json::json!({
-                "author": username,
-                "author_key": format!("acct:{id}")
-            })).await;
-            res["workshop_result"] = match ws_res {
-                Ok(v) => v,
-                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
-            };
+            let affected = res["affected_ids"].as_array().cloned();
+            res["workshop_result"] = sync_workshop_author_moderation(&state, "unban", id, username, None, affected.as_ref()).await;
         }
         Ok(res)
     }.await;
@@ -2868,15 +2909,8 @@ async fn owner_user_terminate_handler(State(state): State<AppState>, Json(req): 
             tok.as_deref(),
         ).await?;
         if remove_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
-            let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
-                "author": username,
-                "author_key": format!("acct:{id}"),
-                "reason": reason
-            })).await;
-            res["workshop_result"] = match ws_res {
-                Ok(v) => v,
-                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
-            };
+            let affected = res["affected_ids"].as_array().cloned();
+            res["workshop_result"] = sync_workshop_author_moderation(&state, "ban", id, username, Some(reason), affected.as_ref()).await;
         }
         Ok(res)
     }.await;
@@ -2915,6 +2949,44 @@ async fn owner_user_remove_handler(State(state): State<AppState>, Json(req): Jso
     match result {
         Ok(v) => Json(v).into_response(),
         Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_grants_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let tok = state.owner_account_token.read().await.clone();
+    match state.accounts.owner_request(reqwest::Method::GET, "/v1/owner/grants", None, tok.as_deref()).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => {
+            let status = err.downcast_ref::<accounts::AccountError>().map(|e| axum::http::StatusCode::from_u16(e.status).unwrap_or(axum::http::StatusCode::BAD_REQUEST)).unwrap_or(axum::http::StatusCode::BAD_REQUEST);
+            (status, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response()
+        }
+    }
+}
+
+async fn owner_grant_add_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let target = req["target"].as_str().or_else(|| req["user_id"].as_str()).or_else(|| req["username"].as_str()).map(str::trim).unwrap_or("");
+    let tok = state.owner_account_token.read().await.clone();
+    match state.accounts.owner_request(reqwest::Method::POST, "/v1/owner/grants", Some(serde_json::json!({"target": target})), tok.as_deref()).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => {
+            let status = err.downcast_ref::<accounts::AccountError>().map(|e| axum::http::StatusCode::from_u16(e.status).unwrap_or(axum::http::StatusCode::BAD_REQUEST)).unwrap_or(axum::http::StatusCode::BAD_REQUEST);
+            (status, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response()
+        }
+    }
+}
+
+async fn owner_grant_revoke_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let body = serde_json::json!({
+        "target_key": req["target_key"].as_str().unwrap_or(""),
+        "target": req["target"].as_str().or_else(|| req["user_id"].as_str()).or_else(|| req["username"].as_str()).unwrap_or("")
+    });
+    let tok = state.owner_account_token.read().await.clone();
+    match state.accounts.owner_request(reqwest::Method::POST, "/v1/owner/grants/revoke", Some(body), tok.as_deref()).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => {
+            let status = err.downcast_ref::<accounts::AccountError>().map(|e| axum::http::StatusCode::from_u16(e.status).unwrap_or(axum::http::StatusCode::BAD_REQUEST)).unwrap_or(axum::http::StatusCode::BAD_REQUEST);
+            (status, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response()
+        }
     }
 }
 

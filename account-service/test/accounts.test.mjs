@@ -129,6 +129,8 @@ test('owner user directory, heartbeat presence, scrypt non-leakage, ban/unban an
  const banStat=await call(db,`/v1/ban-status?account_id=${devUser.data.profile.id}`,'GET',undefined,undefined,{'X-PlazCode-Device':bannedDevice},env);
  assert.equal(banStat.data.banned,true);
  assert.equal(banStat.data.terminated,false);
+ assert.equal(banStat.data.account_id,devUser.data.profile.id);
+ assert.equal(banStat.data.username,'AltTestUser');
  // Permanently terminate -> cannot be unbanned and device remains locked out permanently
  const term=await call(db,`/v1/owner/users/${devUser.data.profile.id}/terminate`,'POST',{reason:'Severe abuse'},ownerReg.data.token,{},env);
  assert.equal(term.status,200);
@@ -138,6 +140,73 @@ test('owner user directory, heartbeat presence, scrypt non-leakage, ban/unban an
  const termReg=await call(db,'/v1/register','POST',{username:'AfterTermAlt',password:'player-strong-password-5',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':bannedDevice},env);
  assert.equal(termReg.status,403);
  assert.equal(termReg.data.code,'account_terminated');
+
+ // Shared account User ID across multiple profiles + devices + User ID search + multi-profile ban/unban + dynamic owner grants
+ const sharedDevA='c'.repeat(64);
+ const sharedDevB='d'.repeat(64);
+ const sharedDevC='e'.repeat(64);
+ const profOne=await call(db,'/v1/register','POST',{username:'MultiProfOne',password:'player-strong-password-6',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevA},env);
+ assert.equal(profOne.status,201);
+ assert.match(profOne.data.profile.user_id,/^PC-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/);
+ const sharedUid=profOne.data.profile.user_id;
+
+ // Second profile registered from same device shares the exact same User ID
+ const profTwo=await call(db,'/v1/register','POST',{username:'MultiProfTwo',password:'player-strong-password-7',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevA},env);
+ assert.equal(profTwo.status,201);
+ assert.equal(profTwo.data.profile.user_id,sharedUid);
+
+ // Signing into MultiProfTwo from a second PC (sharedDevB) links sharedDevB to sharedUid
+ const loginB=await call(db,'/v1/login','POST',{username:'MultiProfTwo',password:'player-strong-password-7',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevB},env);
+ assert.equal(loginB.status,200);
+ assert.equal(loginB.data.profile.user_id,sharedUid);
+ assert.equal((await call(db,'/v1/heartbeat','POST',{status:'active'},loginB.data.token,{},env)).data.user_id,sharedUid);
+
+ // Owner searches by User ID and sees both linked profiles
+ const uidSearch=await call(db,`/v1/owner/users?q=${encodeURIComponent(sharedUid)}`,'GET',undefined,ownerReg.data.token,{},env);
+ assert.equal(uidSearch.status,200);
+ assert.equal(uidSearch.data.users.length,2);
+ assert.equal(uidSearch.data.users[0].user_id,sharedUid);
+ assert.equal(uidSearch.data.users[0].linked_profile_count,2);
+ assert.deepEqual(uidSearch.data.users[0].linked_usernames.sort(),['MultiProfOne','MultiProfTwo']);
+
+ // Dynamic owner grant by User ID promotes ALL profiles sharing that User ID
+ const grantUid=await call(db,'/v1/owner/grants','POST',{target:sharedUid},ownerReg.data.token,{},env);
+ assert.equal(grantUid.status,200);
+ assert.equal(grantUid.data.grant.target_type,'user_id');
+ assert.equal(grantUid.data.grant.user_id,sharedUid);
+ assert.equal((await call(db,'/v1/session','GET',undefined,profOne.data.token,{},env)).data.profile.is_owner,true);
+ assert.equal((await call(db,'/v1/session','GET',undefined,loginB.data.token,{},env)).data.profile.is_owner,true);
+ assert.equal((await call(db,'/v1/owner/status','GET',undefined,profOne.data.token,{},env)).status,200);
+
+ // Grant by username works and primary owner revoke is blocked
+ const grantByName=await call(db,'/v1/owner/grants','POST',{target:'FuckYeahBuilder'},ownerReg.data.token,{},env);
+ assert.equal(grantByName.status,200);
+ const grantsList=await call(db,'/v1/owner/grants','GET',undefined,ownerReg.data.token,{},env);
+ assert.equal(grantsList.status,200);
+ assert.equal(grantsList.data.grants.length,2);
+ assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target:'PlazOwner'},ownerReg.data.token,{},env)).status,400);
+
+ // Revoke User ID grant -> profiles return to non-owner
+ assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target_key:`uid:${sharedUid}`},ownerReg.data.token,{},env)).status,200);
+ assert.equal((await call(db,'/v1/session','GET',undefined,profOne.data.token,{},env)).data.profile.is_owner,false);
+ assert.equal((await call(db,'/v1/owner/status','GET',undefined,profOne.data.token,{},env)).status,403);
+
+ // Banning MultiProfOne bans MultiProfTwo and blocks registration on both sharedDevA and sharedDevB + login on sharedDevC
+ const multiBan=await call(db,`/v1/owner/users/${profOne.data.profile.id}/ban`,'POST',{reason:'Multi-profile lockout'},ownerReg.data.token,{},env);
+ assert.equal(multiBan.status,200);
+ assert.equal(multiBan.data.affected_ids.length,2);
+ assert.equal((await call(db,'/v1/session','GET',undefined,loginB.data.token,{},env)).status,403);
+ assert.equal((await call(db,'/v1/register','POST',{username:'MultiBlockedA',password:'player-strong-password-8',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevA},env)).status,403);
+ assert.equal((await call(db,'/v1/register','POST',{username:'MultiBlockedB',password:'player-strong-password-9',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevB},env)).status,403);
+ assert.equal((await call(db,'/v1/login','POST',{username:'MultiProfTwo',password:'player-strong-password-7',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevC},env)).status,403);
+ assert.equal((await call(db,`/v1/ban-status?account_id=${profTwo.data.profile.id}`,'GET',undefined,undefined,{},env)).data.banned,true);
+
+ // Unbanning restores all non-terminated profiles sharing that User ID and unblocks device registration
+ const multiUnban=await call(db,`/v1/owner/users/${profTwo.data.profile.id}/unban`,'POST',{},ownerReg.data.token,{},env);
+ assert.equal(multiUnban.status,200);
+ assert.equal(multiUnban.data.affected_ids.length,2);
+ assert.equal((await call(db,'/v1/login','POST',{username:'MultiProfTwo',password:'player-strong-password-7',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevB},env)).status,200);
+ assert.equal((await call(db,'/v1/register','POST',{username:'MultiRestoredA',password:'player-strong-password-10',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':sharedDevA},env)).status,201);
 
  db.sqlite.close();
 });

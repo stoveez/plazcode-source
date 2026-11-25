@@ -2,6 +2,10 @@ import {scryptAsync} from '@noble/hashes/scrypt.js';
 export const SESSION_MS=90*24*60*60*1000;
 export const BODY_LIMIT=2*1024*1024;
 export const SETTINGS=new Set(['rsProfilePicture','rsLanguage','rsWorkMode','rsThinkingLevel','rsSounds','rsExtraThinking','rsShowApproach','rsPlanMode','rsAppearance','rsVisualCheck','rsContinuationOffer','rsInputLimitEnabled','rsInputCharLimit','rsOutputLimitEnabled','rsOutputCharLimit','rsForgeMode','rsAutoFix']);
+export const USER_ID_ALPHABET='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+export const USER_ID_RE=/^PC-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/;
+export function normalizeUserId(value){if(typeof value!=='string')return null;const clean=value.trim().toUpperCase();if(USER_ID_RE.test(clean))return clean;const compact=clean.replace(/[^A-Z0-9]/g,'');if(compact.length===10&&compact.startsWith('PC')){const formatted=`PC-${compact.slice(2,6)}-${compact.slice(6,10)}`;if(USER_ID_RE.test(formatted))return formatted;}return null;}
+export function generateUserId(){const raw=crypto.getRandomValues(new Uint8Array(8));let out='';for(let i=0;i<8;i++)out+=USER_ID_ALPHABET[raw[i]&31];return `PC-${out.slice(0,4)}-${out.slice(4,8)}`;}
 export class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 export const bytes=text=>new TextEncoder().encode(text);
 export const hex=value=>Array.from(value,b=>b.toString(16).padStart(2,'0')).join('');

@@ -31,6 +31,9 @@ for (const route of [
 }
 assert(byokRs.includes("AES_256_GCM"), "byok_chat.rs uses ring AES-256-GCM");
 assert(desktopHtml.includes('id="page-chat"'), "desktop.html includes #page-chat");
+assert(desktopHtml.includes('id="profileUserIdRow"'), "desktop.html includes #profileUserIdRow");
+assert(desktopHtml.includes('id="copyProfileUserId"'), "desktop.html includes #copyProfileUserId");
+assert(desktopHtml.includes('id="workshopRegistrySettings" hidden'), "desktop.html hides #workshopRegistrySettings by default");
 assert(desktopHtml.includes('id="byokModelsPanel"'), "desktop.html includes #byokModelsPanel");
 assert(desktopHtml.includes('data-page="chat"'), "desktop.html includes sidebar nav for chat");
 assert(desktopHtml.includes('data-cat="models"'), "desktop.html includes Settings -> Models tab");
@@ -193,15 +196,27 @@ const ui = ctx.PlazCodeByokChatUI.mount({
 (async () => {
   await ui.refresh();
 
-  // Check Empty View
+  // Check Empty View (RobloxScript initial mode hides workspace caption & permissions pill)
   assert(chatHost.textContent.includes("Hi, what's your plan for today?"), "empty state heading rendered");
   assert(chatHost.textContent.includes("RobloxScript"), "RobloxScript mode pill rendered");
   assert(chatHost.textContent.includes("AgentScript"), "AgentScript mode pill rendered");
-  assert(chatHost.textContent.includes("MyRobloxProject"), "workspace path pill rendered");
+  assert(!chatHost.querySelector(".byok-ws-pill"), "inline workspace pill removed from composer toolbar");
+  assert(!chatHost.querySelector(".byok-ws-sub"), "workspace caption hidden in RobloxScript mode");
+  assert(!chatHost.querySelector("[data-byok-perm]"), "permission selector hidden in RobloxScript mode");
   assert(chatHost.querySelector("[data-byok-plan]"), "Plan pill rendered");
   assert(chatHost.querySelector("[data-byok-effort]"), "Effort selector rendered");
-  assert(chatHost.querySelector("[data-byok-perm]"), "Permission selector rendered");
+  assert(chatHost.querySelector("[data-byok-effort]").textContent.includes("Effort: Default"), "Effort prefix rendered");
   assert(chatHost.querySelector("[data-byok-file]"), "+ attach file input rendered");
+
+  // Switch to AgentScript -> shows permission selector and below-composer workspace caption
+  chatHost.querySelector('[data-byok-mode="local"]').click();
+  await new Promise((r) => setTimeout(r, 10));
+  assert(!chatHost.querySelector(".byok-ws-pill"), "still no inline workspace pill in AgentScript mode");
+  assert(chatHost.querySelector("[data-byok-perm]"), "Permission selector shown in AgentScript mode");
+  assert(chatHost.querySelector("[data-byok-perm]").textContent.includes("Access: Sandbox"), "Access prefix rendered");
+  assert(chatHost.querySelector(".byok-ws-sub").textContent.includes("MyRobloxProject"), "workspace folder caption shown in AgentScript mode");
+  chatHost.querySelector('[data-byok-mode="roblox"]').click();
+  await new Promise((r) => setTimeout(r, 10));
 
   // Check Model Dropdown -> Manage models shortcut
   chatHost.querySelector(".byok-model-trigger").click();

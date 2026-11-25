@@ -527,12 +527,22 @@ pub async fn catalog_handler(
 
     let filtered = filter_items(items, query, kind, category, engine, sort);
     let local_skills = crate::skills::STORE.lock().await.list_local_for_workshop();
+    let is_owner = state.accounts.active().is_some_and(|p| p.is_owner)
+        || state.owner_account_token.read().await.is_some()
+        || state.owner_workshop_token.read().await.is_some();
+    let safe_url = if is_owner { reg_url_str } else { String::new() };
+    let safe_err = if is_owner {
+        registry_error
+    } else {
+        registry_error.map(|_| "Live Workshop is temporarily unavailable.".to_string())
+    };
 
     Json(json!({
         "ok": true,
-        "registry_url": reg_url_str,
+        "can_configure_registry": is_owner,
+        "registry_url": safe_url,
         "registry_status": registry_status,
-        "registry_error": registry_error,
+        "registry_error": safe_err,
         "items": filtered,
         "installed_ids": local_state.installed_ids,
         "local_ratings": local_state.ratings,
