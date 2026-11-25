@@ -175,6 +175,9 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
     await tab.evaluate(() => { const g = document.getElementById("desktopGradients"); g.value = "off"; g.dispatchEvent(new Event("change", { bubbles: true })); });
     await tab.waitForTimeout(80);
     const lightHyperGradOff = await tab.evaluate(() => {
+      const sel = document.querySelector('select[data-pref="rsThinkingLevel"]');
+      sel.value = "ultracode";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
       const u = document.querySelector("#sidebarEffort .pc-ultra-label");
       const cs = getComputedStyle(u);
       return { bg: cs.backgroundImage, color: cs.color, fill: cs.webkitTextFillColor };
@@ -196,6 +199,68 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
       }, lvl);
       assert(luma < 0.25, "paper-light effort level " + lvl + " must stay dark/high-contrast (luma=" + luma.toFixed(3) + ")");
     }
+
+    // App-wide light-theme contrast checks (Update Log, Settings rows, Kill Studio, Tools, Terminal, Memory, Docs, Skills tokens)
+    const appWideLight = await tab.evaluate(() => {
+      const luma = (css) => {
+        const rgb = String(css || "").match(/\d+/g).map(Number);
+        const lin = rgb.slice(0, 3).map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      };
+      const notes = document.getElementById("updateReleaseNotes");
+      const sample = document.createElement("details");
+      sample.className = "settingcard release-note";
+      sample.open = true;
+      sample.innerHTML = "<summary>PlazCode v1.24.36: Test</summary><h3>NEW ADDITIONS</h3><ul><li>Sample bullet</li></ul>";
+      notes.appendChild(sample);
+      const logHost = document.getElementById("terminal");
+      const logLine = document.createElement("div");
+      logLine.className = "logline";
+      logLine.textContent = "[INFO] sample";
+      const warnLine = document.createElement("div");
+      warnLine.className = "logline warn";
+      warnLine.textContent = "[WARN] sample";
+      logHost.append(logLine, warnLine);
+      const toolSample = document.createElement("div");
+      toolSample.className = "filters";
+      toolSample.innerHTML = '<button class="filter">RS 0</button><span class="tag pc">PC</span>';
+      document.body.appendChild(toolSample);
+      const memSum = document.querySelector("[data-memory-new-box] > summary");
+      const rs = getComputedStyle(document.documentElement);
+      const res = {
+        autoUpdateLabel: luma(getComputedStyle(document.querySelector('#page-updates .settingrow label')).color),
+        releaseSummary: luma(getComputedStyle(sample.querySelector("summary")).color),
+        releaseBullet: luma(getComputedStyle(sample.querySelector("li")).color),
+        killStudio: luma(getComputedStyle(document.getElementById("killStudio")).color),
+        rsFilter: luma(getComputedStyle(toolSample.querySelector(".filter:not(.active)")).color),
+        pcTag: luma(getComputedStyle(toolSample.querySelector(".tag.pc")).color),
+        terminalInfo: luma(getComputedStyle(logLine).color),
+        terminalWarn: luma(getComputedStyle(warnLine).color),
+        memSummary: memSum ? luma(getComputedStyle(memSum).color) : 0,
+        memOpenVaultBg: document.querySelector("[data-vault-view]") ? luma(getComputedStyle(document.querySelector("[data-vault-view]")).backgroundColor + "") : 0,
+        memOpenVaultColor: document.querySelector("[data-vault-view]") ? getComputedStyle(document.querySelector("[data-vault-view]")).color : "",
+        greenVar: rs.getPropertyValue("--green").trim(),
+        dimVar: rs.getPropertyValue("--dim").trim(),
+      };
+      sample.remove(); logLine.remove(); warnLine.remove(); toolSample.remove();
+      return res;
+    });
+    for (const [k, v] of Object.entries(appWideLight)) {
+      if (k === "memOpenVaultBg") continue;
+      if (typeof v === "number") assert(v < 0.22, "paper-light " + k + " must have dark high-contrast ink (luma=" + v.toFixed(3) + ")");
+    }
+    const ov = await tab.evaluate(() => {
+      const b = document.querySelector("[data-vault-view]");
+      if (!b) return null;
+      const cs = getComputedStyle(b);
+      return { bgImg: cs.backgroundImage, color: cs.color, disabled: b.disabled };
+    });
+    if (ov && !ov.disabled) {
+      assert(ov.bgImg && ov.bgImg !== "none", "paper-light enabled [data-vault-view] keeps dark gradient fill");
+      assert.equal(ov.color, "rgb(255, 255, 255)", "paper-light enabled [data-vault-view] uses crisp white text");
+    }
+    assert.equal(appWideLight.greenVar, "#0d7a52", "paper-light darkens --green token");
+    assert.equal(appWideLight.dimVar, "#444d5c", "paper-light darkens --dim token");
 
     await tab.click("#nxThemeReset"); await tab.waitForTimeout(120);
     await tab.evaluate(() => {
