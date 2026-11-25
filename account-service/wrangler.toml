@@ -1,0 +1,11 @@
+name = "plazcode-accounts"
+main = "worker/index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+OWNER_USERNAMES = "stoveez,plazm"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "plazcode-accounts"
+database_id = "1bc470c6-6545-4976-aaca-faed2fb6faa5"

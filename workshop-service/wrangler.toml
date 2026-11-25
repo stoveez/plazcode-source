@@ -4,7 +4,7 @@ compatibility_date = "2026-01-01"
 
 [vars]
 WORKSHOP_PUBLIC_UPLOADS = "false"
-ACCOUNT_SESSION_URL = "https://plazcode-accounts-stoveez.mistysong24.chatgpt.site"
+ACCOUNT_SESSION_URL = "https://plazcode-accounts.plazcode-stoveez.workers.dev"
 
 [[d1_databases]]
 binding = "DB"

@@ -9,7 +9,7 @@ use serde::{Deserialize,Serialize};
 use serde_json::{json,Value};
 use tokio::sync::Mutex;
 
-pub const SERVICE:&str="https://plazcode-accounts-stoveez.mistysong24.chatgpt.site";
+pub const SERVICE:&str="https://plazcode-accounts.plazcode-stoveez.workers.dev";
 pub static ACCESS:once_cell::sync::Lazy<tokio::sync::RwLock<()>>=once_cell::sync::Lazy::new(||tokio::sync::RwLock::new(()));
 const AAD:&[u8]=b"PlazCode remembered profiles v1";
 const MAX_REGISTRY:u64=1024*1024;

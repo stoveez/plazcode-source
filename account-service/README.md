@@ -1,8 +1,8 @@
 # PlazCode account service
 
-Hosted API: https://plazcode-accounts-stoveez.mistysong24.chatgpt.site
-Sites project: appgprj_6ae3b330d8b481919934a74c73dc7874
-Dedicated Sites source repository owns deployment; this directory mirrors reviewed runtime source with additional native integration fixtures. Owner explicitly authorized Public API access on 2026-10-30. Public signup/session/private-sync/revoke checks pass without a Sites bypass; never embed a bypass credential in an app.
+Hosted API: https://plazcode-accounts.plazcode-stoveez.workers.dev
+Cloudflare Worker: plazcode-accounts (D1 database: plazcode-accounts / 1bc470c6-6545-4976-aaca-faed2fb6faa5)
+Migrated from the legacy ChatGPT Sites host (appgprj_6ae3b330d8b481919934a74c73dc7874) to Cloudflare Workers + D1 on 2026-11-24. Public signup/session/private-sync/revoke checks pass cleanly; never embed a secret admin bypass credential in an app.
 
 User-selected username/password accounts, revocable 90-day remembered sessions, private settings/skills documents with revision conflict protection. Passwords use salted scrypt (N=32768,r=8,p=3,32-byte output); session tokens are random and only their hashes are stored server-side. One-use proof challenges, bounded request/data sizes and quotas limit abuse. No shared app secret is shipped. Portable preferences exclude local paths and access permissions. Memory stays isolated locally per profile. The service does not expose an account list.
 
