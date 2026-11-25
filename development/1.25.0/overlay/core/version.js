@@ -51,7 +51,8 @@ const PlazCodeVersion = (() => {
     const result = describe(current, status);
     const state = result.label.startsWith('Outdated') ? 'outdated' : result.label === 'Up to date' ? 'ok' : 'idle';
     element.setAttribute('data-version-state', state);
-    const isLight = Boolean(element.ownerDocument && element.ownerDocument.documentElement && element.ownerDocument.documentElement.dataset && element.ownerDocument.documentElement.dataset.themeTone === 'light');
+    const ds = element.ownerDocument && element.ownerDocument.documentElement && element.ownerDocument.documentElement.dataset;
+    const isLight = Boolean(ds && (ds.themeTone === 'light' || ds.rsTone === 'light' || (ds.palette === 'paper-light' && !ds.custom)));
     const color = isLight ? (state === 'ok' ? '#0d7a52' : state === 'outdated' ? '#b41d29' : '#4a5568') : result.color;
     element.textContent = String(prefix).replace(/v$/, '') + 'v' + display(current) + (!result.label ? '' : result.label.startsWith('Outdated') ? ' - ' + result.label : ' (' + result.label + ')') + extra;
     if (element.style.setProperty) element.style.setProperty('color', color, 'important');

@@ -4,7 +4,7 @@
 // large live view). Reads the app's look (rsAppearance: palette, glow, gradients, Feel) and follows changes, like the bar.
 // Square panels with a gradient rim and lit corner brackets; rounded buttons and switches. Plan: BAR-REDESIGN-PLAN.md.
 (() => {
-  const PALETTES = { default: ["#e9ba53", "#ffe0a1", "#18140d", "233 186 83"], amethyst: ["#a571ff", "#d7b8ff", "#0c0918", "165 113 255"], cyan: ["#27c1e7", "#a5eaff", "#041017", "39 193 231"], rose: ["#f17097", "#ffbdd1", "#160912", "241 112 151"], emerald: ["#29c894", "#a6f3d1", "#05130f", "41 200 148"], graphite: ["#9caac0", "#e0e7f2", "#0a0d13", "156 170 192"], crimson: ["#ef5569", "#ffb0bb", "#16080c", "239 85 105"], ocean: ["#4692f6", "#a5ceff", "#091323", "70 146 246"], copper: ["#db9066", "#f4c4a3", "#17110f", "219 144 102"], aurora: ["#66d3b8", "#b4f6e7", "#0c151b", "102 211 184"], orchid: ["#cd89eb", "#edc6ff", "#150e1c", "205 137 235"] };
+  const PALETTES = { default: ["#e9ba53", "#ffe0a1", "#18140d", "233 186 83"], amethyst: ["#a571ff", "#d7b8ff", "#0c0918", "165 113 255"], cyan: ["#27c1e7", "#a5eaff", "#041017", "39 193 231"], rose: ["#f17097", "#ffbdd1", "#160912", "241 112 151"], emerald: ["#29c894", "#a6f3d1", "#05130f", "41 200 148"], graphite: ["#9caac0", "#e0e7f2", "#0a0d13", "156 170 192"], crimson: ["#ef5569", "#ffb0bb", "#16080c", "239 85 105"], ocean: ["#4692f6", "#a5ceff", "#091323", "70 146 246"], copper: ["#db9066", "#f4c4a3", "#17110f", "219 144 102"], aurora: ["#66d3b8", "#b4f6e7", "#0c151b", "102 211 184"], orchid: ["#cd89eb", "#edc6ff", "#150e1c", "205 137 235"], "midnight-slate": ["#7da2d8", "#c4daf8", "#0b1018", "125 162 216"], "obsidian-gold": ["#f5c451", "#ffe79e", "#08080a", "245 196 81"], "sunset-ember": ["#ff7a59", "#ffc1ae", "#170d0c", "255 122 89"], "sakura-dusk": ["#f59abd", "#ffd7e7", "#140d18", "245 154 189"], "nord-frost": ["#88c0d0", "#cce8f0", "#0e141b", "136 192 208"], "amber-terminal": ["#ffb000", "#ffe07a", "#110d05", "255 176 0"], "paper-light": ["#2d5b9e", "#1e4278", "#f4f0e8", "45 91 158"], "mono-contrast": ["#ebeff5", "#ffffff", "#050507", "235 239 245"] };
   const root = document.documentElement;
   function apply(value) {
     const look = value && typeof value === "object" ? value : {};
@@ -15,6 +15,7 @@
     if (cm) { const c = [0, 2, 4].map((i) => parseInt(cm[1].slice(i, i + 2), 16)), mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t)), hx = (r) => "#" + r.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join(""); accent = hx(c); light = hx(mix(c, [255, 255, 255], .5)); bg = hx(mix([8, 9, 12], c, .08)); rgb = c.join(" "); }
     root.dataset.studio = "";
     root.dataset.palette = PALETTES[theme] ? theme : "default";
+    root.dataset.themeTone = !cm && theme === "paper-light" ? "light" : "dark";
     root.dataset.glow = ["off", "subtle", "strong"].includes(look.glow) ? look.glow : "subtle";
     root.dataset.gradients = look.gradients === "off" ? "off" : "on";
     root.dataset.motion = ["full", "reduced", "off"].includes(look.motion) ? look.motion : "full";

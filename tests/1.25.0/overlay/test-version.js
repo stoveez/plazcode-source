@@ -44,4 +44,18 @@ for (const userAgent of ['Firefox/140','Version/18 Safari/605','Chrome/140 OPR/1
 })().catch(error=>{console.error(error);process.exitCode=1;});
 
 for(const prefix of ['', 'v', 'PlazCode ', 'PlazCode v']){version.render(element,'1.24.6',{latest:'1.24.6',checked_at:Date.now()},prefix);assert.match(element.textContent,/^(?:PlazCode )?v1\.24\.06 \(Up to date\)$/);assert.match(element.title,/v1\.24\.06/);}
+for(const ds of [{themeTone:'light'},{rsTone:'light'},{palette:'paper-light'}]){
+  const docEl={ownerDocument:{documentElement:{dataset:ds}},style:{setProperty(k,v){this[k]=v;}},setAttribute(){}};
+  version.render(docEl,'1.25.0',{latest:'1.25.0',checked_at:Date.now()});
+  assert.equal(docEl.style.color,'#0d7a52','light tone up-to-date ink for '+JSON.stringify(ds));
+  version.render(docEl,'1.24.0',{latest:'1.25.0',checked_at:Date.now()});
+  assert.equal(docEl.style.color,'#b41d29','light tone outdated ink for '+JSON.stringify(ds));
+  version.render(docEl,'1.25.0',null);
+  assert.equal(docEl.style.color,'#4a5568','light tone idle ink for '+JSON.stringify(ds));
+}
+{
+  const docEl={ownerDocument:{documentElement:{dataset:{palette:'paper-light',custom:'#336699'}}},style:{setProperty(k,v){this[k]=v;}},setAttribute(){}};
+  version.render(docEl,'1.25.0',{latest:'1.25.0',checked_at:Date.now()});
+  assert.equal(docEl.style.color,'#31e0a4','custom palette keeps dark tone version ink');
+}
 console.log('Every rendered version has exactly one v prefix, including desktop title, update and settings labels.');

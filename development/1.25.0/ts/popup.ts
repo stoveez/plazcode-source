@@ -5,6 +5,7 @@ const THEMES: string[] = [];
 const POPUP_PALETTES: Record<string, [string, string, string, string]> = {default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235'],'midnight-slate':['#7da2d8','#c4daf8','#0b1018','125 162 216'],'obsidian-gold':['#f5c451','#ffe79e','#08080a','245 196 81'],'sunset-ember':['#ff7a59','#ffc1ae','#170d0c','255 122 89'],'sakura-dusk':['#f59abd','#ffd7e7','#140d18','245 154 189'],'nord-frost':['#88c0d0','#cce8f0','#0e141b','136 192 208'],'amber-terminal':['#ffb000','#ffe07a','#110d05','255 176 0'],'paper-light':['#2d5b9e','#1e4278','#f4f0e8','45 91 158'],'mono-contrast':['#ebeff5','#ffffff','#050507','235 239 245']};
 interface PopupAppearance { theme: string; glow?: string; gradients?: string; custom?: string; motion?: string; anim?: boolean | string; ripple?: boolean | string; pixelMode?: boolean; signalRain?: boolean }
 let popupAppearance: PopupAppearance = {theme:'default',glow:'subtle',gradients:'on'};
+let popupReleaseStatus: unknown = null;
 function applyPopupAppearance(value: PopupAppearance | null | undefined): void {
  if(value?.theme==="solar")value={...value,theme:"default"};
  popupAppearance=value&&POPUP_PALETTES[value.theme]?value:{theme:'default',glow:'subtle',gradients:'on'};
@@ -17,8 +18,11 @@ function applyPopupAppearance(value: PopupAppearance | null | undefined): void {
  // Studio look (1.25.0 bar redesign): same Feel as the app and the bar (Full / on / on when an older app sends none).
  root.dataset.studio='';root.dataset.motion=value?.motion&&['full','reduced','off'].includes(value.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
  const isLight=!cm&&popupAppearance.theme==='paper-light';
+ root.dataset.themeTone=isLight?'light':'dark';
+ root.toggleAttribute('data-custom',!!cm);
  const vars: Record<string, string>={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':isLight?'#171a20':'#eef4ff','--text-dim':light,'--text-faint':isLight?'#4a505c':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
  for(const [key,val]of Object.entries(vars))root.style.setProperty(key,val);
+ try{if(typeof PlazCodeVersion!=='undefined'&&document.getElementById('ver'))renderPopupVersion(popupReleaseStatus);}catch{}
 }
 const SUPPORTED_HOSTS = [
   "chat.deepseek.com", "deepseek.com", "chatgpt.com", "chat.openai.com",
@@ -248,6 +252,7 @@ async function setFlag(key: string, field: BoolFlagField, v: boolean): Promise<v
 }
 
 function renderPopupVersion(value: unknown): void {
+  popupReleaseStatus = value;
   PlazCodeVersion.render(document.getElementById("ver"), chrome.runtime.getManifest().version, value);
 }
 renderPopupVersion(null);

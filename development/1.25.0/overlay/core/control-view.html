@@ -67,6 +67,24 @@
  html[data-studio] footer{padding:12px 16px 16px;gap:10px}
  html[data-studio] footer button{flex:1;padding:10px 16px}
  html[data-studio] .paused #pause{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad);color:var(--st-ink);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 22px -12px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+ html[data-studio][data-theme-tone="light"]{
+  --st-text:#171a20;--st-soft:#384152;--st-dim:#4c566a;--st-ink:#ffffff;--st-card:#f6f2ea;--st-card2:#e6dfd1;
+  --st-line:color-mix(in srgb,#8c8270 46%,rgb(var(--st-rgb)) 54%);--st-line-soft:color-mix(in srgb,#b8ae9c 64%,rgb(var(--st-rgb)) 36%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-a) 80%,#4a7fd1) 0%,var(--st-a) 50%,var(--st-l) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.82),rgb(255 255 255/.38) 50%,rgb(23 26 32/.04));
+  --st-rim:linear-gradient(115deg,var(--st-l) 0%,rgb(var(--st-rgb)/.78) 22%,rgb(var(--st-rgb)/.28) 50%,rgb(var(--st-rgb)/.42) 74%,var(--st-a) 100%);
+  --st-sweep:linear-gradient(115deg,rgb(var(--st-rgb)/.10) 0%,rgb(var(--st-rgb)/.03) 34%,transparent 60%,rgb(var(--st-rgb)/.06) 100%);
+  color-scheme:light;
+ }
+ html[data-studio][data-theme-tone="light"] body{background:radial-gradient(120% 50% at 0% 0%,rgb(var(--st-rgb)/.09),transparent 60%),#f2ede3;color:var(--st-text)}
+ html[data-studio][data-theme-tone="light"] :is(header,footer){background:var(--st-sweep),#f6f2ea}
+ html[data-studio][data-theme-tone="light"] button{background:#ffffff;border-color:rgba(30,66,120,.26);color:#171a20}
+ html[data-studio][data-theme-tone="light"] button.stop{color:#ffffff}
+ html[data-studio][data-theme-tone="light"] .paused #pause{background:var(--st-grad);border-color:#1a3b6e;color:#ffffff}
+ html[data-studio][data-theme-tone="light"] #note{background:#ffffffcc;color:#384152}
+ html[data-studio][data-theme-tone="light"] canvas{background:#e8e1d3}
+ html[data-studio][data-theme-tone="light"][data-gradients=off] :is(header,footer){background:#f6f2ea;border-image:none;border-color:var(--st-line)!important}
+ html[data-studio][data-theme-tone="light"][data-gradients=off] .paused #pause{background:var(--st-a)}
 </style><script src="studio-page.js"></script></head>
 <body><header><span class="dot" aria-hidden="true"></span><h1><span id="state">PlazCode is working</span><span id="site"></span></h1></header>
 <main><canvas id="view" width="960" height="600" aria-label="Live picture of the tab PlazCode is working in" hidden></canvas><p id="note" role="status">Waiting for the first picture…</p></main>

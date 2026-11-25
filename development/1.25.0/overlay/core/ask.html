@@ -133,6 +133,31 @@
  html[data-studio] .chat .open{border-left:2px solid var(--st-line)}
  html[data-studio] .chat[aria-current] .open{box-shadow:none;border-color:rgb(var(--st-rgb)/.75);border-left:2px solid var(--st-l)}
  html[data-studio] .chat .open small{font:500 10.5px/1.5 var(--st-mono);color:var(--st-dim)}
+ html[data-studio][data-theme-tone="light"]{
+  --st-text:#171a20;--st-soft:#384152;--st-dim:#4c566a;--st-ink:#ffffff;--st-card:#f6f2ea;--st-card2:#e6dfd1;
+  --st-line:color-mix(in srgb,#8c8270 46%,rgb(var(--st-rgb)) 54%);--st-line-soft:color-mix(in srgb,#b8ae9c 64%,rgb(var(--st-rgb)) 36%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-a) 80%,#4a7fd1) 0%,var(--st-a) 50%,var(--st-l) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.82),rgb(255 255 255/.38) 50%,rgb(23 26 32/.04));
+  --st-rim:linear-gradient(115deg,var(--st-l) 0%,rgb(var(--st-rgb)/.78) 22%,rgb(var(--st-rgb)/.28) 50%,rgb(var(--st-rgb)/.42) 74%,var(--st-a) 100%);
+  --st-sweep:linear-gradient(115deg,rgb(var(--st-rgb)/.10) 0%,rgb(var(--st-rgb)/.03) 34%,transparent 60%,rgb(var(--st-rgb)/.06) 100%);
+  color-scheme:light;
+ }
+ html[data-studio][data-theme-tone="light"] body{background:radial-gradient(120% 50% at 0% 0%,rgb(var(--st-rgb)/.09),transparent 60%),#f2ede3;color:var(--st-text)}
+ html[data-studio][data-theme-tone="light"] :is(header,footer){background:var(--st-sweep),#f6f2ea}
+ html[data-studio][data-theme-tone="light"] button{background:#ffffff;border-color:rgba(30,66,120,.26);color:#171a20}
+ html[data-studio][data-theme-tone="light"] button.main{background:var(--st-grad);border-color:#1a3b6e;color:#ffffff}
+ html[data-studio][data-theme-tone="light"] button.stop{color:#ffffff}
+ html[data-studio][data-theme-tone="light"] textarea{background:#ffffff;color:#171a20;border-color:rgba(30,66,120,.30)}
+ html[data-studio][data-theme-tone="light"] #banner{background:rgba(45,91,158,.08);color:#384152}
+ html[data-studio][data-theme-tone="light"] .ai,html[data-studio][data-theme-tone="light"] .chat .open,html[data-studio][data-theme-tone="light"] .chat .del{background:#ffffff;color:#171a20}
+ html[data-studio][data-theme-tone="light"] .me{background:rgba(45,91,158,.12);color:#171a20}
+ html[data-studio][data-theme-tone="light"] .approve{background:var(--st-sweep),#f6f2ea;color:#171a20}
+ html[data-studio][data-theme-tone="light"] .approve code{background:#ebe4d6;color:#171a20}
+ html[data-studio][data-theme-tone="light"] .error{color:#b41d29;background:rgba(180,29,41,.08);border-left-color:#b41d29}
+ html[data-studio][data-theme-tone="light"] label.sw input{background:radial-gradient(circle,#ffffff 0 6.5px,transparent 7px) left 1px center/20px 20px no-repeat,#cfc6b5;border-color:#9e9482;box-shadow:inset 0 1px 2px rgba(23,26,32,.18)}
+ html[data-studio][data-theme-tone="light"] label.sw input:checked{background:radial-gradient(circle,#ffffff 0 6.5px,transparent 7px) right 1px center/20px 20px no-repeat,var(--st-grad);border-color:#1a3b6e}
+ html[data-studio][data-theme-tone="light"][data-gradients=off] :is(header,footer,.approve){background:#f6f2ea;border-image:none;border-color:var(--st-line)!important}
+ html[data-studio][data-theme-tone="light"][data-gradients=off] button.main{background:var(--st-a)}
 </style><script src="studio-page.js"></script></head>
 <body>
 <header>

@@ -881,6 +881,7 @@
     root.toggleAttribute("data-rs-anim",sharedAppearance.anim);
     root.toggleAttribute("data-rs-ripple",sharedAppearance.ripple);
     for(const [key,val] of Object.entries({"--pc-accent":palette.accent,"--pc-light":palette.light,"--pc-bg":palette.bg,"--pc-rgb":palette.rgb,"--pc-surface":palette.surface || "#171b25","--pc-border":palette.border || "#65718666","--pc-glow":palette.glow || "rgb(233 186 83 / .22)","--pc-glow-strength":sharedAppearance.glow==="off"?"0":sharedAppearance.glow==="strong"?".35":".13"})) root.style.setProperty(key,val);
+    try { renderVersionIndicators(); } catch {}
   }
   let plazcodeTheme = "night";
   applySharedAppearance({theme:"default",glow:"subtle",gradients:"on"});
