@@ -607,7 +607,7 @@ where
                 }
                 Err(rename_err) => {
                     if let Err(restore_err) = rename(&bak, path) {
-                        tracing::error!(
+                        eprintln!(
                             "Failed to restore {} from backup {} after atomic replace error ({rename_err}): {restore_err}",
                             path.display(),
                             bak.display()
@@ -638,17 +638,17 @@ impl PreferencesStore {
             Ok(raw) => match serde_json::from_str::<serde_json::Value>(&raw) {
                 Ok(value) if value.is_object() => (Some(value), None),
                 Ok(_) => {
-                    tracing::warn!("Settings file {} is not a JSON object; preserving existing file.", path.display());
+                    eprintln!("Settings file {} is not a JSON object; preserving existing file.", path.display());
                     (None, Some("Settings file is not a JSON object; existing file preserved.".to_string()))
                 }
                 Err(error) => {
-                    tracing::warn!("Could not parse settings file {}: {error}; preserving existing file.", path.display());
+                    eprintln!("Could not parse settings file {}: {error}; preserving existing file.", path.display());
                     (None, Some(format!("Settings file could not be parsed ({error}); existing file preserved.")))
                 }
             },
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => (None, None),
             Err(error) => {
-                tracing::warn!("Could not read settings file {}: {error}; preserving existing file.", path.display());
+                eprintln!("Could not read settings file {}: {error}; preserving existing file.", path.display());
                 (None, Some(format!("Settings file could not be read ({error}); existing file preserved.")))
             }
         };
