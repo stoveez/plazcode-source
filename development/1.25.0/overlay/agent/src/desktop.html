@@ -1520,9 +1520,12 @@ html[data-desktop-theme=sakura-dusk]{--canvas:#140d18;--surface:#221629;--raised
 html[data-desktop-theme=nord-frost]{--canvas:#0e141b;--surface:#17202b;--raised:#212e3d;--stroke:#384c61;--ink-soft:#a5b8c7;--text:#ecf2f8}
 html[data-desktop-theme=amber-terminal]{--canvas:#110d05;--surface:#1d1709;--raised:#2c220e;--stroke:#544018;--ink-soft:#c5b282;--text:#f8efd9}
 html[data-desktop-theme=paper-light]{--canvas:#f4f0e8;--surface:#eae4d8;--raised:#dfd8ca;--stroke:#c2b8a4;--ink-soft:#4a505c;--text:#171a20;--pz-line:rgb(23 26 32 / .15)}
+html[data-theme-tone=light]{color-scheme:light}
+html[data-theme-tone=light] .page select{color-scheme:light}
 html[data-desktop-theme=mono-contrast]{--canvas:#050507;--surface:#101114;--raised:#1a1c21;--stroke:#3c404a;--ink-soft:#b8bec9;--text:#ffffff}
 html[data-theme-tone=light] body,html[data-theme-tone=light] :is(.nx-theme,.nx-btn,.nx-seg button,.nx-link,.nx-account,.nx-area,.navbtn,.nx-row b,.nx-block h2,.pz-brand-word,.nx-link-card,.settingcard,.panel){color:var(--text,#171a20)}
-html[data-theme-tone=light] :is(.navbtn.active,.accentbtn,.nx-theme[aria-pressed=true] .nx-theme-tick){color:#ffffff!important}
+html[data-theme-tone=light] :is(.navbtn.active,.accentbtn,.nx-theme[aria-pressed=true] .nx-theme-tick),
+html[data-pz-studio][data-theme-tone=light]:not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn,.nx-seg button[aria-pressed=true],.byok-mode-pill.active):not(:disabled){color:#ffffff!important;text-shadow:none}
 html[data-theme-tone=light] .nx-sw{background:rgb(23 26 32 / .12)}
 html[data-theme-tone=light] .nx-sw::after{background:#4a505c}
 html[data-theme-tone=light] .nx-sw[aria-checked=true]::after{background:var(--orange,#2d5b9e)}
@@ -1642,6 +1645,15 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
 .byok-models-head h3{margin:0;font-size:16px}
 .byok-models-head p{margin:3px 0 0;font-size:12px;color:var(--ink-soft,#9299aa)}
 .byok-models-head-actions{display:flex;gap:8px}
+.settings-section>.settings-summary.settings-summary-has-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:center;padding-right:36px}
+.settings-summary.settings-summary-has-actions>h3{grid-column:1;grid-row:1;margin:0 0 6px}
+.settings-summary.settings-summary-has-actions>p{grid-column:1;grid-row:2;margin:0!important}
+.settings-summary.settings-summary-has-actions>[data-settings-summary-actions]{grid-column:2;grid-row:1/span 2;align-self:center;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.settings-summary.settings-summary-has-actions:after{top:50%;transform:translateY(-50%)}
+.settings-section[open]>.settings-summary.settings-summary-has-actions:after{transform:translateY(-50%) rotate(90deg)}
+#byokModelsPanel.settings-section-body{margin-top:14px;padding-top:14px;border-top:1px solid var(--pz-line,var(--stroke,rgba(255,255,255,.08)))}
+.byok-cleared-flash{border-color:var(--green,#31e0a4)!important;box-shadow:0 0 0 2px rgba(49,224,164,.25)!important}
+@media(max-width:720px){.settings-section>.settings-summary.settings-summary-has-actions{grid-template-columns:minmax(0,1fr)}.settings-summary.settings-summary-has-actions>[data-settings-summary-actions]{grid-column:1;grid-row:3;justify-content:flex-start;margin-top:10px}}
 .byok-alert{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:10px;margin-bottom:10px;font-size:12px;border:1px solid rgba(49,224,164,.4);background:rgba(49,224,164,.1)}
 .byok-alert[data-kind="err"]{border-color:rgba(255,105,108,.45);background:rgba(255,105,108,.1)}
 .byok-plat-list{display:flex;flex-direction:column;gap:10px}
@@ -1664,7 +1676,10 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
 .byok-form-grid{display:flex;flex-direction:column;gap:12px}
 .byok-field{display:flex;flex-direction:column;gap:5px;font-size:12px}
 .byok-field>span,.byok-field-row>span{font-weight:600}
-.byok-field input[type="text"],.byok-field select,.byok-field textarea{padding:8px 10px;border-radius:9px;border:1px solid var(--stroke,#2b303b);background:var(--canvas,#090b10);color:var(--text,#f5f8ff);font:inherit}
+.byok-field input[type="text"],.byok-field input[type="search"],.byok-field input.byok-plat-search,.byok-field select,.byok-field textarea{width:100%;box-sizing:border-box;flex:0 0 auto;min-height:38px;padding:9px 12px;border-radius:10px;border:1px solid var(--stroke,#2b303b);background:var(--canvas,#090b10);color:var(--text,#f5f8ff);font:inherit;line-height:1.4}
+.byok-field textarea{min-height:64px;resize:vertical}
+.byok-field input:focus,.byok-field select:focus,.byok-field textarea:focus{outline:none;border-color:var(--orange2,var(--orange,#e9ba53));box-shadow:0 0 0 2px rgba(233,186,83,.2)}
+.byok-field input:disabled,.byok-field select:disabled{opacity:.55;cursor:not-allowed}
 .byok-field-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .byok-inline-toggle{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer}
 .byok-two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -2369,7 +2384,7 @@ html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is
         <div class="page-head"><div><div class="page-title">Settings</div><div class="page-sub">Changes autosave immediately and stay synced with the extension.</div></div><button class="softbtn" data-go="updates" style="align-self:flex-start;margin-top:4px">Updates</button></div>
         <div class="settingcard language-card" id="languageSettings"><h3>Language</h3><p>Choose the PlazCode interface language. This does not change AI responses, your prompts, code, or tool arguments.</p><div id="desktopLanguagePicker"></div></div>
         <div id="memorySettings" dir="auto" class="settingcard"></div>
-        <div id="byokModelsPanel" dir="auto" class="settingcard"><h3>Model</h3><p>Manage AI platforms, multi-key rotation, and model health checks.</p><div id="byokModelsMount"></div></div>
+        <div id="byokModelsPanel" dir="auto" class="settingcard"><h3>Model</h3><p>Manage AI platforms, multi-key rotation, and model health checks.</p><div id="byokModelsActions" class="byok-models-head-actions" data-settings-summary-actions></div><div id="byokModelsMount"></div></div>
         <div id="savedChatLogs" class="settingcard"><h3>Saved chat logs</h3><p>Review or download captured chat logs. Long captures show omitted-message counts; continuation uses bounded summaries and project memory.</p><details class="settings-guide"><summary>How memory and saved chats work</summary><p><strong>Memory notes</strong> are short titled notes the AI saves about a project, such as which script handles a system or a decision that was made. Each note has a title so it can be found and reviewed later. Notes can be added, edited or removed above.</p><p><strong>Saved chat logs</strong> keep captured messages for review or download. A continuation file carries recent task context into a new chat.</p><p>Notes describe past decisions; the AI still checks current scripts before editing. Neither notes nor chat logs are a game backup.</p></details><div class="instructions-actions saved-chat-actions"><button class="softbtn" id="savedChatsRefresh">Load saved chats</button><select id="savedChatsSelect" data-i18n-user-content dir="auto" aria-label="Saved chat log"></select><button class="softbtn" id="savedChatsDownload">Download saved log</button></div><p id="savedChatsStatus" data-i18n-user-content dir="auto" role="status"></p></div>
 
         <div class="settingsgrid">
@@ -2530,7 +2545,7 @@ __PLAZCODE_BACKDROP_FX__
   Toarray(document.querySelectorAll(".navbtn")).forEach(function(Node){var Label=Node.querySelector(".navlabel");if(Label){Node.setAttribute("aria-label",Label.textContent.trim());Node.setAttribute("title",Label.textContent.trim());}});
   Byid("sidebarCollapse").onclick=function(){var collapsed=!document.documentElement.hasAttribute("data-sidebar-collapsed");document.documentElement.toggleAttribute("data-sidebar-collapsed",collapsed);this.setAttribute("aria-expanded",String(!collapsed));Api("/api/desktop/preferences",{method:"POST",body:JSON.stringify({rsSidebarCollapsed:collapsed})}).catch(function(Error){Notice("Sidebar setting",Error.message,"error");});};
   var Toolkitui=PlazCodeToolkitUI.mount(Byid("toolkitWorkspace"),Request=>Api("/api/toolkit",{method:"POST",body:JSON.stringify(Request)}),Prompt=>Api("/api/desktop/agent",{method:"POST",body:JSON.stringify({action:"task-send",prompt:Prompt,request_id:crypto.randomUUID()})}),()=>State,Ipc,Notice);
-  var Byokui=(typeof PlazCodeByokChatUI!=="undefined"&&PlazCodeByokChatUI&&typeof PlazCodeByokChatUI.mount==="function")?PlazCodeByokChatUI.mount({chatHost:Byid("byokChatWorkspace"),modelsHost:Byid("byokModelsMount"),api:Api,getState:()=>State,getPrefs:()=>State&&State.preferences||{},patchPref:Patchpref,navigateToModels:function(){Go("settings","models");var Sec=Byid("byokModelsPanel")&&Byid("byokModelsPanel").closest("details.settings-section");if(Sec)Sec.open=true;if(Byokui)Byokui.refresh();},navigateToChat:function(){Go("chat","");}}):null;
+  var Byokui=(typeof PlazCodeByokChatUI!=="undefined"&&PlazCodeByokChatUI&&typeof PlazCodeByokChatUI.mount==="function")?PlazCodeByokChatUI.mount({chatHost:Byid("byokChatWorkspace"),modelsHost:Byid("byokModelsMount"),modelsActionsHost:Byid("byokModelsActions"),api:Api,getState:()=>State,getPrefs:()=>State&&State.preferences||{},patchPref:Patchpref,navigateToModels:function(){Go("settings","models");var Sec=Byid("byokModelsPanel")&&Byid("byokModelsPanel").closest("details.settings-section");if(Sec)Sec.open=true;if(Byokui)Byokui.refresh();},navigateToChat:function(){Go("chat","");}}):null;
   Byid("homeTasks").ontoggle = function () { if (this.open) Taskcenter.refresh(); };
   try{var Logstyle=document.createElement("style");Logstyle.textContent=PlazCodeActionLog.CSS;(document.head||document.documentElement).appendChild(Logstyle);}catch(Error){}
   var Actionlog = PlazCodeActionLog.mount(Byid("actionLog"), function (Request) { return Api("/api/checkpoints", {method:"POST",body:JSON.stringify(Request)}); });
@@ -2659,11 +2674,12 @@ __PLAZCODE_BACKDROP_FX__
       if(Card.closest('.settings-section'))return;
       var Heading=Array.from(Card.children).find(function(Node){return Node.tagName==='H3';});
       var Intro=Array.from(Card.children).find(function(Node){return Node.tagName==='P'&&!Node.classList.contains('settinghelp');});
+      var Actions=Array.from(Card.children).find(function(Node){return Node.hasAttribute&&Node.hasAttribute('data-settings-summary-actions');});
       var Key=Card.id||Heading&&Heading.textContent||'section-'+Index;
       var Section=document.createElement('details'),Summary=document.createElement('summary');Section.className=Card.className+' settings-section';Section.dataset.settingsSection=Key;Summary.className='settings-summary';
       if(!Heading){Heading=document.createElement('h3');Heading.textContent=Key==='memorySettings'?'Memory':'Settings';}
       if(!Intro){Intro=document.createElement('p');Intro.textContent='View, add and manage saved project notes and chat memory.';}
-      Card.before(Section);Summary.append(Heading,Intro);Section.appendChild(Summary);Card.className='settings-section-body';Section.appendChild(Card);Section.open=Object.prototype.hasOwnProperty.call(Saved,Key)?Saved[Key]===true:Key==='languageSettings';
+      Card.before(Section);Summary.append(Heading,Intro);if(Actions){Summary.classList.add('settings-summary-has-actions');Summary.appendChild(Actions);}Section.appendChild(Summary);Card.className='settings-section-body';Section.appendChild(Card);Section.open=Object.prototype.hasOwnProperty.call(Saved,Key)?Saved[Key]===true:Key==='languageSettings';
       Section.addEventListener('toggle',function(){Saved[Key]=Section.open;try{ProfileStorage.setItem('plazcodeSettingsSections',JSON.stringify(Saved));}catch(Error){}if(Key==='memorySettings'&&Section.open&&Refreshmemory)Refreshmemory();});
     });
   }
@@ -3724,7 +3740,6 @@ __PLAZCODE_BACKDROP_FX__
     Array.prototype.slice.call(document.querySelectorAll('#page-settings .settings-section')).forEach(function (Section) {
       var Key = Section.dataset ? Section.dataset.settingsSection : ''; var Own = NXSETTINGSCAT[Key] || 'general';
       Section.classList.toggle('nx-off', Own !== Cat);
-      if (Key === 'byokModelsPanel' && Cat === 'models') Section.open = true;
     });
     var Head = document.querySelector('#page-settings .page-title'); if (Head) Head.textContent = Cat === 'general' ? 'Settings' : 'Settings · ' + (NXCATLABEL[Cat] || Cat);
   }

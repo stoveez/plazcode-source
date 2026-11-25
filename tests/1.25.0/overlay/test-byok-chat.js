@@ -270,6 +270,61 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   assert(modalRoot.hidden, "Add Model modal closed after save");
   assert(modelsHost.textContent.includes("Anthropic"), "newly added platform rendered");
 
+  // Check slotted summary-actions mount with 0 configured platforms (desktop.html pattern)
+  const emptyDoc = new JSDOM(
+    '<!doctype html><html><body><details id="sec" class="settingcard settings-section"><summary class="settings-summary"><h3>Model</h3><p>Manage AI platforms, multi-key rotation, and model health checks.</p><div id="modelsActionsHost"></div></summary><div id="modelsHostSlotted"></div></details></body></html>',
+    { url: "http://127.0.0.1:3000/desktop", runScripts: "outside-only" }
+  );
+  const ew = emptyDoc.window;
+  const eCtx = vm.createContext({
+    window: ew,
+    document: ew.document,
+    navigator: ew.navigator,
+    Event: ew.Event,
+    FileReader: ew.FileReader,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+    console,
+    globalThis: null
+  });
+  eCtx.globalThis = eCtx;
+  vm.runInContext(byokJs + "\nthis.PlazCodeByokChatUI = PlazCodeByokChatUI;", eCtx);
+  const secEl = ew.document.getElementById("sec");
+  const slottedActions = ew.document.getElementById("modelsActionsHost");
+  const slottedBody = ew.document.getElementById("modelsHostSlotted");
+  const eUi = eCtx.PlazCodeByokChatUI.mount({
+    chatHost: null,
+    modelsHost: slottedBody,
+    modelsActionsHost: slottedActions,
+    api: async (reqPath) => {
+      if (String(reqPath).startsWith("/api/byok/platforms")) return { ok: true, presets: [{ id: "openai", name: "OpenAI", defaultEndpoint: "https://api.openai.com", defaultRequestApi: "chat_completions", requiresKey: true, defaultModels: ["gpt-4o"] }], platforms: [], activeModelId: null };
+      if (String(reqPath).startsWith("/api/byok/chats")) return { ok: true, chats: [] };
+      return { ok: true };
+    },
+    getState: () => ({}),
+    getPrefs: () => ({}),
+    patchPref: async () => ({}),
+    navigateToModels: () => {},
+    navigateToChat: () => {}
+  });
+  await eUi.refresh();
+  assert(!slottedBody.querySelector(".byok-models-head"), "slotted Models body does not duplicate .byok-models-head");
+  assert(!slottedBody.querySelector("h3"), "slotted Models body does not duplicate heading");
+  assert(slottedBody.querySelector(".byok-models-empty"), "empty state rendered when 0 platforms configured");
+  assert(slottedActions.querySelector("[data-byok-clear-health]"), "Clear status button rendered inside summary actions host");
+  assert(slottedActions.querySelector("[data-byok-add-model]"), "Add Model button rendered inside summary actions host");
+  assert.equal(secEl.open, false, "Model section starts closed before button click");
+  slottedActions.querySelector("[data-byok-add-model]").click();
+  assert.equal(secEl.open, false, "clicking + Add Model in summary does not toggle closed details");
+  const slottedModal = ew.document.getElementById("byokModalRoot");
+  assert(!slottedModal.hidden, "Add Model modal opened from summary button");
+  const filterInput = slottedModal.querySelector("[data-am-plat-filter]");
+  assert(filterInput, "platform search input exists in Add Model modal");
+  assert.equal(filterInput.getAttribute("type"), "text", "platform search input has type=text");
+  assert(!filterInput.classList.contains("search"), "platform search input avoids collapsing .search class");
+
   console.log("PASS byok-chat: Rust wiring, AES-GCM/routes, empty & active chat, error cards, drawer, multi-key model manager & Add Model modal.");
 })().catch((err) => {
   console.error(err);

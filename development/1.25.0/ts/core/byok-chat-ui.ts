@@ -107,6 +107,7 @@ const PlazCodeByokChatUI = (() => {
   type MountOptions = {
     chatHost: HTMLElement | null;
     modelsHost: HTMLElement | null;
+    modelsActionsHost?: HTMLElement | null;
     api: (path: string, options?: RequestInit) => Promise<any>;
     getState: () => any;
     getPrefs: () => any;
@@ -211,6 +212,8 @@ const PlazCodeByokChatUI = (() => {
     let lastUserPrompt = '';
     let collapsedPlatforms: Record<string, boolean> = {};
     let modelsBanner: { kind: 'ok' | 'err'; text: string } | null = null;
+    let clearFlashTimer: number | null = null;
+    let clearFlashed = false;
     let modalRoot: HTMLElement | null = null;
     let dropdownOpen = false;
     let initialized = false;
@@ -821,7 +824,7 @@ const PlazCodeByokChatUI = (() => {
           '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Add Model')) + '</h3><button type="button" class="softbtn" data-modal-close>×</button></div>' +
           '<div class="byok-form-grid">' +
           '<label class="byok-field"><span data-pc-i18n>' + esc(t('Model Platform')) + '</span>' +
-          '<input class="search" data-am-plat-filter placeholder="' + esc(t('Search platform…')) + '"' + (preselectPlatform ? ' disabled' : '') + '>' +
+          '<input type="text" class="byok-plat-search" data-am-plat-filter placeholder="' + esc(t('Search platform…')) + '"' + (preselectPlatform ? ' disabled' : '') + '>' +
           '<select data-am-preset' + (preselectPlatform ? ' disabled' : '') + '>' +
           presets.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === selectedPresetId ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') +
           '</select></label>' +
@@ -980,6 +983,8 @@ const PlazCodeByokChatUI = (() => {
                   });
                   closeModal();
                   await loadPlatforms();
+                  const sec = opts.modelsHost?.closest('details.settings-section') as HTMLDetailsElement | null;
+                  if (sec && !sec.open) sec.open = true;
                 } catch (e: any) {
                   if (errEl) { errEl.hidden = false; errEl.textContent = e?.message || 'Save failed.'; }
                 } finally {
@@ -1151,15 +1156,24 @@ const PlazCodeByokChatUI = (() => {
             );
           }).join('');
 
-      host.innerHTML =
-        '<div class="byok-models-head">' +
-        '<div><h3 data-pc-i18n>' + esc(t('Model')) + '</h3><p data-pc-i18n>' + esc(t('Manage AI platforms, multi-key rotation, and model health checks.')) + '</p></div>' +
-        '<div class="byok-models-head-actions">' +
-        '<button type="button" class="softbtn" data-byok-clear-health data-pc-i18n>' + esc(t('Clear status')) + '</button>' +
-        '<button type="button" class="accentbtn" data-byok-add-model data-pc-i18n>+ ' + esc(t('Add Model')) + '</button>' +
-        '</div></div>' +
-        bannerHtml +
-        '<div class="byok-plat-list">' + platHtml + '</div>';
+      const actionsHtml =
+        '<button type="button" class="softbtn' + (clearFlashed ? ' byok-cleared-flash' : '') + '" data-byok-clear-health data-pc-i18n>' + esc(t('Clear status')) + '</button>' +
+        '<button type="button" class="accentbtn" data-byok-add-model data-pc-i18n>+ ' + esc(t('Add Model')) + '</button>';
+
+      if (opts.modelsActionsHost) {
+        opts.modelsActionsHost.innerHTML = actionsHtml;
+        localizeNode(opts.modelsActionsHost);
+        host.innerHTML =
+          bannerHtml +
+          '<div class="byok-plat-list">' + platHtml + '</div>';
+      } else {
+        host.innerHTML =
+          '<div class="byok-models-head">' +
+          '<div><h3 data-pc-i18n>' + esc(t('Model')) + '</h3><p data-pc-i18n>' + esc(t('Manage AI platforms, multi-key rotation, and model health checks.')) + '</p></div>' +
+          '<div class="byok-models-head-actions">' + actionsHtml + '</div></div>' +
+          bannerHtml +
+          '<div class="byok-plat-list">' + platHtml + '</div>';
+      }
 
       localizeNode(host);
     };
@@ -1476,6 +1490,48 @@ const PlazCodeByokChatUI = (() => {
         });
       }
 
+      const handleClearHealth = () => {
+        opts.api('/api/byok/health/clear', { method: 'POST', body: '{}' }).then(() => {
+          modelsBanner = { kind: 'ok', text: t('Health status cleared.') };
+          clearFlashed = true;
+          if (clearFlashTimer) clearTimeout(clearFlashTimer);
+          clearFlashTimer = setTimeout(() => {
+            clearFlashed = false;
+            renderModelsPanel();
+          }, 1400) as unknown as number;
+          loadPlatforms();
+        });
+      };
+
+      const mActionsHost = opts.modelsActionsHost;
+      if (mActionsHost && !(mActionsHost as any)._byokBound) {
+        (mActionsHost as any)._byokBound = true;
+        mActionsHost.addEventListener('click', (ev) => {
+          const target = ev.target as HTMLElement | null;
+          if (!target) return;
+          if (target.closest('[data-byok-add-model]')) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openAddModelModal();
+            return;
+          }
+          if (target.closest('[data-byok-clear-health]')) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            handleClearHealth();
+            return;
+          }
+        });
+        const stopSummaryKey = (ev: KeyboardEvent) => {
+          const target = ev.target as HTMLElement | null;
+          if ((ev.key === ' ' || ev.key === 'Enter') && target?.closest('button')) {
+            ev.stopPropagation();
+          }
+        };
+        mActionsHost.addEventListener('keydown', stopSummaryKey);
+        mActionsHost.addEventListener('keyup', stopSummaryKey);
+      }
+
       const mHost = opts.modelsHost;
       if (mHost && !(mHost as any)._byokBound) {
         (mHost as any)._byokBound = true;
@@ -1492,10 +1548,7 @@ const PlazCodeByokChatUI = (() => {
             return;
           }
           if (target.closest('[data-byok-clear-health]')) {
-            opts.api('/api/byok/health/clear', { method: 'POST', body: '{}' }).then(() => {
-              modelsBanner = { kind: 'ok', text: t('Health status cleared.') };
-              loadPlatforms();
-            });
+            handleClearHealth();
             return;
           }
           const togPlat = target.closest('[data-toggle-plat]') as HTMLElement | null;
