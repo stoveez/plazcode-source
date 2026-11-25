@@ -164,20 +164,21 @@ html[data-desktop-gradients=off] .navbtn.active{background:var(--orange2)}
 
 /* Hyper effort: mainly-white prismatic rainbow border, glow and pearl shimmer. */
 @keyframes pc-hyper-glow{
-  0%,100%{border-color:rgba(255,255,255,.78);box-shadow:0 0 22px rgba(255,255,255,.22),0 0 12px rgba(210,246,255,.16)}
-  33%{border-color:rgba(255,222,238,.86);box-shadow:0 0 24px rgba(255,255,255,.26),0 0 14px rgba(255,216,232,.22)}
-  66%{border-color:rgba(217,255,236,.86);box-shadow:0 0 24px rgba(255,255,255,.26),0 0 14px rgba(210,246,255,.22)}
+  0%,100%{border-color:rgba(255,255,255,.78);box-shadow:0 0 calc(22px * var(--pz-g,1)) rgba(255,255,255,.24),0 0 calc(12px * var(--pz-g,1)) rgba(210,246,255,.18)}
+  33%{border-color:rgba(255,222,238,.86);box-shadow:0 0 calc(24px * var(--pz-g,1)) rgba(255,255,255,.28),0 0 calc(14px * var(--pz-g,1)) rgba(255,216,232,.24)}
+  66%{border-color:rgba(217,255,236,.86);box-shadow:0 0 calc(24px * var(--pz-g,1)) rgba(255,255,255,.28),0 0 calc(14px * var(--pz-g,1)) rgba(210,246,255,.24)}
 }
 @keyframes pc-hyper-shimmer{from{background-position:200% 50%}to{background-position:-60% 50%}}
-html[data-desktop-thinking=ultracode] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel]){border-color:rgba(255,255,255,.78)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
+html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],.pz-brand-logo,.pz-glide){border-color:rgba(255,255,255,.78)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
+html[data-desktop-thinking=ultracode][data-look-rainbow] .pz-glide{animation:none!important}
 html[data-desktop-thinking=ultracode] #homeStartAgent{color:#181b22!important;border-color:rgba(255,255,255,.88)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
 html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .hero-agent::before{background-size:240% 240%;animation:pc-hyper-shimmer 7s linear infinite}
 html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #homeStartAgent::before{background-size:240% 100%;animation:pc-hyper-shimmer 4.5s linear infinite}
-html[data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.explorer-layout){animation:none!important;box-shadow:none!important}
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.explorer-layout,.pz-brand-logo,.pz-glide){animation:none!important;box-shadow:none!important}
 html[data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.hero-agent,#homeStartAgent)::before{animation:none!important}
-html[data-desktop-thinking=ultracode]:is([data-pz-motion=off],[data-pz-motion=reduced],[data-pz-asleep]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.hero-agent::before,#homeStartAgent::before){animation:none!important}
+html[data-desktop-thinking=ultracode]:is([data-pz-motion=off],[data-pz-motion=reduced],[data-pz-asleep]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide,.hero-agent::before,#homeStartAgent::before){animation:none!important}
 :is(html[data-pz-motion=off],html[data-pz-motion=reduced],html[data-pz-asleep]) .pc-ultra-label{animation:none!important;background-position:38% 50%}
-@media(prefers-reduced-motion:reduce){html[data-desktop-thinking=ultracode] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.hero-agent::before,#homeStartAgent::before){animation:none!important}}
+@media(prefers-reduced-motion:reduce){html[data-desktop-thinking=ultracode] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide,.hero-agent::before,#homeStartAgent::before){animation:none!important}}
 
 /* Workspace refinement: event-driven CSS only; no animation timers or observers. */
 :root{--ui-ease:cubic-bezier(.22,1,.36,1);--ui-fast:160ms;--ui-enter:220ms}
@@ -1693,6 +1694,361 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
 .telemetry-row-metrics{display:flex;align-items:center;gap:14px;flex-shrink:0;font:600 11.5px/1.2 var(--pz-mono,monospace);font-variant-numeric:tabular-nums;color:var(--ink-soft,#9299aa)}
 .telemetry-empty{padding:12px 14px;border-radius:calc(var(--nx-r,14px) - 3px);border:1px dashed var(--pz-line,var(--stroke,#2b303b));font-size:12px;color:var(--ink-soft,#9299aa);text-align:center}
 @media(max-width:780px){.telemetry-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.telemetry-row{flex-direction:column;align-items:flex-start;gap:6px}.telemetry-row-metrics{flex-wrap:wrap;gap:10px}}
+/* ===== Hyper (ultracode) cohesive Studio desktop appearance ===== */
+html[data-pz-studio][data-desktop-thinking=ultracode]{
+  --hy-line:rgba(235,244,255,.34);
+  --hy-line-hi:rgba(255,255,255,.74);
+  --hy-top:linear-gradient(90deg,transparent,rgba(255,255,255,.9) 18%,#ffd8e8 34%,#ffffff 50%,#d9ffec 66%,#d2f6ff 82%,transparent);
+  --hy-fill:linear-gradient(125deg,#ffffff 0%,#fff8fc 22%,#ffe4ef 36%,#ffffff 50%,#e3fff2 66%,#dff6ff 80%,#efe6ff 92%,#ffffff 100%);
+  --hy-glass:linear-gradient(125deg,rgba(255,255,255,.15) 0%,rgba(255,216,232,.09) 34%,rgba(210,246,255,.11) 68%,rgba(231,220,255,.09) 100%);
+  --hy-text:linear-gradient(96deg,#ffffff 0%,#fff5fa 34%,#e3fff4 64%,#dff6ff 88%,#f0e8ff 100%);
+}
+/* 1. App-wide ambient atmosphere */
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]):not([data-pz-bg=solid]):not([data-look-bg]) .app::after{
+  background:radial-gradient(40% 36% at 18% 20%,rgba(255,255,255,.24),transparent 70%),radial-gradient(36% 32% at 82% 14%,rgba(210,246,255,.22),transparent 72%),radial-gradient(42% 36% at 62% 84%,rgba(255,216,232,.18),transparent 70%),radial-gradient(38% 34% at 45% 48%,rgb(var(--pz-rgb)/.12),transparent 72%)!important;
+  opacity:1
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]):not([data-pz-bg=solid]):not([data-look-bg]) .app::before{
+  background:radial-gradient(28% 24% at 72% 36%,rgba(217,255,236,.18),transparent 70%),radial-gradient(32% 28% at 26% 74%,rgba(231,220,255,.18),transparent 70%),radial-gradient(24% 22% at 50% 52%,rgba(255,255,255,.14),transparent 70%)!important
+}
+/* 2. Sidebar shell, brand, chrome & active section highlight */
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-bg]) .sidebar{border-right-color:var(--hy-line)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-bg]):not([data-desktop-gradients=off]) .sidebar{
+  background:radial-gradient(95% 42% at 0% 0%,rgba(255,255,255,.13),transparent 68%),radial-gradient(75% 32% at 100% 100%,rgba(210,246,255,.07),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.05),transparent 44%),var(--canvas,#0b0d12)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-brand-logo{
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06) 56%),linear-gradient(145deg,rgba(255,255,255,.32),rgba(210,246,255,.12))!important;
+  border-color:var(--hy-line-hi)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 0 calc(22px * var(--pz-g,1)) rgba(255,255,255,.26)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-brand-logo svg g{stroke:#ffffff}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .pz-brand-word em{
+  background:var(--hy-fill);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 calc(10px * var(--pz-g,1)) rgba(255,255,255,.32))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] #sidebarCollapse:hover{background:rgba(255,255,255,.12);border-color:var(--hy-line);color:#ffffff}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .sidebar .nx-link{
+  border-color:var(--hy-line)!important;background:var(--hy-glass),var(--pz-card)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .sidebar .side-status{
+  border-color:var(--hy-line)!important;background:var(--hy-glass),var(--pz-card)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .sidebar .nx-account{
+  border-color:var(--hy-line)!important;
+  background:var(--hy-glass),var(--pz-card)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 8px 24px -14px rgba(255,255,255,calc(.24 * var(--pz-g,1)))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) :is(.sidebar .nx-link,.sidebar .nx-account):hover{border-color:var(--hy-line-hi)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-avatar{
+  background:var(--hy-fill)!important;color:#12151e!important;
+  box-shadow:0 0 calc(14px * var(--pz-g,1)) rgba(255,255,255,.35)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) :is(.pz-glide,.pz-area.active){
+  border-color:rgba(255,255,255,.68)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 54%),linear-gradient(120deg,rgba(255,255,255,.26),rgba(210,246,255,.10) 78%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 10px 28px -10px rgba(255,255,255,calc(.34 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-glide::before,
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-area.active::before{
+  background:linear-gradient(180deg,#ffffff,#ffd8e8 35%,#d9ffec 70%,#d2f6ff)!important;
+  box-shadow:0 0 calc(14px * var(--pz-g,1)) rgba(255,255,255,.85)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-area:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.26)}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-area svg{
+  background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(210,246,255,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-area.active svg{
+  background:var(--hy-fill)!important;color:#12151e!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 6px 18px -6px rgba(255,255,255,calc(.75 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .pz-area b{
+  background:var(--hy-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent
+}
+/* 3. Titlebar, headers, tabs, search, pills & chrome buttons */
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-head .pz-eyebrow{
+  color:#eef5ff;text-shadow:0 0 calc(12px * var(--pz-g,1)) rgba(255,255,255,.35)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .pz-title{
+  background:var(--hy-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 6px 24px rgba(255,255,255,calc(.28 * var(--pz-g,1))))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-head-rule{
+  background:linear-gradient(90deg,rgba(255,255,255,.90),rgba(255,216,232,.55) 20%,rgba(217,255,236,.48) 42%,rgba(210,246,255,.45) 66%,transparent);
+  box-shadow:0 0 calc(12px * var(--pz-g,1)) rgba(255,255,255,.28)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-tabs::after{
+  background:linear-gradient(90deg,rgba(255,255,255,.45),rgba(210,246,255,.22) 55%,transparent);opacity:.85
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) :is(.pz-tabglide,.pz-tabs .navbtn.active){
+  border-color:rgba(255,255,255,.58)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 58%),linear-gradient(135deg,rgba(255,255,255,.24),rgba(210,246,255,.08))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 8px 22px -10px rgba(255,255,255,calc(.45 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-tabglide::after,
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-tabs .navbtn::after{
+  background:linear-gradient(90deg,#ffffff,#ffd8e8 35%,#d9ffec 70%,#d2f6ff)!important;
+  box-shadow:0 0 calc(12px * var(--pz-g,1)) rgba(255,255,255,.78)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-tabs .navbtn.active svg{color:#ffffff!important}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.pz-search,.pz-pill,.titlebar .winbtn:not(.close),.titlebar .winbtn.close:not(:hover),.pc-notifications>button,.telemetry-reset){
+  border-color:rgba(235,244,255,.38)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 6px 18px -10px rgba(255,255,255,calc(.28 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) :is(.pz-pill,.titlebar .winbtn:not(.close),.titlebar .winbtn.close:not(:hover),.pc-notifications>button:not([aria-expanded=true]),.telemetry-reset){
+  background:var(--hy-glass),var(--pz-card)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .pz-search.pz-search.pz-search{
+  background:var(--hy-glass),var(--pz-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef5ff' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 10px 50%/14px no-repeat!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pz-search:focus{
+  border-color:var(--hy-line-hi)!important;box-shadow:0 0 0 3px rgba(255,255,255,.16)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.titlebar .winbtn:not(.close),.pc-notifications>button):hover{
+  border-color:var(--hy-line-hi)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 10px 26px -10px rgba(255,255,255,calc(.55 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-notice-badge{
+  background:var(--hy-fill)!important;color:#12151e!important;
+  box-shadow:0 0 0 2px var(--canvas,#0c0e13),0 4px 12px -2px rgba(255,255,255,.7)
+}
+/* 4. Page blocks, cards, stats, tiles, headings & icons */
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .page :is(.nx-block,.settingcard,.telemetry-card,.home-setup),
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) #page-home .grid2>.panel,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) :is(.pc-notice-panel,.cn-win){border-color:var(--hy-line)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page :is(.nx-block,.settingcard,.telemetry-card,.home-setup),
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home .grid2>.panel{
+  background:radial-gradient(75% 58% at 0% 0%,rgba(255,255,255,.11),rgba(210,246,255,.04) 44%,transparent 68%),radial-gradient(65% 52% at 100% 100%,rgba(255,216,232,.06),transparent 65%),linear-gradient(180deg,rgba(255,255,255,.06),transparent 32%),var(--pz-card)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 26px 56px -34px #000,0 12px 42px -26px rgba(255,255,255,calc(.24 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .page :is(.nx-block,.settingcard):hover{
+  border-color:var(--hy-line-hi)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 24px 54px -30px #000,0 0 36px -12px rgba(255,255,255,calc(.36 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page :is(.nx-block,.settingcard)::after,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home .grid2>.panel::after,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page .stat::before,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page .nx-grid>.nx-card::before{
+  background:var(--hy-top)!important;
+  box-shadow:0 0 calc(14px * var(--pz-g,1)) rgba(255,255,255,.55);opacity:.95
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .page :is(.nx-card,.stat,.toolcard,.mcpcard,.nx-row,.nx-theme,.cn-tile,.desktop-ai-card,.supported-ai-link,.telemetry-kpi,.telemetry-row,.exgroup),
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) #page-home .action,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .pc-notice-item{border-color:var(--hy-line)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page :is(.nx-card,.stat,.toolcard,.mcpcard,.nx-row,.nx-theme,.cn-tile,.desktop-ai-card,.telemetry-kpi,.telemetry-row),
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home .action{
+  background:radial-gradient(115% 85% at 0% 0%,rgba(255,255,255,.16),rgba(210,246,255,.05) 42%,transparent 64%),radial-gradient(85% 75% at 100% 100%,rgba(255,216,232,.07),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.06),transparent 40%),var(--pz-card)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 18px 38px -26px #000,0 10px 30px -20px rgba(255,255,255,calc(.24 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .telemetry-head{border-bottom-color:var(--hy-line)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode] .telemetry-reset:hover:not(:disabled){border-color:var(--hy-line-hi)!important;background:rgba(255,255,255,.12)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .page :is(.nx-card,.stat,.toolcard,.mcpcard,.cn-tile,.desktop-ai-card):hover,
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) #page-home .action:hover{
+  border-color:var(--hy-line-hi)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 20px 42px -22px #000,0 0 32px -10px rgba(255,255,255,calc(.38 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .page .nx-row:hover{
+  border-color:rgba(255,255,255,.46)!important;background:rgba(255,255,255,.06)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-theme[aria-pressed=true]{
+  border-color:rgba(255,255,255,.86)!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.45),0 0 calc(26px * var(--pz-g,1)) -6px rgba(255,255,255,.48)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-theme[aria-pressed=true] .nx-theme-tick{
+  background:var(--hy-fill)!important;color:#12151e!important;
+  box-shadow:0 0 calc(12px * var(--pz-g,1)) rgba(255,255,255,.65)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page :is(.nx-block>p,.settingcard>p){border-bottom-color:rgba(235,244,255,.22)}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .page :is(.nx-block>h2,.settingcard>h3,.settingcard>h2,.nx-sechead h2,.nx-sechead h3,.nx-v>span:not(.nx-sdot),.nx-link-card .nx-v,.stat-val,.nx-sectionhead h2,h2.nx-agent-head,.nx-note-card h3){
+  background:var(--hy-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page :is(.nx-k,.stat-head,.panel-note,.telemetry-eyebrow,.cn-eyebrow){color:#dce9ff}
+html[data-pz-studio][data-desktop-thinking=ultracode] .settings-summary:after,
+html[data-pz-studio][data-desktop-thinking=ultracode] .settingcard .exgroup details.exmore>summary{color:#eef5ff}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.page .nx-pill,.page .nx-link-card .nx-arrow,#page-home .action-ico,.cn-ico:not(.cn-ico-logo),.desktop-ai-ico){
+  background:var(--hy-fill)!important;color:#12151e!important;border-color:transparent!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 8px 20px -8px rgba(255,255,255,calc(.65 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] #page-home .action:hover .chev{background:var(--hy-fill);border-color:transparent;color:#12151e}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page .nx-link-card .nx-arrow{font-weight:800!important}
+/* 5. Buttons, toggles, sliders & dropdowns */
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn,.nx-seg button[aria-pressed=true],.byok-mode-pill.active):not(:disabled),
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-notifications>button[aria-expanded=true]{
+  background:var(--hy-fill)!important;color:#12151e!important;border-color:rgba(255,255,255,.88)!important;
+  text-shadow:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 10px 24px -8px rgba(255,255,255,calc(.55 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn):hover:not(:disabled){
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 14px 32px -8px rgba(255,255,255,calc(.72 * var(--pz-g,1))),0 0 0 3px rgba(255,255,255,.16)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.softbtn,.clearbtn,.nx-btn.ghost,.nx-seg button:not([aria-pressed=true])){
+  border-color:rgba(235,244,255,.42)!important;background:var(--hy-glass),var(--pz-card)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 6px 16px -10px rgba(0,0,0,.8)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.softbtn,.clearbtn,.nx-btn.ghost,.nx-seg button:not([aria-pressed=true])):hover:not(:disabled){
+  border-color:var(--hy-line-hi)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 10px 26px -10px rgba(255,255,255,calc(.45 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.toggle.on,.nx-sw[aria-checked=true],.cn-switch[aria-checked=true]){
+  background:rgba(235,244,255,.30)!important;border-color:rgba(255,255,255,.78)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .toggle.on::after,
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-sw[aria-checked=true]::after,
+html[data-pz-studio][data-desktop-thinking=ultracode] .cn-switch[aria-checked=true] i{
+  background:#ffffff!important;box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 12px rgba(255,255,255,.75)
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-ctl input[type=range]{background:linear-gradient(90deg,#f5f8ff var(--fill,50%),rgba(255,255,255,.16) var(--fill,50%))}
+html[data-pz-studio][data-desktop-thinking=ultracode] .nx-ctl input[type=range]::-webkit-slider-thumb{background:#ffffff;border-color:rgba(210,246,255,.9);box-shadow:0 0 12px rgba(255,255,255,.65)}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-effort-trigger>span:nth-child(2){border-color:#eef5ff}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-effort-options{
+  border-color:rgba(235,244,255,.46)!important;
+  box-shadow:0 16px 36px rgba(0,0,0,.62),0 0 22px rgba(255,255,255,calc(.16 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-effort-options>button[aria-selected=true]{
+  background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.65)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .pc-effort-options>button:hover{background:rgba(255,255,255,.11)!important}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page :is(select,input:not([type=checkbox]):not([type=color]):not([type=range]),textarea):focus{
+  border-color:var(--hy-line-hi)!important;box-shadow:0 1px 2px rgba(0,0,0,.3) inset,0 0 0 3px rgba(255,255,255,.16)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page :is(button,a,summary,[role=button],[tabindex]):focus-visible{outline-color:rgba(255,255,255,.85)}
+html[data-pz-studio][data-desktop-thinking=ultracode] .content{scrollbar-color:rgba(235,244,255,.32) var(--canvas)}
+/* 6. Explorer, BYOK Chat & Skills Workbench */
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) .explorer-layout{
+  border-color:rgba(235,244,255,.48)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 30px 60px -36px #000,0 14px 50px -28px rgba(255,255,255,calc(.28 * var(--pz-g,1)))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .explorer-node[aria-selected=true]{
+  background:linear-gradient(120deg,rgba(255,255,255,.22),rgba(210,246,255,.06) 80%)!important;
+  border-color:rgba(255,255,255,.5)!important;box-shadow:inset 3px 0 0 #ffffff!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .explorer-class-badge{
+  background:var(--hy-fill)!important;color:#12151e!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .explorer-empty-icon{
+  border-color:rgba(255,255,255,.6)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.24),transparent 58%),linear-gradient(145deg,rgba(255,255,255,.28),rgba(210,246,255,.12))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 22px 50px -18px rgba(255,255,255,calc(.45 * var(--pz-g,1)))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .explorer-empty h2{
+  background:var(--hy-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .explorer-auto b{color:#eef5ff}
+html[data-pz-studio][data-desktop-thinking=ultracode]:not([data-look-rainbow]) :is(.byok-chat-stage,.byok-chat-rail,.byok-drawer){
+  border-color:var(--hy-line)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .byok-composer{
+  border-color:rgba(255,255,255,.58)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 32px -18px rgba(255,255,255,calc(.32 * var(--pz-g,1)))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.byok-pill-sel,.byok-pill-btn,.byok-attach-btn,.byok-starter-chip,.byok-composer-left .pc-effort-trigger){
+  border-color:var(--hy-line)!important;background:var(--hy-glass),var(--pz-card)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] .page select.byok-pill-sel{
+  background-image:linear-gradient(45deg,transparent 50%,#eef5ff 50%),linear-gradient(135deg,#eef5ff 50%,transparent 50%)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] :is(.byok-rail-item.active,.byok-pill-btn.active,.byok-msg-user .byok-bubble){
+  border-color:rgba(255,255,255,.52)!important;background:rgba(255,255,255,.14)!important;color:#ffffff
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] #skillsWorkspace [role=tab][aria-selected=true]{
+  background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.54)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode] #skillsWorkspace [data-sk-card]>.softbtn[aria-pressed=true]{
+  background:rgba(255,255,255,.12)!important;box-shadow:inset 3px 0 0 #ffffff!important
+}
+/* 7. Mode overrides (Strong glow, Glow off, Gradients off, Pixel mode, Paper Light) */
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=strong] .page :is(.nx-card,.stat,.toolcard,.mcpcard,.settingcard,.panel){
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 0 0 1px rgba(255,255,255,.28),0 0 38px -8px rgba(255,255,255,.46),0 20px 44px -22px rgba(210,246,255,.42)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=strong]:not([data-look-rainbow]) :is(.pz-glide,.pz-tabglide,.pz-area.active,.pz-tabs .navbtn.active){
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 0 32px -4px rgba(255,255,255,.72)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=strong] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn):not(:disabled){
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 32px -2px rgba(255,255,255,.82),0 10px 28px -8px rgba(210,246,255,.68)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=strong] .pz-title{
+  filter:drop-shadow(0 6px 28px rgba(255,255,255,.62))
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] .page :is(.nx-block,.settingcard,.telemetry-card,.home-setup,.nx-card,.stat,.toolcard,.mcpcard,.nx-row,.nx-theme,.cn-tile,.desktop-ai-card),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] #page-home :is(.grid2>.panel,.action,.action-ico),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.pz-glide,.pz-tabglide,.pz-area svg,.pz-area.active svg,.pz-brand-logo,.pz-search,.pz-pill,.titlebar .winbtn:not(.close),.pc-notifications>button,.accentbtn,.softbtn,.clearbtn,.nx-btn,.pc-effort-options,.byok-composer,.explorer-layout,.explorer-empty-icon),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] .pz-glide::before,
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] .pz-tabglide::after{
+  box-shadow:none!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.pz-title,.pz-brand-word em){filter:none!important}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-glow=off] .pz-head .pz-eyebrow{text-shadow:none!important}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn,.nx-seg button[aria-pressed=true],.byok-mode-pill.active):not(:disabled),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.page .nx-pill,.page .nx-link-card .nx-arrow,#page-home .action-ico,.cn-ico:not(.cn-ico-logo),.desktop-ai-ico,.explorer-class-badge,.pz-area.active svg,.nx-avatar,.nx-theme[aria-pressed=true] .nx-theme-tick){
+  background:#eef4ff!important;color:#12151e!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] .page :is(.nx-block,.settingcard,.telemetry-card,.home-setup,.nx-card,.stat,.toolcard,.mcpcard,.nx-row,.nx-theme,.cn-tile,.desktop-ai-card),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] #page-home :is(.grid2>.panel,.action),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.softbtn,.clearbtn,.nx-btn.ghost){
+  background:var(--pz-card)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.pz-glide,.pz-tabglide,.pz-area.active,.pz-tabs .navbtn.active){
+  background:rgba(255,255,255,.14)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] .pz-glide::before,
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] .pz-tabglide::after,
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] .pz-tabs .navbtn.active::after{
+  background:#eef4ff!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.pz-title,.pz-brand-word em,.pz-area b,.explorer-empty h2,.page .nx-block>h2,.page .settingcard>h3,.page .settingcard>h2,.page .nx-sechead h2,.page .nx-sechead h3,.page .nx-v>span:not(.nx-sdot),.page .nx-link-card .nx-v,.page .stat-val,.page .nx-sectionhead h2,.page h2.nx-agent-head,.page .nx-note-card h3){
+  background:none!important;-webkit-text-fill-color:currentColor!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-plazcode-pixel="1"] .page :is(.nx-card,.nx-row,.nx-block,.nx-theme,.settingcard,.stat,.toolcard,.mcpcard){
+  box-shadow:3px 3px 0 rgba(235,244,255,.36),inset 0 1px 0 rgba(255,255,255,.16)!important
+}
+/* Light theme (paper-light): Crystal Prism palette so text & borders stay high-contrast */
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light]{
+  --hy-line:rgba(88,112,178,.42);
+  --hy-line-hi:rgba(52,78,156,.86);
+  --hy-top:linear-gradient(90deg,transparent,rgba(116,88,204,.74) 22%,rgba(46,144,204,.82) 50%,rgba(198,82,146,.74) 78%,transparent);
+  --hy-fill:linear-gradient(125deg,#253256 0%,#3a4375 38%,#245478 72%,#4b366e 100%);
+  --hy-glass:linear-gradient(125deg,rgba(62,92,168,.12) 0%,rgba(148,96,196,.08) 45%,rgba(48,148,196,.10) 100%);
+  --hy-text:linear-gradient(96deg,#151b2e 0%,#344078 52%,#1b5978 100%);
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light]:not([data-desktop-gradients=off]):not([data-pz-bg=solid]):not([data-look-bg]) .app::after{
+  background:radial-gradient(40% 36% at 18% 20%,rgba(130,175,245,.24),transparent 70%),radial-gradient(36% 32% at 82% 14%,rgba(165,130,235,.20),transparent 72%),radial-gradient(42% 36% at 62% 84%,rgba(110,205,215,.18),transparent 70%)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn,.nx-seg button[aria-pressed=true],.byok-mode-pill.active):not(:disabled),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.page .nx-pill,.page .nx-link-card .nx-arrow,#page-home .action-ico,.cn-ico:not(.cn-ico-logo),.desktop-ai-ico,.explorer-class-badge,.pz-area.active svg,.nx-avatar,.nx-theme[aria-pressed=true] .nx-theme-tick,.pc-notifications>button[aria-expanded=true]){
+  color:#ffffff!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light][data-desktop-gradients=off] :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.pz-pv-btn,.nx-seg button[aria-pressed=true],.byok-mode-pill.active):not(:disabled),
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light][data-desktop-gradients=off] :is(.page .nx-pill,.page .nx-link-card .nx-arrow,#page-home .action-ico,.cn-ico:not(.cn-ico-logo),.desktop-ai-ico,.explorer-class-badge,.pz-area.active svg,.nx-avatar,.nx-theme[aria-pressed=true] .nx-theme-tick){
+  background:#253366!important;color:#ffffff!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-brand-logo svg g{stroke:#243052}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.pz-head .pz-eyebrow,.page .nx-k,.page .stat-head,.panel-note,.telemetry-eyebrow,.cn-eyebrow,.settingcard .exgroup details.exmore>summary,.explorer-auto b){color:#35447a}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .settings-summary:after{color:#253366}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .desktop-effort[data-effort=ultracode]{color:#253366}
+html[data-pz-studio][data-theme-tone=light] .pc-ultra-label{color:#253366;background-image:linear-gradient(110deg,#1a2242 0%,#3c2d7a 28%,#1c5b7a 54%,#6b2a68 78%,#1a2242 100%)}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabs .navbtn.active{color:#171a20!important}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabs .navbtn.active svg{color:#253568!important}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.byok-rail-item.active,.byok-pill-btn.active,.byok-msg-user .byok-bubble){
+  border-color:var(--hy-line-hi)!important;background:rgba(62,92,168,.16)!important;color:#171a20
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .page select.byok-pill-sel{
+  background-image:linear-gradient(45deg,transparent 50%,#253568 50%),linear-gradient(135deg,#253568 50%,transparent 50%)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pc-effort-trigger>span:nth-child(2){border-color:#253568}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light]:not([data-desktop-gradients=off]) .pz-search.pz-search.pz-search{
+  background:var(--hy-glass),var(--pz-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23253568' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 10px 50%/14px no-repeat!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light]:not([data-look-rainbow]) :is(.pz-glide,.pz-area.active,.pz-tabglide,.pz-tabs .navbtn.active){
+  border-color:var(--hy-line-hi)!important;
+  background:linear-gradient(125deg,rgba(88,118,198,.20),rgba(130,96,196,.12) 60%,rgba(66,160,210,.16))!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-glide::before,
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabglide::after,
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabs .navbtn::after{
+  background:linear-gradient(90deg,#3a4b8c,#6d52a8,#2d7ea8)!important
+}
+html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.pc-effort-trigger,.byok-composer,.explorer-layout){
+  border-color:var(--hy-line-hi)!important
+}
 </style>
 <script id="pz-old-safari">
 /* 1.25.0 (owner: PlazCode runs on macOS 10.15 Catalina). On a Mac this window is drawn by the system Safari engine,
