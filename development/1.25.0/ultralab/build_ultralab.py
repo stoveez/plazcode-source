@@ -146,7 +146,7 @@ def build():
     guide = read(PACK / "GUIDE.md").strip()
 
     skills = {}
-    for d in sorted((PACK / "skills").iterdir()):
+    for d in sorted((PACK / "skills").iterdir(), key=lambda p: p.name):
         f = d / "SKILL.md"
         if not f.exists():
             continue
@@ -160,7 +160,7 @@ def build():
             assert p.exists(), "agent file missing: %s" % p
             agents["agent:" + e["name"]] = read(p).strip()
 
-    vault = {p.relative_to(PACK / "vault").as_posix(): read(p).strip() for p in sorted((PACK / "vault").rglob("*.md"))}
+    vault = {p.relative_to(PACK / "vault").as_posix(): read(p).strip() for p in sorted((PACK / "vault").rglob("*.md"), key=lambda p: p.relative_to(PACK / "vault").as_posix())}
 
     known = set(skills) | set(agents)
     missing = sorted({n for _, _, names in AREAS for n in names if n not in known})
@@ -211,7 +211,7 @@ def build():
         js = js.replace(marker, json.dumps(value, ensure_ascii=False))
 
     index = []
-    for f in sorted(PACK.rglob("*")):
+    for f in sorted(PACK.rglob("*"), key=lambda p: p.relative_to(PACK).as_posix()):
         if not f.is_file() or f.name == "INDEX.json" and f.parent == PACK:
             continue
         rel = f.relative_to(PACK).as_posix()

@@ -24,3 +24,6 @@ development/1.24.35/overlay/LICENSE text eol=lf
 development/1.24.36/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -text
 development/1.24.36/dependency-notices/** -text
 development/1.24.36/overlay/LICENSE text eol=lf
+development/1.25.0/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -text
+development/1.25.0/dependency-notices/** -text
+development/1.25.0/overlay/LICENSE text eol=lf

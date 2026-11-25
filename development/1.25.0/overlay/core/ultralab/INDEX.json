@@ -15,6 +15,26 @@
   "kind": "text"
  },
  {
+  "path": "resources/check-ui-clean/LICENSE",
+  "bytes": 1074,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/README.md",
+  "bytes": 10739,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/RESTORATION.md",
+  "bytes": 555,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/SKILL.md",
+  "bytes": 28056,
+  "kind": "text"
+ },
+ {
   "path": "resources/check-ui-clean/examples/DailyRewardsMenuExample.luau",
   "bytes": 4057,
   "kind": "text"
@@ -37,26 +57,6 @@
  {
   "path": "resources/check-ui-clean/examples/StandardButtonExample.luau",
   "bytes": 3471,
-  "kind": "text"
- },
- {
-  "path": "resources/check-ui-clean/LICENSE",
-  "bytes": 1074,
-  "kind": "text"
- },
- {
-  "path": "resources/check-ui-clean/README.md",
-  "bytes": 10739,
-  "kind": "text"
- },
- {
-  "path": "resources/check-ui-clean/RESTORATION.md",
-  "bytes": 555,
-  "kind": "text"
- },
- {
-  "path": "resources/check-ui-clean/SKILL.md",
-  "bytes": 28056,
   "kind": "text"
  },
  {
@@ -90,13 +90,13 @@
   "kind": "text"
  },
  {
-  "path": "resources/el4cteo/skills/roblox-code-review/references/deprecated-apis.md",
-  "bytes": 11733,
+  "path": "resources/el4cteo/skills/roblox-code-review/SKILL.md",
+  "bytes": 5027,
   "kind": "text"
  },
  {
-  "path": "resources/el4cteo/skills/roblox-code-review/SKILL.md",
-  "bytes": 5027,
+  "path": "resources/el4cteo/skills/roblox-code-review/references/deprecated-apis.md",
+  "bytes": 11733,
   "kind": "text"
  },
  {
@@ -105,13 +105,18 @@
   "kind": "text"
  },
  {
+  "path": "resources/el4cteo/skills/roblox-npc-ai/SKILL.md",
+  "bytes": 6801,
+  "kind": "text"
+ },
+ {
   "path": "resources/el4cteo/skills/roblox-npc-ai/references/scaling-npcs.md",
   "bytes": 2666,
   "kind": "text"
  },
  {
-  "path": "resources/el4cteo/skills/roblox-npc-ai/SKILL.md",
-  "bytes": 6801,
+  "path": "resources/el4cteo/skills/roblox-physics/SKILL.md",
+  "bytes": 10757,
   "kind": "text"
  },
  {
@@ -125,18 +130,13 @@
   "kind": "text"
  },
  {
-  "path": "resources/el4cteo/skills/roblox-physics/SKILL.md",
-  "bytes": 10757,
+  "path": "resources/el4cteo/skills/roblox-testing/SKILL.md",
+  "bytes": 6474,
   "kind": "text"
  },
  {
   "path": "resources/el4cteo/skills/roblox-testing/references/cloud-test-runner.md",
   "bytes": 2797,
-  "kind": "text"
- },
- {
-  "path": "resources/el4cteo/skills/roblox-testing/SKILL.md",
-  "bytes": 6474,
   "kind": "text"
  },
  {
@@ -152,6 +152,26 @@
  {
   "path": "resources/sources.json",
   "bytes": 808,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/LICENSE",
+  "bytes": 1074,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/README.md",
+  "bytes": 17762,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/SKILL.md",
+  "bytes": 11970,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/THIRD_PARTY_NOTICES.md",
+  "bytes": 728,
   "kind": "text"
  },
  {
@@ -195,16 +215,6 @@
   "kind": "text"
  },
  {
-  "path": "resources/stud-ui-clean/LICENSE",
-  "bytes": 1074,
-  "kind": "text"
- },
- {
-  "path": "resources/stud-ui-clean/README.md",
-  "bytes": 17762,
-  "kind": "text"
- },
- {
   "path": "resources/stud-ui-clean/references/checklist.md",
   "bytes": 4537,
   "kind": "text"
@@ -240,11 +250,6 @@
   "kind": "text"
  },
  {
-  "path": "resources/stud-ui-clean/SKILL.md",
-  "bytes": 11970,
-  "kind": "text"
- },
- {
   "path": "resources/stud-ui-clean/src/CheckUIIcons.luau",
   "bytes": 128454,
   "kind": "text"
@@ -260,11 +265,6 @@
   "kind": "text"
  },
  {
-  "path": "resources/stud-ui-clean/THIRD_PARTY_NOTICES.md",
-  "bytes": 728,
-  "kind": "text"
- },
- {
   "path": "resources/syphodev/LICENSE.txt",
   "bytes": 728,
   "kind": "text"
@@ -272,6 +272,11 @@
  {
   "path": "resources/syphodev/README.md",
   "bytes": 4474,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/create-roblox-game/SKILL.md",
+  "bytes": 87800,
   "kind": "text"
  },
  {
@@ -290,8 +295,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/create-roblox-game/SKILL.md",
-  "bytes": 87800,
+  "path": "resources/syphodev/skills/roblox-3d-model/SKILL.md",
+  "bytes": 42079,
   "kind": "text"
  },
  {
@@ -315,8 +320,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-3d-model/SKILL.md",
-  "bytes": 42079,
+  "path": "resources/syphodev/skills/roblox-animation/SKILL.md",
+  "bytes": 20403,
   "kind": "text"
  },
  {
@@ -350,8 +355,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-animation/SKILL.md",
-  "bytes": 20403,
+  "path": "resources/syphodev/skills/roblox-build-orchestrator/SKILL.md",
+  "bytes": 15310,
   "kind": "text"
  },
  {
@@ -365,8 +370,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-build-orchestrator/SKILL.md",
-  "bytes": 15310,
+  "path": "resources/syphodev/skills/roblox-code/SKILL.md",
+  "bytes": 12779,
   "kind": "text"
  },
  {
@@ -385,8 +390,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-code/SKILL.md",
-  "bytes": 12779,
+  "path": "resources/syphodev/skills/roblox-map/SKILL.md",
+  "bytes": 50932,
   "kind": "text"
  },
  {
@@ -400,11 +405,6 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-map/SKILL.md",
-  "bytes": 50932,
-  "kind": "text"
- },
- {
   "path": "resources/syphodev/skills/roblox-map/specs/duel_arena.json",
   "bytes": 3648,
   "kind": "text"
@@ -412,6 +412,11 @@
  {
   "path": "resources/syphodev/skills/roblox-map/specs/minimal.json",
   "bytes": 989,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/SKILL.md",
+  "bytes": 9785,
   "kind": "text"
  },
  {
@@ -440,8 +445,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-sfx/SKILL.md",
-  "bytes": 9785,
+  "path": "resources/syphodev/skills/roblox-skills-setup/SKILL.md",
+  "bytes": 6962,
   "kind": "text"
  },
  {
@@ -450,13 +455,13 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-skills-setup/SKILL.md",
-  "bytes": 6962,
+  "path": "resources/syphodev/skills/roblox-texture-gen/SKILL.md",
+  "bytes": 8088,
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-texture-gen/SKILL.md",
-  "bytes": 8088,
+  "path": "resources/syphodev/skills/roblox-ui/SKILL.md",
+  "bytes": 22861,
   "kind": "text"
  },
  {
@@ -480,8 +485,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-ui/SKILL.md",
-  "bytes": 22861,
+  "path": "resources/syphodev/skills/roblox-vfx/SKILL.md",
+  "bytes": 79581,
   "kind": "text"
  },
  {
@@ -495,13 +500,13 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-vfx/references/property-surface.md",
-  "bytes": 2824,
+  "path": "resources/syphodev/skills/roblox-vfx/references/VFXKit.lua",
+  "bytes": 7123,
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-vfx/references/styles/anime_cel.md",
-  "bytes": 3021,
+  "path": "resources/syphodev/skills/roblox-vfx/references/property-surface.md",
+  "bytes": 2824,
   "kind": "text"
  },
  {
@@ -510,8 +515,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-vfx/references/VFXKit.lua",
-  "bytes": 7123,
+  "path": "resources/syphodev/skills/roblox-vfx/references/styles/anime_cel.md",
+  "bytes": 3021,
   "kind": "text"
  },
  {
@@ -520,18 +525,8 @@
   "kind": "text"
  },
  {
-  "path": "resources/syphodev/skills/roblox-vfx/SKILL.md",
-  "bytes": 79581,
-  "kind": "text"
- },
- {
   "path": "skills/create-roblox-game/SKILL.md",
   "bytes": 1283,
-  "kind": "text"
- },
- {
-  "path": "skills/hyperlab/SKILL.md",
-  "bytes": 1983,
   "kind": "text"
  },
  {
@@ -557,6 +552,11 @@
  {
   "path": "skills/hyperlab-ui/SKILL.md",
   "bytes": 1700,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab/SKILL.md",
+  "bytes": 1983,
   "kind": "text"
  },
  {
