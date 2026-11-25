@@ -147,6 +147,84 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
     await changes("Wallpaper strength", ".nx-wall-dim", ["background-color"], () => range("bgstrength", "min"));
     await changes("Panel opacity over a wallpaper (side bar)", ".sidebar", ["background-color", "background-image"], () => range("panel", "min"));
     await changes("Panel blur over a wallpaper (side bar)", ".sidebar", ["backdrop-filter"], () => range("blur", "max"));
+    // Light-theme sidebar footer contrast: Effort: Hyper (+ all effort levels), Gradients Off, and version status.
+    await tab.click('#nxThemes [data-desktop-palette="paper-light"]'); await tab.waitForTimeout(80);
+    await tab.evaluate(() => {
+      const sel = document.querySelector('select[data-pref="rsThinkingLevel"]');
+      sel.value = "ultracode";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      if (sel._pcRefresh) sel._pcRefresh();
+      PlazCodeVersion.render(document.getElementById("sidebarVersion"), "1.25.0", { latest: "1.25.0", checked_at: Date.now() });
+    });
+    const lightHyper = await tab.evaluate(() => {
+      const e = document.getElementById("sidebarEffort");
+      const u = e.querySelector(".pc-ultra-label");
+      const v = document.getElementById("sidebarVersion");
+      return {
+        tone: document.documentElement.dataset.themeTone,
+        effortColor: getComputedStyle(e).color,
+        ultraBg: u && getComputedStyle(u).backgroundImage,
+        verColor: getComputedStyle(v).color,
+      };
+    });
+    assert.equal(lightHyper.tone, "light", "paper-light maintains light tone with Hyper");
+    assert.equal(lightHyper.effortColor, "rgb(30, 45, 107)", "paper-light sidebarEffort uses high-contrast indigo");
+    assert(lightHyper.ultraBg && lightHyper.ultraBg.includes("rgb(19, 28, 66)"), "paper-light .pc-ultra-label uses dark prism gradient");
+    assert.equal(lightHyper.verColor, "rgb(13, 122, 82)", "paper-light sidebarVersion uses dark emerald green");
+
+    await tab.evaluate(() => { const g = document.getElementById("desktopGradients"); g.value = "off"; g.dispatchEvent(new Event("change", { bubbles: true })); });
+    await tab.waitForTimeout(80);
+    const lightHyperGradOff = await tab.evaluate(() => {
+      const u = document.querySelector("#sidebarEffort .pc-ultra-label");
+      const cs = getComputedStyle(u);
+      return { bg: cs.backgroundImage, color: cs.color, fill: cs.webkitTextFillColor };
+    });
+    assert.equal(lightHyperGradOff.bg, "none", "paper-light gradients=off clears gradient on Hyper label");
+    assert.equal(lightHyperGradOff.color, "rgb(30, 45, 107)", "paper-light gradients=off keeps dark solid Hyper color");
+    assert.equal(lightHyperGradOff.fill, "rgb(30, 45, 107)", "paper-light gradients=off resets webkitTextFillColor to dark ink");
+
+    await tab.evaluate(() => { const g = document.getElementById("desktopGradients"); g.value = "on"; g.dispatchEvent(new Event("change", { bubbles: true })); });
+    await tab.waitForTimeout(60);
+    for (const lvl of ["default", "low", "mid", "high", "max"]) {
+      const luma = await tab.evaluate((level) => {
+        const sel = document.querySelector('select[data-pref="rsThinkingLevel"]');
+        sel.value = level;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+        const rgb = getComputedStyle(document.getElementById("sidebarEffort")).color.match(/\d+/g).map(Number);
+        const lin = rgb.map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      }, lvl);
+      assert(luma < 0.25, "paper-light effort level " + lvl + " must stay dark/high-contrast (luma=" + luma.toFixed(3) + ")");
+    }
+
+    await tab.click("#nxThemeReset"); await tab.waitForTimeout(120);
+    await tab.evaluate(() => {
+      const sel = document.querySelector('select[data-pref="rsThinkingLevel"]');
+      sel.value = "ultracode";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const darkHyper = await tab.evaluate(() => {
+      const e = document.getElementById("sidebarEffort");
+      const u = e.querySelector(".pc-ultra-label");
+      const v = document.getElementById("sidebarVersion");
+      return {
+        tone: document.documentElement.dataset.themeTone,
+        effortColor: getComputedStyle(e).color,
+        ultraBg: u && getComputedStyle(u).backgroundImage,
+        verColor: getComputedStyle(v).color,
+      };
+    });
+    assert.equal(darkHyper.tone, "dark", "default theme restores dark tone");
+    assert.equal(darkHyper.effortColor, "rgb(245, 248, 255)", "default dark theme keeps bright #f5f8ff Hyper effort");
+    assert(darkHyper.ultraBg && darkHyper.ultraBg.includes("rgb(255, 255, 255)"), "default dark theme keeps bright pearl-white gradient");
+    assert.equal(darkHyper.verColor, "rgb(49, 224, 164)", "default dark theme keeps bright mint #31e0a4 version status");
+    await tab.evaluate(() => {
+      const sel = document.querySelector('select[data-pref="rsThinkingLevel"]');
+      sel.value = "default";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      if (sel._pcRefresh) sel._pcRefresh();
+    });
+
     // The defaults look exactly as before the fix.
     await reset();
     const d = await style(card, ["border-top-left-radius", "border-top-width"]);

@@ -49,9 +49,13 @@ const PlazCodeVersion = (() => {
   function render(element, current, status, prefix = 'v', extra = '') {
     if (!element) return;
     const result = describe(current, status);
+    const state = result.label.startsWith('Outdated') ? 'outdated' : result.label === 'Up to date' ? 'ok' : 'idle';
+    element.setAttribute('data-version-state', state);
+    const isLight = Boolean(element.ownerDocument && element.ownerDocument.documentElement && element.ownerDocument.documentElement.dataset && element.ownerDocument.documentElement.dataset.themeTone === 'light');
+    const color = isLight ? (state === 'ok' ? '#0d7a52' : state === 'outdated' ? '#b41d29' : '#4a5568') : result.color;
     element.textContent = String(prefix).replace(/v$/, '') + 'v' + display(current) + (!result.label ? '' : result.label.startsWith('Outdated') ? ' - ' + result.label : ' (' + result.label + ')') + extra;
-    if (element.style.setProperty) element.style.setProperty('color', result.color, 'important');
-    else element.style.color = result.color;
+    if (element.style.setProperty) element.style.setProperty('color', color, 'important');
+    else element.style.color = color;
     element.title = status && status.latest ? 'Latest published release: v' + display(status.latest) : 'Latest published release has not been checked.';
     element.setAttribute('aria-label', element.textContent);
     element.setAttribute('data-outdated', String(result.label.startsWith('Outdated')));

@@ -2041,8 +2041,18 @@ html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light][dat
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-brand-logo svg g{stroke:#243052}
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.pz-head .pz-eyebrow,.page .nx-k,.page .stat-head,.panel-note,.telemetry-eyebrow,.cn-eyebrow,.settingcard .exgroup details.exmore>summary,.explorer-auto b){color:#35447a}
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .settings-summary:after{color:#253366}
-html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .desktop-effort[data-effort=ultracode]{color:#253366}
-html[data-pz-studio][data-theme-tone=light] .pc-ultra-label{color:#253366;background-image:linear-gradient(110deg,#1a2242 0%,#3c2d7a 28%,#1c5b7a 54%,#6b2a68 78%,#1a2242 100%)}
+html[data-theme-tone=light] .sidebar .nx-ver{opacity:1}
+html[data-theme-tone=light] .desktop-effort:not([data-effort=low]):not([data-effort=mid]):not([data-effort=high]):not([data-effort=max]):not([data-effort=ultracode]){color:var(--orange2,#1e4278)}
+html[data-theme-tone=light] .desktop-effort[data-effort=low]{color:#7c5800}
+html[data-theme-tone=light] .desktop-effort[data-effort=mid]{color:#9c4a00}
+html[data-theme-tone=light] .desktop-effort[data-effort=high]{color:#b83b0a}
+html[data-theme-tone=light] .desktop-effort[data-effort=max]{color:#b41d29}
+html[data-theme-tone=light] .desktop-effort[data-effort=ultracode]{color:#1e2d6b;font-weight:600}
+html[data-theme-tone=light] .pc-ultra-label{color:#1e2d6b;background-image:linear-gradient(110deg,#131c42 0%,#3b2280 24%,#11587d 48%,#7a1d6b 72%,#131c42 100%);background-size:260% 100%}
+html[data-theme-tone=light][data-desktop-gradients=off] .pc-ultra-label{background:none!important;-webkit-text-fill-color:currentColor!important;color:#1e2d6b!important}
+html[data-desktop-gradients=off]:not([data-theme-tone=light]) .pc-ultra-label{background:none!important;-webkit-text-fill-color:currentColor!important;color:#eef4ff!important}
+html[data-theme-tone=light] .pz-pill[data-on="1"]{color:#0d7a52;border-color:rgba(13,122,82,.42);box-shadow:none}
+html[data-theme-tone=light] .pz-pill[data-on="0"]{color:#b41d29;border-color:rgba(180,29,41,.42)}
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabs .navbtn.active{color:#171a20!important}
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] .pz-tabs .navbtn.active svg{color:#253568!important}
 html[data-pz-studio][data-desktop-thinking=ultracode][data-theme-tone=light] :is(.byok-rail-item.active,.byok-pill-btn.active,.byok-msg-user .byok-bubble){
@@ -4485,11 +4495,13 @@ __PLAZCODE_BACKDROP_FX__
   function Pzsyncink(Root) {
     Root = Root || document.documentElement;
     var Tone = Root.dataset.themeTone === 'light' ? 'light' : 'dark';
+    var RawCanvas = Pzcss('--canvas', '');
+    if (RawCanvas) { Tone = Pzluma(RawCanvas) > .35 ? 'light' : 'dark'; Root.dataset.themeTone = Tone; }
     var TextHex = Pzcss('--text', Tone === 'light' ? '#171a20' : '#f5f8ff');
     var AccentHex = Pzcss('--orange', Tone === 'light' ? '#2d5b9e' : '#e9ba53');
-    var CanvasHex = Pzcss('--canvas', Tone === 'light' ? '#f4f0e8' : '#0b0d12');
+    var CanvasHex = RawCanvas || (Tone === 'light' ? '#f4f0e8' : '#0b0d12');
     var AccentDark = Pzluma(AccentHex) <= .188;
-    var LightCanvas = Pzluma(CanvasHex) > .35;
+    var LightCanvas = Tone === 'light' || Pzluma(CanvasHex) > .35;
     var Rgb = Nxparse(AccentHex) || (Tone === 'light' ? [45, 91, 158] : [233, 186, 83]);
     Root.style.setProperty('--on-text', Pzink(TextHex));
     Root.style.setProperty('--on-accent', AccentDark ? '#ffffff' : '#0b0d12');
@@ -4503,6 +4515,15 @@ __PLAZCODE_BACKDROP_FX__
     } else {
       Root.style.setProperty('--sel-bg', 'rgba(' + Rgb.join(',') + ',.38)');
       Root.style.setProperty('--sel-ink', '#ffffff');
+    }
+    var VerColors = LightCanvas
+      ? {ok: '#0d7a52', outdated: '#b41d29', idle: '#4a5568'}
+      : {ok: '#31e0a4', outdated: '#ff696c', idle: '#8598b1'};
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+      Array.prototype.slice.call(document.querySelectorAll('[data-version-state]')).forEach(function (El) {
+        var C = VerColors[El.getAttribute('data-version-state')];
+        if (C && El.style && El.style.setProperty) El.style.setProperty('color', C, 'important');
+      });
     }
   }
   function Pzmaker() {
