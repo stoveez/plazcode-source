@@ -117,6 +117,16 @@ const PlazCodeWorkshopUI = (() => {
     return '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3l9 9-9 9-9-9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>';
   }
 
+  function starSvg(size = 14): string {
+    return `<svg class="ws-star-svg" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.25 6.2 20.3l1.1-6.47-4.7-4.58 6.5-.95z"/></svg>`;
+  }
+
+  function formatOutOfFive(val: number): string {
+    if (!val || !Number.isFinite(val) || val <= 0) return '0 / 5';
+    const rounded = Math.round(val * 10) / 10;
+    return (Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)) + ' / 5';
+  }
+
   const wsStyle = `<style>
 .ws-shell{display:grid;gap:16px}
 .ws-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
@@ -140,24 +150,34 @@ const PlazCodeWorkshopUI = (() => {
 .ws-card:hover{border-color:rgb(var(--pz-rgb,255 146 38)/.55);transform:translateY(-2px)}
 .ws-card-banner{position:relative;height:78px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0%,rgb(var(--pz-rgb,255 146 38)/.16),transparent 70%),linear-gradient(180deg,rgb(255 255 255/.04),transparent);border-bottom:1px solid var(--pz-line,var(--stroke,#1e2e46));color:var(--text,#f5f8ff)}
 .ws-card-icon{width:40px;height:40px;border-radius:11px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:var(--canvas,#0a111d);display:grid;place-items:center}
-.ws-badge{position:absolute;top:10px;right:10px;padding:3px 8px;border-radius:7px;font:700 10px/1.2 var(--pz-mono,monospace);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--pz-line,#324766);background:rgb(0 0 0/.45);color:var(--text,#f5f8ff)}
-.ws-badge.featured{border-color:rgb(var(--pz-rgb,255 146 38)/.65);color:var(--orange2,#ffc052)}
+.ws-badge{position:absolute;top:10px;right:10px;padding:3px 8px;border-radius:7px;font:700 10px/1.2 var(--pz-mono,monospace);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--pz-line,#324766);background:var(--canvas,#0a111d);color:var(--text,#f5f8ff)}
+.ws-badge.featured{background:linear-gradient(135deg,var(--orange2,#ffc052),var(--orange,#ff9226));border-color:transparent;color:var(--on-accent,#0b0d12)}
 .ws-card-body{flex:1 1 auto;padding:14px 16px;display:grid;gap:8px;align-content:start}
 .ws-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ws-card-top-left{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .ws-kind-pill{padding:3px 8px;border-radius:6px;border:1px solid var(--pz-line,#2b3952);font:700 10px/1.1 var(--pz-mono,monospace);text-transform:uppercase;color:var(--ink-soft,#9aa8be)}
+.ws-rating-badge{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text,#f5f8ff);white-space:nowrap}
 .ws-card-title{margin:0;font-size:15.5px;font-weight:700;color:var(--text,#f5f8ff)}
 .ws-card-author{font-size:11.5px;color:var(--ink-soft,#9aa8be)}
 .ws-card-review{font-size:11px;color:var(--green,#31e0a4)}
 .ws-card-review.unreviewed{color:var(--amber,#ffb33f)}
+html[data-theme-tone=light] .ws-card-review{color:#0d7a52}
+html[data-theme-tone=light] .ws-card-review.unreviewed{color:#9a5d00}
 .ws-card-summary{margin:0;font-size:12.5px;line-height:1.45;color:var(--ink-soft,#aebbd0);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ws-tags{display:flex;flex-wrap:wrap;gap:5px}
 .ws-tag{padding:2px 8px;border-radius:6px;border:1px solid var(--pz-line,#22324a);background:rgb(255 255 255/.03);font:500 10.5px/1.3 var(--pz-mono,monospace);color:var(--ink-soft,#94a3b8)}
-.ws-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 16px;border-top:1px solid var(--pz-line,var(--stroke,#1e2e46));background:rgb(0 0 0/.14)}
-.ws-foot-meta{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-soft,#94a3b8)}
+.ws-card-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 10px;padding:11px 16px;border-top:1px solid var(--pz-line,var(--stroke,#1e2e46));background:rgb(0 0 0/.14)}
+.ws-foot-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:11.5px;color:var(--ink-soft,#94a3b8);min-width:0}
+.ws-foot-size{white-space:nowrap}
 .ws-rate-group{display:inline-flex;align-items:center;gap:2px}
-.ws-star-btn{border:0;background:none;color:var(--muted,#657a97);cursor:pointer;padding:1px;font-size:13px;line-height:1}
-.ws-star-btn.on{color:#ffc94d}
+.ws-star-btn{display:inline-flex;align-items:center;justify-content:center;border:0;background:none;cursor:pointer;padding:1px;line-height:1;transition:transform .12s ease}
+.ws-star-btn:hover{transform:scale(1.15)}
+.ws-star-svg{display:block;fill:transparent;stroke:var(--ink-soft,#7c8ca6);stroke-width:1.9;stroke-linejoin:round}
+.ws-star-btn.on .ws-star-svg,.ws-rating-badge .ws-star-svg{fill:#f5b82e;stroke:#7a4e00;stroke-width:1.9}
+html[data-theme-tone=light] .ws-star-svg{stroke:#6c727f}
+html[data-theme-tone=light] .ws-star-btn.on .ws-star-svg,html[data-theme-tone=light] .ws-rating-badge .ws-star-svg{fill:#f6be2c;stroke:#6b4200;stroke-width:2.1}
 .ws-foot-actions{display:flex;align-items:center;gap:6px}
+.ws-installed-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:var(--canvas,#0a111d);color:var(--ink-soft,#9aa8be);font-size:11.5px;font-weight:600;white-space:nowrap}
 .ws-report-btn{padding:6px 8px;border-radius:8px;border:1px solid var(--pz-line,#2b3952);background:transparent;color:var(--ink-soft,#94a3b8);font-size:11.5px;cursor:pointer}
 .ws-report-btn:hover{color:var(--red,#ff696c);border-color:var(--red,#ff696c)}
 .ws-modal{position:fixed;inset:0;z-index:130;display:grid;place-items:center;background:rgb(4 8 15/.76);backdrop-filter:blur(8px);padding:20px}
@@ -488,6 +508,20 @@ const PlazCodeWorkshopUI = (() => {
         grid.appendChild(empty);
         return;
       }
+      const isBuiltInItem = (it: WorkshopItem): boolean =>
+        it.badge === 'BUILT-IN' ||
+        /\(built-in\)/i.test(it.author || '') ||
+        (it.tags || []).includes('built-in') ||
+        it.id.startsWith('starter-') ||
+        it.id.startsWith('plazcode-spec-');
+      const localSkillIds = new Set<string>(localSkills.map((s) => String(s?.id || '')));
+      const localSkillTitles = new Set<string>(localSkills.map((s) => String(s?.title || '').trim().toLowerCase()).filter(Boolean));
+      const isAlreadyAdded = (it: WorkshopItem): boolean =>
+        installedIds.has(it.id) ||
+        localSkillIds.has(it.id) ||
+        (Boolean(it.slug) && localSkillIds.has('community-' + it.slug)) ||
+        (Boolean(it.title) && localSkillTitles.has(it.title.trim().toLowerCase()));
+
       for (const item of items) {
         const card = document.createElement('article');
         card.className = 'ws-card';
@@ -507,13 +541,25 @@ const PlazCodeWorkshopUI = (() => {
         body.className = 'ws-card-body';
         const top = document.createElement('div');
         top.className = 'ws-card-top';
+        const topLeft = document.createElement('div');
+        topLeft.className = 'ws-card-top-left';
         const kindPill = document.createElement('span');
         kindPill.className = 'ws-kind-pill';
         kindPill.textContent = item.kind === 'specialist' ? 'Specialist' : 'Skill';
+        const avgRating = (typeof item.rating_avg === 'number' && item.rating_avg > 0)
+          ? item.rating_avg
+          : (localRatings[item.id] || 0);
+        const ratingBadge = document.createElement('span');
+        ratingBadge.className = 'ws-rating-badge';
+        ratingBadge.setAttribute('data-ws-rating', item.id);
+        ratingBadge.innerHTML = starSvg(12) + `<span>${formatOutOfFive(avgRating)}</span>`;
+        const rCount = Number(item.rating_count || 0);
+        ratingBadge.title = rCount > 0 ? `${formatOutOfFive(avgRating)} (${rCount} rating${rCount === 1 ? '' : 's'})` : formatOutOfFive(avgRating);
+        topLeft.append(kindPill, ratingBadge);
         const catSmall = document.createElement('small');
         catSmall.style.color = 'var(--ink-soft,#94a3b8)';
         catSmall.textContent = item.category;
-        top.append(kindPill, catSmall);
+        top.append(topLeft, catSmall);
 
         const title = document.createElement('h3');
         title.className = 'ws-card-title';
@@ -547,6 +593,7 @@ const PlazCodeWorkshopUI = (() => {
         const meta = document.createElement('div');
         meta.className = 'ws-foot-meta';
         const sizeSpan = document.createElement('span');
+        sizeSpan.className = 'ws-foot-size';
         sizeSpan.textContent = `${formatBytes(item.body_bytes)} · ${item.file_count} file${item.file_count === 1 ? '' : 's'}`;
         const rateWrap = document.createElement('span');
         rateWrap.className = 'ws-rate-group';
@@ -555,12 +602,15 @@ const PlazCodeWorkshopUI = (() => {
           const star = document.createElement('button');
           star.type = 'button';
           star.className = 'ws-star-btn' + (s <= curRating ? ' on' : '');
-          star.textContent = '★';
+          star.innerHTML = starSvg(14);
           star.title = `Rate ${s} star${s === 1 ? '' : 's'}`;
+          star.setAttribute('aria-label', star.title);
           star.onclick = run(async () => {
             const res = await api('/api/workshop/rate', { method: 'POST', body: JSON.stringify({ id: item.id, stars: s }) });
             localRatings[item.id] = s;
             item.rating_avg = res?.rating_avg ?? s;
+            if (typeof res?.rating_count === 'number') item.rating_count = res.rating_count;
+            else if (!item.rating_count) item.rating_count = 1;
             renderGrid();
             status(`Rated ${item.title} ${s}/5.`);
           });
@@ -579,19 +629,34 @@ const PlazCodeWorkshopUI = (() => {
           find<HTMLTextAreaElement>('rep-reason').value = '';
           find('report-modal').hidden = false;
         };
-        const instBtn = document.createElement('button');
-        instBtn.type = 'button';
-        instBtn.className = installedIds.has(item.id) ? 'softbtn' : 'accentbtn';
-        instBtn.setAttribute('data-ws-install', item.id);
-        instBtn.textContent = installedIds.has(item.id) ? 'Installed' : 'Install';
-        instBtn.onclick = run(async () => {
-          status(`Installing ${item.title}…`);
-          const res = await api('/api/workshop/install', { method: 'POST', body: JSON.stringify({ id: item.id }) });
-          installedIds.add(item.id);
-          renderGrid();
-          status(`Installed "${res?.installed?.title || item.title}" as a community skill (${res?.installed?.id || ''}).`);
-        });
-        actions.append(repBtn, instBtn);
+        actions.append(repBtn);
+        if (isBuiltInItem(item)) {
+          const statePill = document.createElement('span');
+          statePill.className = 'ws-installed-pill';
+          statePill.setAttribute('data-ws-state', 'builtin');
+          statePill.textContent = 'Built-in';
+          actions.append(statePill);
+        } else if (isAlreadyAdded(item)) {
+          const statePill = document.createElement('span');
+          statePill.className = 'ws-installed-pill';
+          statePill.setAttribute('data-ws-state', 'installed');
+          statePill.textContent = '✓ Added';
+          actions.append(statePill);
+        } else {
+          const instBtn = document.createElement('button');
+          instBtn.type = 'button';
+          instBtn.className = 'accentbtn';
+          instBtn.setAttribute('data-ws-install', item.id);
+          instBtn.textContent = 'Install';
+          instBtn.onclick = run(async () => {
+            status(`Installing ${item.title}…`);
+            const res = await api('/api/workshop/install', { method: 'POST', body: JSON.stringify({ id: item.id }) });
+            installedIds.add(item.id);
+            renderGrid();
+            status(`Installed "${res?.installed?.title || item.title}" as a community skill (${res?.installed?.id || ''}).`);
+          });
+          actions.append(instBtn);
+        }
         foot.append(meta, actions);
 
         card.append(banner, body, foot);

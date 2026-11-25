@@ -224,11 +224,23 @@ const WorkshopUI = require("./core/workshop-ui.js");
   wq('[data-ws-kind="specialist"]').click();
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(wsHost.querySelectorAll("[data-ws-card]").length, 1, "Specialists pill filters to specialists");
+  assert.equal(wq('[data-ws-install="plazcode-spec-ui-designer"]'), null, "built-in item does not show an Install button");
+  assert.equal(wq('[data-ws-card="plazcode-spec-ui-designer"] [data-ws-state="builtin"]').textContent, "Built-in");
+  assert.equal(wq('[data-ws-rating="plazcode-spec-ui-designer"]').textContent.trim(), "4.9 / 5", "top row displays out-of-5 rating");
+  assert(wq('[data-ws-card="plazcode-spec-ui-designer"] .ws-star-svg'), "outlined SVG star rendered");
 
-  wq('[data-ws-install="plazcode-spec-ui-designer"]').click();
+  wq('[data-ws-kind="all"]').click();
   await new Promise((r) => setTimeout(r, 20));
-  assert(wsCalls.some((c) => c.url === "/api/workshop/install" && c.body.id === "plazcode-spec-ui-designer"));
-  assert.equal(wq('[data-ws-install="plazcode-spec-ui-designer"]').textContent, "Installed");
+  assert.equal(wq('[data-ws-rating="comm-voxel"]').textContent.trim(), "4.5 / 5");
+  wq('[data-ws-install="comm-voxel"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(wsCalls.some((c) => c.url === "/api/workshop/install" && c.body.id === "comm-voxel"));
+  assert.equal(wq('[data-ws-install="comm-voxel"]'), null, "installed community item hides Install button");
+  assert.equal(wq('[data-ws-card="comm-voxel"] [data-ws-state="installed"]').textContent, "✓ Added");
+  wq('[data-ws-card="comm-voxel"] .ws-star-btn').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(wsCalls.some((c) => c.url === "/api/workshop/rate" && c.body.id === "comm-voxel"));
+  assert.equal(wq('[data-ws-rating="comm-voxel"]').textContent.trim(), "1 / 5", "rating out-of-5 display updates live");
 
   // Upload modal + safety check + submit -> pending approval message
   wq('[data-ws="open-upload"]').click();
