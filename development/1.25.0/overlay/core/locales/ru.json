@@ -243,6 +243,7 @@
   "Choose a GIF smaller than 1 MB.": "Выберите GIF размером менее 1 МБ.",
   "Choose a JPEG, PNG or GIF picture.": "Выберите изображение JPEG, PNG или GIF.",
   "Choose a Roblox file": "Выберите файл Roblox",
+  "Choose a file": "Выбрать файл",
   "Choose a folder": "Выбрать папку",
   "Choose a picture smaller than 20 MB.": "Выберите изображение размером менее 20 МБ.",
   "Choose a shared palette, glow and gradients. Changes also update the PlazCode browser bar and panels while the bridge is connected.": "Выберите общую палитру, свечение и градиенты. При подключённом мосте изменения также применяются к панели и другим панелям PlazCode в браузере.",

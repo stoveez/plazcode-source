@@ -294,6 +294,10 @@ const PlazCodeSkillsUI=(()=>{
 .sk-share-list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;padding:8px;border:1px solid var(--pz-line,#2b3952);border-radius:10px}
 .sk-share-list label{display:flex!important;grid-template-columns:none;gap:8px;align-items:center}
 .sk-share-list input{width:auto!important}
+.wb-shell input[hidden]{display:none!important}
+.wb-import-picks{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wb-import-file-name{font-size:12px;color:var(--ink-soft,#9aa8be);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-import-file-name:empty{display:none}
 </style>`;
 
  function mount(host: HTMLElement,request: RequestFn,_send: SendFn,_preferences?: unknown,_setPreferences?: unknown,_tasks?: TasksFn){
@@ -411,10 +415,12 @@ const PlazCodeSkillsUI=(()=>{
       <p style="margin:8px 0 0;font-size:12.5px;color:var(--ink-soft,#9aa8be)">Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.</p>
       <div class="wb-compat-grid">
         <div style="display:grid;gap:8px">
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="wb-import-picks">
             <button type="button" class="softbtn" data-sk="pick-folder">Choose a folder</button>
+            <button type="button" class="softbtn" data-sk="pick-file">Choose a file</button>
+            <span class="wb-import-file-name" data-sk="import-file-name" data-i18n-user-content dir="auto"></span>
             <input type="file" data-sk="import-folder" webkitdirectory multiple hidden>
-            <input type="file" data-sk="import-file" accept=".json,.plazskills.json,.zip,.md,.markdown,.txt">
+            <input type="file" data-sk="import-file" accept=".json,.plazskills.json,.zip,.md,.markdown,.txt" hidden>
           </div>
           <label>Import title (optional)<input type="text" data-sk="import-title" dir="auto" placeholder="Title for pasted instructions"></label>
           <label>Paste JSON, share code, or skill link<textarea rows="3" data-sk="import-text" dir="auto" placeholder="Paste exported JSON, share code, or GitHub/Gist link"></textarea></label>
@@ -760,6 +766,7 @@ const PlazCodeSkillsUI=(()=>{
   find('open-folder').onclick=run(async()=>{await request({action:'open_folder',id:current?.id||''});status('Opened skill folder.');});
   find('import-folder-btn').onclick=()=>find<HTMLInputElement>('import-folder').click();
   find('pick-folder').onclick=()=>find<HTMLInputElement>('import-folder').click();
+  find('pick-file').onclick=()=>find<HTMLInputElement>('import-file').click();
   find('save-file').onclick=run(()=>saveActiveEditor());
   find('save').onclick=run(()=>saveActiveEditor());
   find<HTMLTextAreaElement>('editor-text').addEventListener('input',()=>{dirty=true;editorTouched=true;syncCurrentBuffer();renderTelemetry();renderValidation(null);});
@@ -833,14 +840,14 @@ const PlazCodeSkillsUI=(()=>{
   host.addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)find('drop').hidden=true;});
   host.addEventListener('drop',e=>{if(!carriesFiles(e))return;e.preventDefault();dragDepth=0;find('drop').hidden=true;const dropped=droppedFiles(e.dataTransfer);run(async()=>{const {items,source}=await dropped;if(items.length===1&&isZip(items[0].file))return importFolder(zipRequest(items[0].file));await importFolder(folderRequest(items,source));})();});
 
-  find('import-file').onchange=run(async()=>{const file=find<HTMLInputElement>('import-file').files?.[0];if(!file)return;if(isZip(file)){find<HTMLInputElement>('import-file').value='';return importFolder(zipRequest(file));}if(file.size>1024*1024)throw Error('Imports are limited to 1 MB.');find<HTMLTextAreaElement>('import-text').value=await file.text();status('File loaded. Choose Import skill to save it.');});
+  find('import-file').onchange=run(async()=>{const file=find<HTMLInputElement>('import-file').files?.[0];if(!file)return;find('import-file-name').textContent=isZip(file)?'':file.name;if(isZip(file)){find<HTMLInputElement>('import-file').value='';return importFolder(zipRequest(file));}if(file.size>1024*1024)throw Error('Imports are limited to 1 MB.');find<HTMLTextAreaElement>('import-text').value=await file.text();status('File loaded. Choose Import skill to save it.');});
   find('import').onclick=run(async()=>{
    let text=find<HTMLTextAreaElement>('import-text').value.trim(),source='';
    if(isShareLink(text)){status('Fetching the link…');const fetched=await request({action:'fetch_link',url:text});if(!fetched?.ok)throw Error(fetched?.error||'Could not read that link.');source=text;text=fetched.text;}
    else if(text.toLowerCase().startsWith(SHARE_PREFIX)||text.toLowerCase().startsWith(LEGACY_SHARE_PREFIX))source='a share code';
    const skills=importMany(text,find<HTMLInputElement>('import-title').value.trim(),source);let last: Skill | null=null;
    for(const item of skills){const res=await request({action:'save',skill:{...item,enabled:true,id:'skill-'+crypto.randomUUID()},revision:0});last=res.skill;}
-   await refresh(true);if(last)await loadWorkbenchFor(last);find<HTMLTextAreaElement>('import-text').value='';find<HTMLInputElement>('import-file').value='';find<HTMLDetailsElement>('import-panel').open=false;
+   await refresh(true);if(last)await loadWorkbenchFor(last);find<HTMLTextAreaElement>('import-text').value='';find<HTMLInputElement>('import-file').value='';find('import-file-name').textContent='';find<HTMLDetailsElement>('import-panel').open=false;
    status(skills.length===1?'Skill imported and enabled for automatic use.':'Imported '+skills.length+' skills (enabled for automatic use).');
   });
   const shareChosen=()=>[...host.querySelectorAll<HTMLInputElement>('[data-sk=share-list] input:checked')].map(input=>records.find(s=>s.id===input.value)).filter((s): s is Skill=>Boolean(s));
