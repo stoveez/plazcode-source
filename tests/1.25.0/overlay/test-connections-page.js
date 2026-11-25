@@ -60,6 +60,20 @@ const CATALOG = [
       await tab.route("http://127.0.0.1:3000/api/mcp/toggle", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.toggles.push(b); if (b.enabled) bridge.enabled.add(b.id); else bridge.enabled.delete(b.id); await r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }); });
       await tab.route("http://127.0.0.1:3000/api/connections", (r) => { bridge.probes++; return bridge.mode === "legacy" ? r.fulfill({ status: 404, contentType: "application/json", body: '{"error":"not found"}' }) : r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, apps: bridge.backend }) }); });
       await tab.route("http://127.0.0.1:3000/api/connections/setup", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.setups.push(b); const refused = bridge.onSetup ? bridge.onSetup(b) : null; await r.fulfill(refused ? { status: 400, contentType: "application/json", body: JSON.stringify({ ok: false, error: refused }) } : { status: 200, contentType: "application/json", body: JSON.stringify(Object.assign({ ok: true }, bridge.setupExtra ? bridge.setupExtra(b) : {})) }); });
+      await tab.route("http://127.0.0.1:3000/api/mcp/desktop-apps", (r) => r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          apps: [
+            { id: "claude_desktop", name: "Claude Desktop", state: "not_connected", installed: true, config_format: "json", status_detail: "App folder detected. Ready for 1-click connection.", restart_hint: "Restart Claude Desktop to load PlazCode's Roblox Studio tools.", config_path: "C:\\\\Users\\\\me\\\\AppData\\\\Roaming\\\\Claude\\\\claude_desktop_config.json", snippet: "{}" },
+            { id: "codex", name: "Codex", state: "not_connected", installed: true, config_format: "toml", status_detail: "Ready for 1-click connection.", restart_hint: "Start a new Codex session or reopen Codex to load PlazCode.", config_path: "C:\\\\Users\\\\me\\\\.codex\\\\config.toml", snippet: "" },
+            { id: "opencode", name: "OpenCode", state: "not_connected", installed: true, config_format: "json", status_detail: "App folder detected. Ready for 1-click connection.", restart_hint: "Restart OpenCode or reload its servers list to pick up PlazCode.", config_path: "C:\\\\Users\\\\me\\\\.config\\\\opencode\\\\opencode.json", snippet: "{}" },
+            { id: "antigravity", name: "Antigravity", state: "not_connected", installed: true, config_format: "json", status_detail: "Ready for 1-click connection.", restart_hint: "Reload Antigravity or refresh its external servers list to pick up PlazCode.", config_path: "C:\\\\Users\\\\me\\\\.gemini\\\\antigravity\\\\mcp_config.json", snippet: "{}" },
+            { id: "gemini_cli", name: "Gemini CLI", state: "not_connected", installed: true, config_format: "json", status_detail: "App folder detected. Ready for 1-click connection.", restart_hint: "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.", config_path: "C:\\\\Users\\\\me\\\\.gemini\\\\settings.json", snippet: "{}" }
+          ]
+        })
+      }));
       await tab.route("http://127.0.0.1:3000/api/blender", async (r) => { bridge.blenderCalls++; await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(bridge.blenderOk ? { ok: true, blender: true, data: { status: "success" } } : { ok: false, blender: false, error: "Blender did not answer." }) }); });
       await tab.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: assembled }));
       await tab.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; window.__ipc = []; window.ipc = { postMessage: (m) => window.__ipc.push(m) }; });
@@ -408,6 +422,61 @@ const CATALOG = [
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Unity card (pick, Unity needs Git with Download Git, add package, Open project), Blender open-window card (add helper, Open Blender), Figma card (one way, import-once and start-each-session wording, Show the folder, no pairing word), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(300);
+
+    // ---- Desktop AI Apps: embedded 112x112 official logos + Paper Light / Hyper contrast -------------------------
+    const daiLogos = await tab.evaluate(() => [...document.querySelectorAll("#desktopAiGrid .desktop-ai-card")].map((card) => {
+      const ico = card.querySelector(".desktop-ai-ico-logo");
+      const img = ico && ico.querySelector("img.desktop-ai-logo");
+      return {
+        app: card.dataset.aiApp,
+        png: !!img && img.getAttribute("src").startsWith("data:image/png;base64,"),
+        loaded: !!img && img.complete && img.naturalWidth === 112 && img.naturalHeight === 112,
+        alt: img ? img.getAttribute("alt") : null,
+        bleed: !!ico && ico.classList.contains("desktop-ai-ico-bleed"),
+        size: img ? Math.round(img.getBoundingClientRect().width) : 0
+      };
+    }));
+    assert.deepEqual(
+      daiLogos.map((d) => `${d.app}:${d.png}:${d.loaded}:${d.alt}:${d.bleed}:${d.size}`),
+      [
+        "claude_desktop:true:true::true:48",
+        "codex:true:true::false:32",
+        "opencode:true:true::true:48",
+        "antigravity:true:true::false:32",
+        "gemini_cli:true:true::false:32"
+      ],
+      "every Desktop AI App card renders its embedded 112x112 official logo"
+    );
+    const daiLightHyper = await tab.evaluate(() => {
+      const html = document.documentElement;
+      const sel = document.getElementById("desktopTheme");
+      sel.value = "paper-light";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      const bleedIco = document.querySelector("#desktopAiGrid [data-ai-app='claude_desktop'] .desktop-ai-ico-logo");
+      const pillIco = document.querySelector("#desktopAiGrid [data-ai-app='codex'] .desktop-ai-ico-logo");
+      const hint = document.querySelector("#desktopAiGrid .desktop-ai-hint");
+      const btn = document.querySelector("#desktopAiGrid .accentbtn");
+      const lightBtnBg = getComputedStyle(btn).backgroundColor;
+      const lightBtnColor = getComputedStyle(btn).color;
+      html.setAttribute("data-desktop-thinking", "ultracode");
+      return {
+        lightBtnBg,
+        lightBtnColor,
+        bleedBg: getComputedStyle(bleedIco).backgroundColor,
+        pillBg: getComputedStyle(pillIco).backgroundImage,
+        hintColor: getComputedStyle(hint).color,
+        btnColor: getComputedStyle(btn).color,
+        hyperBtnBg: getComputedStyle(btn).backgroundImage
+      };
+    });
+    assert.equal(daiLightHyper.bleedBg, "rgba(0, 0, 0, 0)", "full-bleed logo badge keeps transparent backdrop under Hyper");
+    assert(!daiLightHyper.pillBg.includes("linear-gradient(125deg") && daiLightHyper.pillBg.includes("rgb(255, 253, 248)"), "pill logo tile keeps warm-white surface under Hyper: " + daiLightHyper.pillBg);
+    assert.equal(daiLightHyper.hintColor, "rgb(68, 77, 92)", "Desktop AI hint uses crisp dark ink on Paper Light");
+    assert.equal(daiLightHyper.lightBtnColor, "rgb(255, 255, 255)", "Desktop AI Connect button uses white ink on Paper Light");
+    assert.equal(daiLightHyper.lightBtnBg, "rgb(45, 91, 158)", "Paper Light Connect button uses sapphire blue fill: " + daiLightHyper.lightBtnBg);
+    assert.equal(daiLightHyper.btnColor, "rgb(255, 255, 255)", "Desktop AI Connect button uses white ink on Paper Light Hyper");
+    assert(!daiLightHyper.hyperBtnBg.includes("rgb(233, 186, 83)"), "Paper Light Hyper Connect button does not stay gold: " + daiLightHyper.hyperBtnBg);
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Unity card (pick, Unity needs Git with Download Git, add package, Open project), Blender open-window card (add helper, Open Blender), Figma card (one way, import-once and start-each-session wording, Show the folder, no pairing word), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change), Desktop AI Apps (5 embedded 112x112 official logos, Hyper exclusion, Paper Light hint/button contrast)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });
