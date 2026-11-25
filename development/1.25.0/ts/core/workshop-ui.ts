@@ -129,12 +129,12 @@ const PlazCodeWorkshopUI = (() => {
 .ws-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .ws-pills{display:inline-flex;gap:4px;padding:4px;border-radius:11px;border:1px solid var(--pz-line,var(--stroke,#253650));background:rgb(0 0 0/.2)}
 .ws-pills button{padding:7px 14px;border-radius:8px;border:1px solid transparent;background:none;color:var(--ink-soft,#9aa8be);font-size:12.5px;font-weight:600;cursor:pointer}
-.ws-pills button[aria-pressed=true]{background:var(--text,#f5f8ff);color:#09111d}
+.ws-pills button[aria-pressed=true]{background:var(--text,#f5f8ff);color:var(--on-text,#09111d)}
 .ws-search{flex:1 1 240px;min-width:180px;padding:9px 13px;border-radius:11px;border:1px solid var(--pz-line,var(--stroke,#253650));background:rgb(0 0 0/.24);color:var(--text,#f5f8ff);font-size:13px}
 .ws-select{padding:8px 11px;border-radius:10px;border:1px solid var(--pz-line,var(--stroke,#253650));background:var(--pz-card,var(--surface,#0a1423));color:var(--text,#f5f8ff);font-size:12.5px}
 .ws-cats{display:flex;flex-wrap:wrap;gap:8px}
 .ws-chip{padding:6px 13px;border-radius:999px;border:1px solid var(--pz-line,var(--stroke,#253650));background:rgb(255 255 255/.03);color:var(--ink-soft,#9aa8be);font-size:12px;font-weight:600;cursor:pointer}
-.ws-chip[aria-pressed=true]{background:var(--text,#f5f8ff);border-color:var(--text,#f5f8ff);color:#09111d}
+.ws-chip[aria-pressed=true]{background:var(--text,#f5f8ff);border-color:var(--text,#f5f8ff);color:var(--on-text,#09111d)}
 .ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
 .ws-card{display:flex;flex-direction:column;border-radius:16px;border:1px solid var(--pz-line,var(--stroke,#253650));background:var(--pz-card,var(--surface,#0a1423));overflow:hidden;transition:border-color .18s ease,transform .18s ease}
 .ws-card:hover{border-color:rgb(var(--pz-rgb,255 146 38)/.55);transform:translateY(-2px)}

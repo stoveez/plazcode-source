@@ -98,7 +98,38 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
       assert.equal(await tab.evaluate(() => document.documentElement.dataset.desktopTheme), proId, "curated preset " + proId + " applies");
       if (proId === "paper-light") assert.equal(await tab.evaluate(() => document.documentElement.dataset.themeTone), "light", "paper-light sets light tone");
     }
+    // Auto-contrast ink on black/dark selected pills, chips, buttons & text selection
+    await tab.click('#nxThemes [data-desktop-palette="paper-light"]'); await tab.waitForTimeout(80);
+    const lightInk = await tab.evaluate(() => {
+      const s = getComputedStyle(document.documentElement);
+      const p = document.querySelector("#workshopWorkspace .ws-pills button[aria-pressed=true]");
+      const c = document.querySelector("#workshopWorkspace .ws-chip[aria-pressed=true]");
+      return { onText: s.getPropertyValue("--on-text").trim(), pillColor: p && getComputedStyle(p).color, chipColor: c && getComputedStyle(c).color };
+    });
+    assert.equal(lightInk.onText, "#ffffff", "paper-light sets white --on-text");
+    assert.equal(lightInk.pillColor, "rgb(255, 255, 255)", "paper-light Workshop selected pill uses white text");
+    assert.equal(lightInk.chipColor, "rgb(255, 255, 255)", "paper-light Workshop selected chip uses white text");
+    await tab.click("#nxCustomTile");
+    await tab.evaluate(() => {
+      const set = (id, v) => { const n = document.getElementById(id); n.value = v; n.dispatchEvent(new Event("input")); };
+      set("nxCustomColor", "#000000"); set("pzCanvas", "#f4f0e8"); set("pzSurface", "#eae4d8"); set("pzText", "#000000");
+    });
+    await tab.click("#nxCustomApply"); await tab.waitForTimeout(80);
+    const blackCustom = await tab.evaluate(() => {
+      const s = getComputedStyle(document.documentElement);
+      const p = document.querySelector("#workshopWorkspace .ws-pills button[aria-pressed=true]");
+      const c = document.querySelector("#workshopWorkspace .ws-chip[aria-pressed=true]");
+      return { onText: s.getPropertyValue("--on-text").trim(), onAccent: s.getPropertyValue("--on-accent").trim(), selInk: s.getPropertyValue("--sel-ink").trim(), pillColor: p && getComputedStyle(p).color, chipColor: c && getComputedStyle(c).color };
+    });
+    assert.deepEqual(blackCustom, { onText: "#ffffff", onAccent: "#ffffff", selInk: "#ffffff", pillColor: "rgb(255, 255, 255)", chipColor: "rgb(255, 255, 255)" }, "black text/accent auto-switches selected controls & selection text to white");
+    await tab.click("#nxCustomTile"); await tab.click("#nxCustomRemove"); await tab.waitForTimeout(80);
     await tab.click("#nxThemeReset"); await tab.waitForTimeout(150); assert.equal(await rgb(), was, "Restore default theme");
+    const darkInk = await tab.evaluate(() => {
+      const p = document.querySelector("#workshopWorkspace .ws-pills button[aria-pressed=true]");
+      const c = document.querySelector("#workshopWorkspace .ws-chip[aria-pressed=true]");
+      return { pillColor: p && getComputedStyle(p).color, chipColor: c && getComputedStyle(c).color };
+    });
+    assert.deepEqual(darkInk, { pillColor: "rgb(11, 13, 18)", chipColor: "rgb(11, 13, 18)" }, "default dark theme keeps dark ink on light selected pills");
     await changes("Pixel mode", card, ["border-top-left-radius"], async () => { await tab.click("#nxPixelMode"); await tab.waitForTimeout(80); });
     assert.equal(await tab.evaluate(() => document.documentElement.getAttribute("data-plazcode-pixel")), "1", "Pixel mode sets data-plazcode-pixel=1");
     await tab.click("#nxSignalRain"); await tab.waitForTimeout(120);
