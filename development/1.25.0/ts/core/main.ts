@@ -3411,7 +3411,7 @@ return result`;
     if(stalled)return stalled;
     if(A.helper&&A.helper.sent)helperBeat(call&&call.tool);
     let timer: any,drainTimer: any,settled=false,draining=false,drainReleased=false;
-    const operation: Promise<any>=runToolImpl(call).finally(()=>{clearTimeout(drainTimer);settled=true;if(draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);}});
+    const operation: Promise<any>=runToolImpl(call).finally(()=>{if(drainTimer!==undefined)clearTimeout(drainTimer);settled=true;if(draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);}});
     const stop=new Promise<string>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;drainTimer=setTimeout(()=>{if(!settled&&draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);if(typeof diag==="function")diag("hang.toolSettleTimeout",{via:"runTool"});}},15000);}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
     // Item 9 hang recovery, case 4: say so (once) when a command has had no answer for 2 minutes. Nothing is cancelled or
     // failed here: some commands legitimately run for minutes, and a command that may still finish is never replayed.
@@ -5269,7 +5269,7 @@ return result`;
   async function agentLoop(base: any, recoveryAttempt = 0) {
     if (A.running || A.starting || A.stopping || A.enhancing || A.pendingToolSettles || (A.budgetResume && A.budgetResume.chat===P.conversationKey())) return;
     A.running = true;
-    syncTabKeepAwake(true);
+    if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(true);
     A.budgetResume=null;A.visualChecks=0;
     const taskBudget=A.taskBudget=PlazCodeReliability.createBudget({calls:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsToolBudget:0,minutes:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsTaskMinutes:0});
     if (!activity.active()) {
@@ -5877,8 +5877,8 @@ return result`;
           };
 
           // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).
-          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish remaining requested work, then answer briefly.' : '\nQuick request: answer briefly; no checklist or unrelated work.') : '';
-          const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Re-read the error, inspect state, and change approach.)" : "";
+          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish only any remaining work already requested, then answer briefly.' : '\nThis is a quick user request: answer briefly; no checklist or unrelated work.') : '';
+          const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Re-read the error, inspect state, and try a different approach.)" : "";
           const reserve = quickNote.length + failNote.length + stateTag.length + 80;
           let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
           if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, "combined_feedback");
@@ -5963,7 +5963,7 @@ return result`;
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
-      syncTabKeepAwake(false);
+      if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(false);
       A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.
       A.planApproved = false; // an approved plan covers one task
       if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.resetRun) {
@@ -6184,7 +6184,7 @@ return result`;
     let shots: any[];try{({shots}=await Promise.race([operation,stopped]));}finally{clearInterval(timer);}if(A.stop)return feedback;
     const shot=shots.find((x: any)=>x&&typeof x.data==="string"&&x.data.length<=2800000);if(!shot)return feedback+"\nVisual check unavailable: no bounded Studio image was captured. Verify the change in Studio.";
     const key=PlazCodeReliability.fingerprint(shot);if(key===A.visualFingerprint)return feedback;A.visualFingerprint=key;A.pendingImages=[shot];
-    return feedback+"\nStudio screenshot attached for visual review: check scale, orientation, colors, VFX, and UI layout; fix any mismatch before finishing.";
+    return feedback+"\nStudio screenshot attached for visual review: check scale, orientation, colors, VFX, and UI layout; if anything looks wrong, fix it now without asking the user.";
   }
   let stopMode = "immediate";
   chrome.storage.local.get("rsStopMode", value => { if (chrome.runtime?.lastError) return; stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
@@ -6202,7 +6202,7 @@ return result`;
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
     }
     A.stop = true;
-    syncTabKeepAwake(false);
+    if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(false);
     A.approveAll = null; A.planApproved = false;
     if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.resetRun) {
       PlazCodePlanMode.resetRun();
@@ -6290,7 +6290,7 @@ return result`;
       let engine = "roblox";
       try { if (typeof window.__rsEngine === "function") engine = window.__rsEngine(); } catch {}
       const memoryContext = personalMemoryContext();
-      const planExtra = planOnNow() && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.promptExtra ? PlazCodePlanMode.promptExtra({ engine }) : "";
+      const planExtra = typeof planOnNow === "function" && planOnNow() && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.promptExtra ? PlazCodePlanMode.promptExtra({ engine }) : "";
       const text = RS.buildSystemPrompt({
         siteName: P.displayName,
         providerId: P.id,
@@ -6558,7 +6558,7 @@ return result`;
     A.bootBaselineId = P.lastAssistantId ?  P.lastAssistantId() : null;
     A.maxTurnId = null;
     A.starting = true;
-    syncTabKeepAwake(true);
+    if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(true);
     A._startingSince = Date.now(); // stale-bootstrap failsafe anchor (meter loop)
     const myGen = ++A.startGen;   // identity of THIS bootstrap
     A.startupOwner = myGen; // keep cancelled sends isolated until their promise settles
@@ -6969,7 +6969,7 @@ return result`;
         }
         A.starting = false;
         A.startingKey = null;
-        syncTabKeepAwake();
+        if (typeof syncTabKeepAwake === "function") syncTabKeepAwake();
         try { ui.setStarting(false); } catch {}
         try { ui.inputCover(false); } catch {}
         try { P.setInputLock(false); } catch {}
@@ -13036,7 +13036,7 @@ function renderCards(panel: any) {
           if(request.chat!==P.id+'|'+P.conversationKey())return {ok:false,error:"Selected chat changed. No Studio command was sent."};
           let passes: any;try{passes=PlazCodeCreator.batches(request.blueprint,!!request.welded);}catch(error: any){return {ok:false,error:error.message};}
           const chat=P.conversationKey(),engine=activeEngine(),started=Date.now();let done=0;const waypoint=async (label: any)=>{try{await runTool({tool:"execute_luau",arguments:{code:'local h=game:GetService("ChangeHistoryService") pcall(function() h:SetEnabled(true) end) h:SetWaypoint('+JSON.stringify(String(label))+') return "ok"'}});}catch{}};
-          A.stop=false;A.stopping=false;A.running=true;syncTabKeepAwake(true);inputCover(true);
+          A.stop=false;A.stopping=false;A.running=true;if(typeof syncTabKeepAwake==="function")syncTabKeepAwake(true);inputCover(true);
           try{
             await waypoint('Before PlazCode insert');
             for(const pass of passes){
@@ -13074,7 +13074,7 @@ h:SetWaypoint("PlazCode insert")
 return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code}});if(/^ERROR/.test(placed))throw Error(placed);}
             return {ok:true,message:`Inserted ${request.blueprint.nodes.length} nodes as one "${request.blueprint.root_name||'PlazCode build'}" ${request.blueprint.mode==='ui'?'ScreenGui in StarterGui':'Model in front of the camera'}. Ctrl+Z undoes it.`};
           }catch(error: any){await waypoint('PlazCode partial insert');return {ok:false,error:`Partial insertion (${done}/${passes.length} passes): ${error.message||error}`};}
-          finally{A.running=false;syncTabKeepAwake(false);inputCover(false);}
+          finally{A.running=false;if(typeof syncTabKeepAwake==="function")syncTabKeepAwake(false);inputCover(false);}
         })();
         if(requestId){coworkAccepted.set(requestId,operation);if(coworkAccepted.size>100)coworkAccepted.delete(coworkAccepted.keys().next().value);}return operation;
       }
@@ -13501,7 +13501,7 @@ rsInterval(() => {
           A.starting = false;
           A.startingKey = null;
           A._startingSince = 0;
-          syncTabKeepAwake();
+          if (typeof syncTabKeepAwake === "function") syncTabKeepAwake();
           try { ui.setStarting(false); } catch {}
           try { ui.inputCover(false); } catch {}
           try { P.setInputLock(false); } catch {}

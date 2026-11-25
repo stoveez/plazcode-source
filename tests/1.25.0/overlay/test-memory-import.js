@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const source=fs.readFileSync(__dirname+'/core/main.js','utf8');
-const action='const coworkAccepted=new Map();'+source.slice(source.indexOf('    function desktopAgentAction('),source.indexOf('    return { refreshMenu:'));
+const action='const coworkAccepted=new Map();'+source.slice(source.indexOf('    function desktopAgentAction('),source.indexOf('    return { refreshPlan:',source.indexOf('    function desktopAgentAction(')));
 let submitted='',saved=false;
 const ctx={setInterval(){},rsInterval(){},A:{},P:{conversationKey:()=>'/c/known',lastAssistant:()=>null,setInputLock(){}},desktopAgentState:()=>({canEnhance:true}),ui:{showStop(){},inputCover(){},toast(){}},refreshPersonalMemory:async()=>{saved=true},submitAndGetBase:async t=>{submitted=t;return 0},waitForResponse:async()=>({kind:'text'}),rememberExecuted(){}};
 vm.createContext(ctx);vm.runInContext(action+'this.action=desktopAgentAction',ctx);

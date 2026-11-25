@@ -21,16 +21,18 @@ const PlazCodeSkillsUI=(()=>{
  const starterNames={'create-roblox-game':'Create a Roblox game','roblox-build-orchestrator':'Plan and coordinate a game build','roblox-code':'Roblox scripting','roblox-ui':'Roblox interfaces','roblox-map':'Maps and arenas','roblox-3d-model':'3D models','roblox-texture-gen':'Textures and skins','roblox-vfx':'Visual effects','roblox-sfx':'Sound effects','roblox-animation':'Character animations','roblox-skills-setup':'Set up Roblox creation tools'};
  function displayName(skill){const name=String(skill?.title||'').trim();const slug=String(skill?.id||'').replace('starter-syphodev-','');if(starter(skill)&&starterNames[slug])return starterNames[slug];if(name&&!/^(?:skill|untitled|new skill)$/i.test(name))return name;return String(skill?.description||skill?.steps?.[0]||'Reusable project method').split(/[\n.!?]/)[0].trim().slice(0,100)||'Reusable project method';}
 
- const SHARE_PREFIX='plazcode-skills-v1:',PACK_LIMIT=50;
+ const SHARE_PREFIX='plazskill:',LEGACY_SHARE_PREFIX='plazcode-skills-v1:',PACK_LIMIT=25;
  function toBase64url(text){const bytes=new TextEncoder().encode(text);let bin='';for(let i=0;i<bytes.length;i+=4096)bin+=String.fromCharCode(...bytes.slice(i,i+4096));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
  function fromBase64url(value){const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((value.length+3)%4));const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new TextDecoder().decode(bytes);}
- function publicSkill(skill){return {title:displayName(skill),description:skill.description||'',domain:skill.domain||'all',scope:'',steps:skill.steps||[],pitfalls:skill.pitfalls||[],verification:skill.verification||[]};}
+ function publicSkill(skill){return {title:displayName(skill),description:skill.description||'',domain:skill.domain||'all',steps:skill.steps||[],pitfalls:skill.pitfalls||[],verification:skill.verification||[]};}
  function packSkills(skills,name){if(!skills.length)throw Error('Select at least one skill.');if(skills.length>PACK_LIMIT)throw Error('Share at most '+PACK_LIMIT+' skills at a time.');const pack={format:'plazcode-skill-pack',version:1,skills:skills.map(publicSkill)};if(name)pack.name=name.slice(0,80);return pack;}
  function shareCode(skills){const code=SHARE_PREFIX+toBase64url(JSON.stringify(packSkills(skills)));if(code.length>250000)throw Error('That pack is too large for a share code. Download a pack file instead.');return code;}
  function isShareLink(text){return /^https:\/\/(?:github\.com|raw\.githubusercontent\.com|gist\.github\.com|gist\.githubusercontent\.com|pastebin\.com|cdn\.discordapp\.com|media\.discordapp\.net)\//i.test(String(text||'').trim());}
  function importMany(text,title='',source=''){
   let value=String(text||'').replace(/^\uFEFF/,'').trim();
-  if(value.toLowerCase().startsWith(SHARE_PREFIX)){try{value=fromBase64url(value.slice(SHARE_PREFIX.length));}catch{throw Error('That share code is damaged. Copy the whole code and try again.');}}
+  const lower=value.toLowerCase();
+  const matchedPrefix=lower.startsWith(SHARE_PREFIX)?SHARE_PREFIX:(lower.startsWith(LEGACY_SHARE_PREFIX)?LEGACY_SHARE_PREFIX:'');
+  if(matchedPrefix){try{value=fromBase64url(value.slice(matchedPrefix.length));}catch{throw Error('That share code is damaged. Copy the whole code and try again.');}}
   if(new TextEncoder().encode(value).length>1024*1024)throw Error('Imports are limited to 1 MB.');
   let list=null;
   if(/^[{\[]/.test(value)){let parsed;try{parsed=JSON.parse(value);}catch{throw Error('Invalid JSON. Export one skill as JSON, then import that file.');}
@@ -239,13 +241,13 @@ const PlazCodeSkillsUI=(()=>{
 .wb-lib-search input{width:100%;padding:8px 11px;border-radius:10px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:rgb(0 0 0/.24);color:var(--text,#f5f8ff);font-size:12.5px}
 .wb-lib-list{flex:1 1 auto;min-height:240px;max-height:460px;overflow-y:auto;padding:4px 10px 10px;display:flex;flex-direction:column;gap:7px}
 [data-sk-card]{position:relative}
-.wb-card-btn{display:block;width:100%;text-align:left;padding:10px 36px 10px 12px;border-radius:12px;border:1px solid var(--pz-line,var(--stroke,#22324a));background:rgb(255 255 255/.02);color:var(--text,#f5f8ff);cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.wb-card-btn{display:block;width:100%;text-align:left;padding:10px 64px 10px 12px;border-radius:12px;border:1px solid var(--pz-line,var(--stroke,#22324a));background:rgb(255 255 255/.02);color:var(--text,#f5f8ff);cursor:pointer;transition:border-color .15s ease,background .15s ease}
 .wb-card-btn:hover{border-color:rgb(var(--pz-rgb,255 146 38)/.55);background:rgb(255 255 255/.04)}
 .wb-card-btn[aria-pressed=true]{border-color:var(--orange,#ff9226);background:rgb(var(--pz-rgb,255 146 38)/.11);box-shadow:inset 3px 0 0 var(--orange,#ff9226)}
 .wb-card-title{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wb-card-meta{display:block;margin-top:3px;font-size:11px;color:var(--ink-soft,#94a3b8)}
 .wb-card-slug{display:block;margin-top:2px;font:500 10.5px/1.2 var(--pz-mono,monospace);color:var(--muted,#6b7f9d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sk-actions{position:absolute;top:9px;right:8px;display:flex;gap:4px}
+.sk-actions{position:absolute;top:9px;right:8px;display:flex;gap:8px}
 .sk-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:7px;border:1px solid #ffffff1c;background:#ffffff08;color:inherit;opacity:.75;cursor:pointer}
 .sk-icon:hover{opacity:1;background:#ffffff18}
 .sk-icon[data-sk-favorite][aria-pressed=true]{color:#ffc94d;opacity:1;border-color:#ffc94d66}
@@ -334,7 +336,10 @@ const PlazCodeSkillsUI=(()=>{
             <button type="button" class="softbtn" data-sk="open-folder">Open Folder</button>
             <button type="button" class="softbtn" data-sk="refresh-lib">Refresh</button>
           </div>
-          <button type="button" class="dangerbtn" data-sk="delete" hidden>Delete Skill</button>
+          <div class="wb-lib-foot-row">
+            <button type="button" class="softbtn" data-sk="delete-all">Delete all</button>
+            <button type="button" class="dangerbtn" data-sk="delete" hidden>Delete Skill</button>
+          </div>
         </div>
       </section>
 
@@ -501,7 +506,7 @@ const PlazCodeSkillsUI=(()=>{
   const status=(message)=>{find('status').textContent=message||'';};
   let records=[],metaMap={},deletedRecords=[],trashRevision=0,skillsDir='skill-files/';
   let current=null,wbFiles=[{path:'SKILL.md',text:''}],openTabs=['SKILL.md'],activeFile='SKILL.md';
-  let readOnly=false,dirty=false,editorTouched=false,busy=false,syncing=false,activeTab='active',listGeneration=0,confirmDeleteAll=false,pendingPurge=null;
+  let readOnly=false,dirty=false,editorTouched=false,busy=false,syncing=false,activeTab='active',listGeneration=0,confirmDeleteAll=false,confirmActiveDeleteAll=false,pendingPurge=null,pendingRemove=null;
 
   function renderTelemetry(){
    const stats=workbenchStats(wbFiles,activeFile);
@@ -622,7 +627,7 @@ const PlazCodeSkillsUI=(()=>{
   function renderList(){
    const query=find('search').value.trim().toLowerCase();
    const box=find('list');box.replaceChildren();
-   const list=records.filter(skill=>!hiddenBuiltin(skill)&&(!query||displayName(skill).toLowerCase().includes(query)||String(skill.description||'').toLowerCase().includes(query)||String(skill.id||'').toLowerCase().includes(query)));
+   const list=records.filter(skill=>!hiddenBuiltin(skill)&&(!query||displayName(skill).toLowerCase().includes(query)||String(skill.description||'').toLowerCase().includes(query)||String(skill.id||'').toLowerCase().includes(query))).sort((a,b)=>(b.favorite?1:0)-(a.favorite?1:0));
    find('total-count').textContent=String(records.filter(s=>!hiddenBuiltin(s)).length);
    if(!list.length){
     const empty=document.createElement('p');empty.style.cssText='padding:12px;font-size:12px;color:var(--ink-soft,#9aa8be);margin:0';
@@ -637,18 +642,33 @@ const PlazCodeSkillsUI=(()=>{
     const meta=metaMap[skill.id];
     const fileCount=meta?.file_count??(skill.files?.length||1);
     const bytes=meta?.total_bytes??JSON.stringify(skill.steps||[]).length;
-    const tag=skill.files?.length||skill.id?.startsWith('folder-')?' · From a folder':(skill.community?' · Community':(starter(skill)?' · Built-in':''));
+    const tag=(skill.files?.length||skill.id?.startsWith('folder-')?' · From a folder':(skill.community?' · Community':(starter(skill)?' · Built-in':'')))+(skill.favorite?' · Favourite':'');
     const metaEl=document.createElement('span');metaEl.className='wb-card-meta';
     metaEl.textContent=`${fileCount} file${fileCount===1?'':'s'} · ${formatBytes(bytes)}${tag}`;
     const slugEl=document.createElement('span');slugEl.className='wb-card-slug';slugEl.textContent=skill.id;
     btn.append(titleEl,metaEl,slugEl);
-    btn.onclick=()=>run(()=>loadWorkbenchFor(skill));
+    btn.onclick=run(()=>loadWorkbenchFor(skill));
     const actions=document.createElement('div');actions.className='sk-actions';
     const fav=document.createElement('button');fav.type='button';fav.className='sk-icon';fav.setAttribute('data-sk-favorite','');
     fav.setAttribute('aria-pressed',String(Boolean(skill.favorite)));fav.title=skill.favorite?'Unfavourite':'Favourite';
     fav.innerHTML=skill.favorite?icons.star:icons.starOff;
     fav.onclick=run(async()=>{const res=await request({action:'favorite',id:skill.id,favorite:!skill.favorite});const i=records.findIndex(s=>s.id===skill.id);if(i>=0&&res.skill)records[i]=res.skill;if(current?.id===skill.id)current=res.skill;renderList();status(res.skill?.favorite?'Starred.':'Removed star.');});
     actions.append(fav);
+    if(!starter(skill)){
+     const rem=document.createElement('button');rem.type='button';rem.className='sk-icon';rem.setAttribute('data-sk-remove',skill.id);
+     rem.title='Delete skill';
+     if(pendingRemove===skill.id){rem.textContent='Delete?';rem.style.width='auto';rem.style.padding='0 6px';}
+     else rem.innerHTML=icons.trash;
+     rem.onclick=run(async()=>{
+      if(pendingRemove!==skill.id){pendingRemove=skill.id;renderList();status('Click Delete? again to move this skill to Deleted Skills.');return;}
+      pendingRemove=null;
+      await request({action:'delete',id:skill.id,revision:skill.revision||1});
+      if(current?.id===skill.id)current=null;
+      await refresh(true);
+      status('Deleted '+displayName(skill)+'.');
+     });
+     actions.append(rem);
+    }
     row.append(btn,actions);box.appendChild(row);
    }
   }
@@ -659,13 +679,13 @@ const PlazCodeSkillsUI=(()=>{
    const list=deletedRecords.filter(s=>!query||displayName(s).toLowerCase().includes(query)||String(s.id||'').toLowerCase().includes(query));
    if(!list.length){const p=document.createElement('p');p.style.color='var(--ink-soft,#9aa8be)';p.textContent=deletedRecords.length?'No matching deleted skills.':'No deleted skills.';box.appendChild(p);return;}
    for(const skill of list){
-    const card=document.createElement('div');card.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid var(--pz-line,#253650);border-radius:12px';
+    const card=document.createElement('div');card.setAttribute('data-sk-deleted',skill.id);card.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid var(--pz-line,#253650);border-radius:12px';
     const info=document.createElement('div');const b=document.createElement('strong');b.textContent=displayName(skill);const sm=document.createElement('div');sm.style.cssText='font-size:11.5px;color:var(--ink-soft,#9aa8be)';sm.textContent=skill.id;info.append(b,sm);
     const btns=document.createElement('div');btns.style.cssText='display:flex;gap:8px';
     const resBtn=document.createElement('button');resBtn.type='button';resBtn.className='softbtn';resBtn.setAttribute('data-sk-restore',skill.id);resBtn.textContent='Restore';
     resBtn.onclick=run(async()=>{await request({action:'restore',id:skill.id,revision:skill.revision});await refreshDeleted();await refresh(true);status('Restored.');});
-    const purgeBtn=document.createElement('button');purgeBtn.type='button';purgeBtn.className='dangerbtn';purgeBtn.textContent=pendingPurge===skill.id?'Confirm permanent delete':'Delete permanently';
-    purgeBtn.onclick=run(async()=>{if(pendingPurge!==skill.id){pendingPurge=skill.id;renderDeleted();return;}pendingPurge=null;await request({action:'purge',id:skill.id,revision:skill.revision,confirm:true});await refreshDeleted();status('Permanently deleted.');});
+    const purgeBtn=document.createElement('button');purgeBtn.type='button';purgeBtn.className='dangerbtn';purgeBtn.setAttribute('data-sk-purge',skill.id);purgeBtn.textContent=pendingPurge===skill.id?'Confirm permanent delete':'Delete permanently';
+    purgeBtn.onclick=run(async()=>{if(pendingPurge!==skill.id){pendingPurge=skill.id;renderDeleted();status('Click again to permanently delete — this cannot be restored.');return;}pendingPurge=null;await request({action:'purge',id:skill.id,revision:skill.revision,confirm:true});await refreshDeleted();status('Permanently deleted.');});
     btns.append(resBtn,purgeBtn);card.append(info,btns);box.appendChild(card);
    }
   }
@@ -694,14 +714,17 @@ const PlazCodeSkillsUI=(()=>{
   }
 
   async function saveActiveEditor(){
-   syncCurrentBuffer();
+   if(editorTouched)syncCurrentBuffer();
    if(readOnly)throw Error('Starter skills are read-only. Click + New Skill to create an editable copy.');
    if(!current){
     const fm=parseFrontmatter(find('editor-text').value);
-    const titleVal=fm.name||find('title').value.trim()||'New skill';
-    const descVal=fm.description||find('description').value.trim()||'Reusable method.';
-    const rawSteps=fm.body.trim()||find('steps').value.trim()||descVal;
-    const skillObj={id:'skill-'+crypto.randomUUID(),title:titleVal,description:descVal,domain:fm.domain||'all',scope:find('scope').value.trim(),steps:instructionSteps(rawSteps),pitfalls:[],verification:[],confirmed:false,enabled:true};
+    const classicTitle=find('title').value.trim();
+    const classicDesc=find('description').value.trim();
+    const classicSteps=find('steps').value.trim();
+    const descVal=editorTouched?(fm.description||classicDesc||'Reusable method.'):(classicDesc||'Reusable method.');
+    const rawSteps=editorTouched?(fm.body.trim()||classicSteps||descVal):(classicSteps||descVal);
+    const titleVal=editorTouched?(fm.name||classicTitle||'New skill'):(classicTitle||displayName({title:classicTitle,description:classicDesc,steps:rawSteps.split('\n').map(s=>s.trim()).filter(Boolean)}));
+    const skillObj={id:'skill-'+crypto.randomUUID(),title:titleVal,description:descVal,domain:(editorTouched?fm.domain:'')||find('domain').value||'all',scope:find('scope').value.trim(),steps:instructionSteps(rawSteps),pitfalls:[],verification:[],confirmed:find('confirmed').checked,enabled:true};
     const res=await request({action:'save',skill:skillObj,revision:0});
     current=res.skill;
     if(editorTouched&&current){
@@ -738,6 +761,16 @@ const PlazCodeSkillsUI=(()=>{
   find('editor-text').addEventListener('input',()=>{dirty=true;editorTouched=true;syncCurrentBuffer();renderTelemetry();renderValidation(null);});
   find('editor-text').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();find('save-file').click();}});
   find('delete').onclick=run(async()=>{if(!current)return;const id=current.id,rev=current.revision||1;await request({action:'delete',id,revision:rev});current=null;await refresh(true);status('Moved to Deleted Skills.');});
+  find('delete-all').onclick=run(async()=>{
+   const removable=records.filter(s=>!keptByDeleteAll(s));
+   if(!removable.length){confirmActiveDeleteAll=false;find('delete-all').textContent='Delete all';status('Nothing to delete. Built-in skills, favourites, and shared workflows stay.');return;}
+   if(!confirmActiveDeleteAll){confirmActiveDeleteAll=true;find('delete-all').textContent=`Confirm: delete ${removable.length} skill${removable.length===1?'':'s'}`;status('Click again to move unstarred local skills to Deleted Skills.');return;}
+   confirmActiveDeleteAll=false;find('delete-all').textContent='Delete all';
+   const res=await request({action:'delete_all'});
+   if(current&&!keptByDeleteAll(current))current=null;
+   await refresh(true);
+   status(`Deleted ${res?.removed??removable.length} skill${(res?.removed??removable.length)===1?'':'s'}. Kept ${res?.kept??records.length}.`);
+  });
   find('purge-all').onclick=run(async()=>{if(!confirmDeleteAll){confirmDeleteAll=true;find('purge-all').textContent='Confirm permanent delete all';return;}confirmDeleteAll=false;find('purge-all').textContent='Delete all permanently';await request({action:'purge_all',trash_revision:trashRevision,confirm:true});await refreshDeleted();status('Permanently deleted all.');});
   find('recheck').onclick=run(async()=>{syncCurrentBuffer();try{const v=await request({action:'workbench_validate',id:current?.id||'',files:wbFiles});renderValidation(v);status(v.valid?'Validation passed.':'Validation found issues.');}catch{const v=validateSkillLocal(wbFiles);renderValidation(v);status(v.valid?'Validation passed.':'Validation found issues.');}});
   find('preview-agent').onclick=run(async()=>{
@@ -800,7 +833,7 @@ const PlazCodeSkillsUI=(()=>{
   find('import').onclick=run(async()=>{
    let text=find('import-text').value.trim(),source='';
    if(isShareLink(text)){status('Fetching the link…');const fetched=await request({action:'fetch_link',url:text});if(!fetched?.ok)throw Error(fetched?.error||'Could not read that link.');source=text;text=fetched.text;}
-   else if(text.toLowerCase().startsWith(SHARE_PREFIX))source='a share code';
+   else if(text.toLowerCase().startsWith(SHARE_PREFIX)||text.toLowerCase().startsWith(LEGACY_SHARE_PREFIX))source='a share code';
    const skills=importMany(text,find('import-title').value.trim(),source);let last=null;
    for(const item of skills){const res=await request({action:'save',skill:{...item,enabled:true,id:'skill-'+crypto.randomUUID()},revision:0});last=res.skill;}
    await refresh(true);if(last)await loadWorkbenchFor(last);find('import-text').value='';find('import-file').value='';find('import-panel').open=false;

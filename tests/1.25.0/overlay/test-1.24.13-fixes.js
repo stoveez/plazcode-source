@@ -11,7 +11,8 @@ assert.deepEqual(A.requestSteps(`1. Your first task will be fixing a weapon
 assert.deepEqual(A.requestSteps('Please build a shop UI and then add a coin counter. Also fix the lag in the lobby.'),['Build a shop UI','Add a coin counter','Fix the lag in the lobby']);
 const activity=Activity.create();activity.sync(true,'chat',1);
 activity.task('1. Your first task will be fixing a weapon\n2. It works fine as a weapon but the model is invisible','k');
-assert.equal(activity.active().taskLabel,'Planning project work','the AI names the task, the raw request is never the title');
+assert.equal(activity.active().taskLabel,'Fix a weapon & Fix invisible model','the task title is a summarized goal, never the raw prompt sentence');
+assert(!/\bYour first task will\b/i.test(activity.active().taskLabel));
 assert(!activity.active().plan.items.some(item=>/\bI want you\b|first task will/i.test(item.label)));
 // AgentScript card: the local server reports its real tool count.
 const bg=read('background.js');
