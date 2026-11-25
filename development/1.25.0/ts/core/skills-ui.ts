@@ -229,17 +229,18 @@ const PlazCodeSkillsUI=(()=>{
 .wb-tabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--pz-line,var(--stroke,#2b3952));border-radius:12px;background:rgb(0 0 0/.2)}
 .wb-tabs button{padding:7px 14px;border:1px solid transparent;border-radius:9px;background:none;color:var(--ink-soft,#9aa8be);font-size:12.5px;font-weight:600;cursor:pointer}
 .wb-tabs button[aria-selected=true]{background:rgb(var(--pz-rgb,255 146 38)/.16);border-color:rgb(var(--pz-rgb,255 146 38)/.42);color:var(--text,#f5f8ff)}
-.wb-grid{display:grid;grid-template-columns:270px minmax(0,1fr) 290px;gap:14px;align-items:stretch;min-height:600px}
-@media(max-width:1180px){.wb-grid{grid-template-columns:240px minmax(0,1fr)}.wb-right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:14px}}
-@media(max-width:820px){.wb-grid{grid-template-columns:1fr}.wb-right{grid-template-columns:1fr}}
+.wb-grid{display:grid;grid-template-columns:264px minmax(0,1fr);gap:14px;align-items:stretch;min-height:520px}
+.wb-right{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:14px;align-items:start}
+@media(max-width:860px){.wb-grid{grid-template-columns:1fr}.wb-right{grid-template-columns:1fr}}
 .wb-pane{display:flex;flex-direction:column;min-width:0;border:1px solid var(--pz-line,var(--stroke,#253650));border-radius:16px;background:var(--pz-card,var(--surface,#0a1423));overflow:hidden}
 .wb-pane-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid var(--pz-line,var(--stroke,#1e2e46))}
 .wb-eyebrow{font:700 10.5px/1 var(--pz-mono,monospace);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft,#94a3b8)}
 .wb-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:7px;border:1px solid var(--pz-line,var(--stroke,#2b3952));font:700 11px/1 var(--pz-mono,monospace);color:var(--text,#f5f8ff);background:rgb(255 255 255/.04)}
 .wb-lib-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px 8px}
+.wb-shell .wb-lib-actions button,.wb-shell .wb-lib-foot-row button{padding:9px 10px!important;font-size:12.5px!important;white-space:nowrap}
 .wb-lib-search{padding:0 14px 10px}
 .wb-lib-search input{width:100%;padding:8px 11px;border-radius:10px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:rgb(0 0 0/.24);color:var(--text,#f5f8ff);font-size:12.5px}
-.wb-lib-list{flex:1 1 auto;min-height:240px;max-height:460px;overflow-y:auto;padding:4px 10px 10px;display:flex;flex-direction:column;gap:7px}
+.wb-lib-list{flex:1 1 auto;min-height:240px;max-height:440px;overflow-y:auto;padding:4px 10px 10px;display:flex;flex-direction:column;gap:7px}
 [data-sk-card]{position:relative}
 .wb-card-btn{display:block;width:100%;text-align:left;padding:10px 64px 10px 12px;border-radius:12px;border:1px solid var(--pz-line,var(--stroke,#22324a));background:rgb(255 255 255/.02);color:var(--text,#f5f8ff);cursor:pointer;transition:border-color .15s ease,background .15s ease}
 .wb-card-btn:hover{border-color:rgb(var(--pz-rgb,255 146 38)/.55);background:rgb(255 255 255/.04)}
@@ -262,7 +263,7 @@ const PlazCodeSkillsUI=(()=>{
 .wb-editor-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid var(--pz-line,var(--stroke,#1e2e46))}
 .wb-editor-path{font:600 12px/1.3 var(--pz-mono,monospace);color:var(--ink-soft,#aebbd0)}
 .wb-editor-btns{display:flex;align-items:center;gap:8px}
-.wb-editor-area{flex:1 1 auto;min-height:360px;width:100%;padding:16px;border:0;outline:none;resize:vertical;background:rgb(0 0 0/.22);color:var(--text,#f5f8ff);font:13px/1.65 var(--pz-mono,"Cascadia Code",Consolas,monospace);box-sizing:border-box}
+.wb-editor-area{flex:1 1 auto;min-height:400px;width:100%;padding:16px;border:0;outline:none;resize:vertical;background:rgb(0 0 0/.22);color:var(--text,#f5f8ff);font:13px/1.65 var(--pz-mono,"Cascadia Code",Consolas,monospace);box-sizing:border-box}
 .wb-telemetry{padding:12px 16px;border-top:1px solid var(--pz-line,var(--stroke,#1e2e46));background:rgb(0 0 0/.16);display:grid;gap:10px}
 .wb-tel-row{display:flex;flex-wrap:wrap;gap:22px;align-items:baseline}
 .wb-tel-stat small{display:block;font:700 10px/1 var(--pz-mono,monospace);letter-spacing:.1em;color:var(--muted,#7388a6);text-transform:uppercase}
@@ -271,11 +272,18 @@ const PlazCodeSkillsUI=(()=>{
 .wb-meter-bars{display:grid;grid-template-columns:repeat(auto-fit,minmax(28px,1fr));gap:5px;max-width:260px}
 .wb-meter-seg{height:5px;border-radius:999px;background:rgb(255 255 255/.12)}
 .wb-meter-seg.on{background:var(--orange,#ff9226);box-shadow:0 0 10px rgb(var(--pz-rgb,255 146 38)/.45)}
-.wb-right{display:flex;flex-direction:column;gap:14px}
+.wb-health-chip{appearance:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid rgb(49 224 164/.38);background:rgb(49 224 164/.1);color:var(--green,#31e0a4);font:600 11.5px/1.2 var(--nx-font,inherit);cursor:pointer}
+.wb-health-chip.wb-warn{border-color:rgb(255 179 63/.45);background:rgb(255 179 63/.1);color:var(--amber,#ffb33f)}
+.wb-health-chip.wb-bad{border-color:rgb(255 105 108/.45);background:rgb(255 105 108/.1);color:var(--red,#ff696c)}
 .wb-side-card{border:1px solid var(--pz-line,var(--stroke,#253650));border-radius:16px;background:var(--pz-card,var(--surface,#0a1423));padding:16px;display:grid;gap:12px}
 .wb-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .wb-side-head h3{margin:0;font-size:17px;font-weight:700}
-.wb-check-row{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.4}
+.wb-side-intro{margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-soft,#9aa8be)}
+.wb-check-list{display:grid;gap:7px}
+.wb-check-row{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45}
+.wb-guide{border:1px solid var(--pz-line,var(--stroke,#253650));border-radius:10px;padding:8px 11px;background:rgb(0 0 0/.14)}
+.wb-guide>summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-soft,#aebbd0)}
+.wb-guide ul{margin:8px 0 2px;padding-left:18px;display:grid;gap:5px;font-size:12px;line-height:1.45;color:var(--ink-soft,#9aa8be)}
 .wb-ok{color:var(--green,#31e0a4)}.wb-bad{color:var(--red,#ff696c)}.wb-warn{color:var(--amber,#ffb33f)}
 .wb-ref-list{margin:0;padding-left:16px;font:11.5px/1.5 var(--pz-mono,monospace);color:var(--amber,#ffb33f)}
 .wb-drop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:rgb(5 11 20/.8);backdrop-filter:blur(6px)}
@@ -350,7 +358,10 @@ const PlazCodeSkillsUI=(()=>{
       <section class="wb-pane" aria-label="Editor">
         <div class="wb-file-tabs" data-sk="file-tabs"></div>
         <div class="wb-editor-bar">
-          <span class="wb-editor-path" data-sk="editor-path" dir="ltr" data-i18n-user-content>SKILL.md</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+            <span class="wb-editor-path" data-sk="editor-path" dir="ltr" data-i18n-user-content>SKILL.md</span>
+            <button type="button" class="wb-health-chip wb-ok" data-sk="val-chip" title="Jump to Skill Check">✓ Skill ready</button>
+          </div>
           <div class="wb-editor-btns">
             <button type="button" class="softbtn" data-sk="add-files">+ Add Files</button>
             <button type="button" class="accentbtn" data-sk="save-file">Save (Ctrl+S)</button>
@@ -373,30 +384,41 @@ const PlazCodeSkillsUI=(()=>{
         </div>
       </section>
 
-      <aside class="wb-right" aria-label="Validation and Preview">
-        <div class="wb-side-card">
+      <aside class="wb-right" aria-label="Skill Check and Preview">
+        <div class="wb-side-card" data-sk="val-card">
           <div class="wb-side-head">
-            <h3>Validation</h3>
+            <h3>Skill Check</h3>
             <button type="button" class="softbtn" data-sk="recheck">Re-check</button>
           </div>
-          <div data-sk="val-name" class="wb-check-row">✓ name in frontmatter</div>
-          <div data-sk="val-desc" class="wb-check-row">✓ description in frontmatter</div>
+          <p class="wb-side-intro">Automatic check to make sure PlazCode’s AI can understand and safely use this skill.</p>
+          <div class="wb-check-list">
+            <div data-sk="val-name" class="wb-check-row">✓ Skill name set</div>
+            <div data-sk="val-desc" class="wb-check-row">✓ Description set</div>
+          </div>
           <div>
-            <div class="wb-eyebrow" style="margin-bottom:5px">File References</div>
-            <div data-sk="val-refs" class="wb-check-row wb-ok">All references resolve.</div>
+            <div class="wb-eyebrow" style="margin-bottom:5px">Extra Files</div>
+            <div data-sk="val-refs" class="wb-check-row wb-ok">✓ All linked files found</div>
             <ul class="wb-ref-list" data-sk="val-ref-list" hidden></ul>
           </div>
           <div>
-            <div class="wb-eyebrow" style="margin-bottom:5px">Safety Scanner</div>
-            <div data-sk="val-safety" class="wb-check-row wb-ok">No injection or secret issues found.</div>
+            <div class="wb-eyebrow" style="margin-bottom:5px">Safety Check</div>
+            <div data-sk="val-safety" class="wb-check-row wb-ok">✓ Safe to share &amp; run — no private keys, passwords, or unsafe instructions found.</div>
             <ul class="wb-ref-list" data-sk="val-safety-list" hidden></ul>
           </div>
+          <details class="wb-guide" data-sk="skill-guide">
+            <summary>How skills work (quick guide)</summary>
+            <ul>
+              <li><strong>Top header:</strong> The name and description between the <code>---</code> lines tell PlazCode when to turn this skill on automatically.</li>
+              <li><strong>Instructions below:</strong> Write steps, rules, or examples in plain English under the second <code>---</code> line.</li>
+              <li><strong>Extra files (optional):</strong> Use <strong>+ Add Files</strong> for long checklists or sample code — the AI opens them only when needed.</li>
+            </ul>
+          </details>
         </div>
 
         <div class="wb-side-card">
-          <div class="wb-side-head"><h3>Preview</h3></div>
-          <p style="margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-soft,#9aa8be)">Exactly what the agent receives when it loads this skill — the real loader, verbatim, part markers included.</p>
-          <button type="button" class="softbtn" data-sk="preview-agent">Preview What the Agent Receives</button>
+          <div class="wb-side-head"><h3>AI Preview &amp; Export</h3></div>
+          <p class="wb-side-intro">See the exact instructions PlazCode sends to the AI when this skill is used.</p>
+          <button type="button" class="softbtn" data-sk="preview-agent">Preview AI Instructions</button>
           <div style="border-top:1px solid var(--pz-line,#1e2e46);padding-top:10px;display:grid;gap:6px">
             <strong data-sk="detail-title" style="font-size:12.5px">New skill</strong>
             <small data-sk="detail-source" style="font-size:11.5px;color:var(--ink-soft,#9aa8be)"></small>
@@ -527,17 +549,25 @@ const PlazCodeSkillsUI=(()=>{
 
   function renderValidation(v: any){
    const data=v||validateSkillLocal(wbFiles);
-   const nameEl=find('val-name'),descEl=find('val-desc'),refsEl=find('val-refs'),refList=find('val-ref-list'),safeEl=find('val-safety'),safeList=find('val-safety-list');
+   const starterSkill=Boolean(current&&starter(current));
+   const nameEl=find('val-name'),descEl=find('val-desc'),refsEl=find('val-refs'),refList=find('val-ref-list'),safeEl=find('val-safety'),safeList=find('val-safety-list'),chipEl=find('val-chip');
    nameEl.className='wb-check-row '+(data.has_name?'wb-ok':'wb-bad');
-   nameEl.textContent=(data.has_name?'✓':'✗')+' name in frontmatter';
+   nameEl.textContent=data.has_name?'✓ Skill name set':'✗ Missing a skill name — add name: My Skill between the --- lines at the top.';
    descEl.className='wb-check-row '+(data.has_description?'wb-ok':'wb-bad');
-   descEl.textContent=(data.has_description?'✓':'✗')+' description in frontmatter';
-   const broken=Array.isArray(data.broken_references)?data.broken_references:[];
-   if(!broken.length){refsEl.className='wb-check-row wb-ok';refsEl.textContent='All references resolve.';refList.hidden=true;refList.replaceChildren();}
-   else{refsEl.className='wb-check-row wb-warn';refsEl.textContent=`${broken.length} broken relative reference(s):`;refList.hidden=false;refList.replaceChildren();for(const b of broken){const li=document.createElement('li');li.textContent=`${b.source} -> ${b.reference}`;refList.appendChild(li);}}
+   descEl.textContent=data.has_description?'✓ Description set':'✗ Missing a description — add description: ... between the --- lines so the AI knows when to use it.';
+   const rawBroken=Array.isArray(data.broken_references)?data.broken_references:[];
+   const broken=(!v&&starterSkill)?[]:rawBroken;
+   if(!broken.length){refsEl.className='wb-check-row wb-ok';refsEl.textContent=starterSkill?'✓ Built-in reference guides included':'✓ All linked files found';refList.hidden=true;refList.replaceChildren();}
+   else{refsEl.className='wb-check-row wb-warn';refsEl.textContent=`⚠ ${broken.length} linked file(s) not attached yet — attach them with + Add Files if the AI needs to read them:`;refList.hidden=false;refList.replaceChildren();for(const b of broken){const li=document.createElement('li');li.textContent=`${b.source} -> ${b.reference}`;refList.appendChild(li);}}
    const issues=Array.isArray(data.safety?.issues)?data.safety.issues:[];
-   if(!issues.length){safeEl.className='wb-check-row wb-ok';safeEl.textContent='No injection or secret issues found.';safeList.hidden=true;safeList.replaceChildren();}
-   else{safeEl.className='wb-check-row wb-bad';safeEl.textContent=`${issues.length} safety warning(s):`;safeList.hidden=false;safeList.replaceChildren();for(const iss of issues){const li=document.createElement('li');li.textContent=`${iss.file}: ${iss.reason}`;safeList.appendChild(li);}}
+   if(!issues.length){safeEl.className='wb-check-row wb-ok';safeEl.textContent='✓ Safe to share & run — no private keys, passwords, or unsafe instructions found.';safeList.hidden=true;safeList.replaceChildren();}
+   else{safeEl.className='wb-check-row wb-bad';safeEl.textContent=`✗ ${issues.length} safety issue(s) to fix:`;safeList.hidden=false;safeList.replaceChildren();for(const iss of issues){const li=document.createElement('li');li.textContent=`${iss.file}: ${iss.reason}`;safeList.appendChild(li);}}
+   if(chipEl){
+    const totalIssues=(data.has_name?0:1)+(data.has_description?0:1)+broken.length+issues.length;
+    const critical=!data.has_name||!data.has_description||issues.length>0;
+    chipEl.className='wb-health-chip '+(totalIssues===0?'wb-ok':(critical?'wb-bad':'wb-warn'));
+    chipEl.textContent=totalIssues===0?'✓ Skill ready':(critical?'✗ Needs fixes':'⚠ Check extra files');
+   }
   }
 
   function renderTabs(){
@@ -783,7 +813,8 @@ const PlazCodeSkillsUI=(()=>{
    status(`Deleted ${res?.removed??removable.length} skill${(res?.removed??removable.length)===1?'':'s'}. Kept ${res?.kept??records.length}.`);
   });
   find('purge-all').onclick=run(async()=>{if(!confirmDeleteAll){confirmDeleteAll=true;find('purge-all').textContent='Confirm permanent delete all';return;}confirmDeleteAll=false;find('purge-all').textContent='Delete all permanently';await request({action:'purge_all',trash_revision:trashRevision,confirm:true});await refreshDeleted();status('Permanently deleted all.');});
-  find('recheck').onclick=run(async()=>{syncCurrentBuffer();try{const v=await request({action:'workbench_validate',id:current?.id||'',files:wbFiles});renderValidation(v);status(v.valid?'Validation passed.':'Validation found issues.');}catch{const v=validateSkillLocal(wbFiles);renderValidation(v);status(v.valid?'Validation passed.':'Validation found issues.');}});
+  find('val-chip').onclick=()=>{find('val-card')?.scrollIntoView({behavior:'smooth',block:'nearest'});};
+  find('recheck').onclick=run(async()=>{syncCurrentBuffer();try{const v=await request({action:'workbench_validate',id:current?.id||'',files:wbFiles});renderValidation(v);status(v.valid?'Skill check passed.':'Skill check found items to review.');}catch{const v=validateSkillLocal(wbFiles);renderValidation(v);status(v.valid?'Skill check passed.':'Skill check found items to review.');}});
   find('preview-agent').onclick=run(async()=>{
    syncCurrentBuffer();
    let prev: any;

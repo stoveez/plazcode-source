@@ -74,10 +74,10 @@ const WorkshopUI = require("./core/workshop-ui.js");
   assert.equal(q('[data-sk="total-count"]').textContent, "1");
   assert.equal(q('[data-sk="import-folder-btn"]').textContent, "Import Folder");
   assert.equal(q('[data-sk="open-folder"]').textContent, "Open Folder");
-  assert.equal(q('[data-sk="preview-agent"]').textContent, "Preview What the Agent Receives");
+  assert.equal(q('[data-sk="preview-agent"]').textContent, "Preview AI Instructions");
   assert.equal(q('[data-sk="tel-files"]').textContent, "3");
-  assert.match(q('[data-sk="val-name"]').textContent, /✓ name in frontmatter/);
-  assert.match(q('[data-sk="val-desc"]').textContent, /✓ description in frontmatter/);
+  assert.match(q('[data-sk="val-name"]').textContent, /✓ Skill name set/);
+  assert.match(q('[data-sk="val-desc"]').textContent, /✓ Description set/);
   assert.match(q('[data-sk="val-ref-list"]').textContent, /references\/missing\.md/, "detects broken relative reference");
 
   // Multi-file tab switch + 60k loader parts meter + verbatim preview modal

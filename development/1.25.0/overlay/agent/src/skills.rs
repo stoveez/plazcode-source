@@ -73,7 +73,8 @@ impl Store {
    let id=request["id"].as_str().unwrap_or("");
    let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;
    let files=self.workbench_files(skill);
-   let validation=crate::skill_folder::validate_skill_workbench(&files);
+   let known=crate::starter_skills::bundled_resources(&skill.id);
+   let validation=crate::skill_folder::validate_skill_workbench_with_known(&files,&known);
    let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
    let file_rows:Vec<Value>=files.iter().map(|(path,text)|json!({"path":path,"text":text,"bytes":text.len(),"chars":text.chars().count()})).collect();
    let folder_path=if is_read_only_skill(&skill.id) {
@@ -82,14 +83,15 @@ impl Store {
    return Ok(json!({"ok":true,"skill":skill,"files":file_rows,"folder_path":folder_path,"read_only":is_read_only_skill(&skill.id),"validation":validation,"preview":preview}));
   }
   if action=="workbench_validate" {
+   let id=request["id"].as_str().unwrap_or("");
    let files=if let Some(arr)=request["files"].as_array() {
     arr.iter().map(|v|(v["path"].as_str().unwrap_or("").to_string(),v["text"].as_str().unwrap_or("").to_string())).collect::<Vec<_>>()
    } else {
-    let id=request["id"].as_str().unwrap_or("");
     let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;
     self.workbench_files(skill)
    };
-   return Ok(crate::skill_folder::validate_skill_workbench(&files));
+   let known=crate::starter_skills::bundled_resources(id);
+   return Ok(crate::skill_folder::validate_skill_workbench_with_known(&files,&known));
   }
   if action=="workbench_preview" {
    let id=request["id"].as_str().unwrap_or("");
@@ -186,7 +188,8 @@ impl Store {
     data.skills.insert(skill.id.clone(),skill.clone());
     self.persist(data)?;
     let files=self.workbench_files(&skill);
-    let validation=crate::skill_folder::validate_skill_workbench(&files);
+    let known=crate::starter_skills::bundled_resources(&skill.id);
+    let validation=crate::skill_folder::validate_skill_workbench_with_known(&files,&known);
     let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
     return Ok(json!({"ok":true,"skill":skill,"meta":self.skill_meta(&skill),"validation":validation,"preview":preview}));
    },
@@ -220,7 +223,8 @@ impl Store {
     data.skills.insert(skill.id.clone(),skill.clone());
     self.persist(data)?;
     let files=self.workbench_files(&skill);
-    let validation=crate::skill_folder::validate_skill_workbench(&files);
+    let known=crate::starter_skills::bundled_resources(&skill.id);
+    let validation=crate::skill_folder::validate_skill_workbench_with_known(&files,&known);
     let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
     return Ok(json!({"ok":true,"added":added,"skill":skill,"meta":self.skill_meta(&skill),"validation":validation,"preview":preview}));
    },

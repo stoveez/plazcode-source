@@ -25,6 +25,12 @@ const PACKS: [Pack; 2] = [
         adaptation: "Reference standards. Read PLAZCODE-ADAPTER.md once: use the tools PlazCode lists (read_scripts for reading many scripts), skip ROTEX steps unless those tools are listed, and keep the user's request and safety settings first." },
 ];
 pub fn is_starter(id: &str) -> bool { PACKS.iter().any(|pack| id.starts_with(pack.prefix)) }
+pub fn bundled_resources(id: &str) -> Vec<String> {
+    PACKS.iter()
+        .find(|pack| id.starts_with(pack.prefix))
+        .and_then(|pack| serde_json::from_str::<Vec<String>>(pack.resources).ok())
+        .unwrap_or_default()
+}
 /// The bundled folder a starter skill reads from, inside the installation's PlazCode-Extension folder.
 pub fn bundle_folder(installation: &Path, id: &str) -> Option<PathBuf> {
     PACKS.iter().find(|pack| id.starts_with(pack.prefix)).map(|pack| installation.join("PlazCode-Extension/starter-skills").join(pack.folder))

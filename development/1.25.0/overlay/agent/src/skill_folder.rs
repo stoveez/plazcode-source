@@ -439,6 +439,11 @@ pub fn scan_safety(files: &[(String, String)]) -> Value {
 
 /// Validate a skill folder's frontmatter (`name`, `description`), relative references, and safety rules.
 pub fn validate_skill_workbench(files: &[(String, String)]) -> Value {
+    validate_skill_workbench_with_known(files, &[])
+}
+
+/// Validate a skill folder while treating bundled starter resource paths in `extra_known` as resolved.
+pub fn validate_skill_workbench_with_known(files: &[(String, String)], extra_known: &[String]) -> Value {
     let main_text = files
         .iter()
         .find(|(p, _)| p.eq_ignore_ascii_case("SKILL.md"))
@@ -449,6 +454,7 @@ pub fn validate_skill_workbench(files: &[(String, String)]) -> Value {
     let has_description = meta.get("description").is_some_and(|v| !v.trim().is_empty());
 
     let present: BTreeSet<String> = files.iter().map(|(p, _)| p.to_ascii_lowercase()).collect();
+    let known_lower: Vec<String> = extra_known.iter().map(|k| k.to_ascii_lowercase()).collect();
     let mut broken_references = Vec::new();
     for (path, content) in files {
         let ext = extension(path);
@@ -456,7 +462,10 @@ pub fn validate_skill_workbench(files: &[(String, String)]) -> Value {
             continue;
         }
         for rel in extract_relative_references(path, content) {
-            if !present.contains(&rel.to_ascii_lowercase()) {
+            let rel_lower = rel.to_ascii_lowercase();
+            let resolved = present.contains(&rel_lower)
+                || known_lower.iter().any(|k| k == &rel_lower || k.ends_with(&format!("/{rel_lower}")));
+            if !resolved {
                 broken_references.push(serde_json::json!({"source": path, "reference": rel}));
             }
         }
@@ -733,5 +742,29 @@ mod tests {
         assert_eq!(roundtrip.len(), 2);
         assert_eq!(roundtrip[0].path, "SKILL.md");
         assert_eq!(roundtrip[1].bytes, b"hello");
+    }
+
+    #[test]
+    fn starter_bundled_references_do_not_report_false_broken_links() {
+        let files = vec![(
+            "SKILL.md".into(),
+            "---\nname: Ro-Engineer\ndescription: Clean systems.\n---\nSee `references/system-design.md` and `references/actually-missing.md`."
+                .into(),
+        )];
+        let known = vec!["references/system-design.md".to_string()];
+        let v = validate_skill_workbench_with_known(&files, &known);
+        assert_eq!(v["references_ok"], false);
+        let broken = v["broken_references"].as_array().unwrap();
+        assert_eq!(broken.len(), 1);
+        assert_eq!(broken[0]["reference"], "references/actually-missing.md");
+
+        let v_ok = validate_skill_workbench_with_known(
+            &[(
+                "SKILL.md".into(),
+                "---\nname: Ro-Engineer\ndescription: Clean systems.\n---\nSee `references/system-design.md`.".into(),
+            )],
+            &known,
+        );
+        assert_eq!(v_ok["references_ok"], true);
     }
 }
