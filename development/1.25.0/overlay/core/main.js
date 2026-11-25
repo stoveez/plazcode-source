@@ -14242,9 +14242,11 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     } catch { return false; }
   }
   function resetConversationState(path) {
+    const switched = lastSyncPath !== null;
     lastSyncPath = path;
     A.bootBaselineId = P.lastAssistantId ? P.lastAssistantId() : null;
     A.lastGenAt = 0;
+    if (!switched) return;
     A.sessionGen = (A.sessionGen || 0) + 1;
     A.maxTurnId = null;
     A.hangTries = {};

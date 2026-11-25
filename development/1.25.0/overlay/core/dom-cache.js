@@ -283,8 +283,13 @@ const PlazCodeDomCache = (() => {
       const methodCache = new Map();
       return new Proxy(provider, {
         get(target, prop) {
-          if (methodCache.has(prop)) return methodCache.get(prop);
           const value = Reflect.get(target, prop, target);
+          const existing = methodCache.get(prop);
+          if (existing && existing.raw === value) return existing.wrapped;
+          if (existing) {
+            methodCache.delete(prop);
+            if (typeof prop === "string") entries.delete("p:" + prop);
+          }
           if (typeof value !== "function") return value;
           const fn = value;
           const name = typeof prop === "string" ? prop : "";
@@ -295,7 +300,7 @@ const PlazCodeDomCache = (() => {
               if (args.length > 0) return Reflect.apply(fn, target, args);
               return cached(key, () => Reflect.apply(fn, target, args), { kind });
             };
-            methodCache.set(prop, wrapped);
+            methodCache.set(prop, { raw: value, wrapped });
             return wrapped;
           }
           if (INVALIDATING_METHODS.has(name)) {
@@ -308,15 +313,16 @@ const PlazCodeDomCache = (() => {
               invalidate("action");
               return res;
             };
-            methodCache.set(prop, wrapped);
+            methodCache.set(prop, { raw: value, wrapped });
             return wrapped;
           }
           const bound = (...args) => Reflect.apply(fn, target, args);
-          methodCache.set(prop, bound);
+          methodCache.set(prop, { raw: value, wrapped: bound });
           return bound;
         },
         set(target, prop, newValue) {
           methodCache.delete(prop);
+          if (typeof prop === "string") entries.delete("p:" + prop);
           return Reflect.set(target, prop, newValue, target);
         },
       });

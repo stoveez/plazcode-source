@@ -25,7 +25,7 @@ async function choose(page,value){await page.locator('#rs-approval-mode').click(
  await choose(page,'auto');await page.evaluate(()=>fixture.runTool({tool:'write_file',arguments:{path:'auto.txt',content:'hello'}}));assert.equal(await page.locator('#rs-approve').isVisible(),false);
  const removal=page.evaluate(()=>fixture.runTool({tool:'execute_luau',arguments:{code:'workspace.Part:Destroy()'}}));await page.waitForSelector('#rs-approve:not([hidden])');await page.locator('#rs-approve-deny').click();assert.match(await removal,/declined/);
  await choose(page,'bypass');await page.evaluate(()=>fixture.runTool({tool:'execute_luau',arguments:{code:'workspace.Part:Destroy()'}}));assert.equal(await page.locator('#rs-approve').isVisible(),false);
- assert.equal(await page.evaluate(()=>fixture.requestApproval('plan',{}, {plan:{text:'Make a scene'}})),true,'bypass also skips plan cards');
+ const planApproval=page.evaluate(()=>fixture.requestApproval('plan',{}, {plan:{text:'Make a scene'}}));await page.waitForSelector('#rs-approve:not([hidden])');await page.locator('#rs-approve-allow').click();assert.equal(await planApproval,true,'explicit plan approval card still waits for confirmation in bypass mode');
  await page.evaluate(()=>externalApprovalMode('ask'));await page.waitForFunction(()=>document.querySelector('#rs-approval-mode').textContent.includes('Ask for approval'));
  await page.evaluate(()=>rejectPreferenceSave=true);await page.locator('#rs-approval-mode').click();await page.locator('.pc-approval-menu [data-mode=bypass]').click();await page.waitForTimeout(30);assert.equal(await page.evaluate(()=>prefStore.rsApprovalMode),'ask','failed save cannot enable bypass');await page.keyboard.press('Escape');await page.evaluate(()=>rejectPreferenceSave=false);
  // Exercise actual core positioning with an ordinary composer that moves and remounts.
@@ -46,6 +46,7 @@ async function choose(page,value){await page.locator('#rs-approval-mode').click(
  }
  if(process.env.PLAZCODE_UI_PREVIEW_DIR){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.setViewportSize({width:1120,height:850});await page.evaluate(()=>{const c=document.querySelector('#position-composer');c.style.left='190px';c.style.width='720px';c.style.bottom='40px';});await page.waitForTimeout(350);await page.locator('#rs-approval-mode').click();await page.screenshot({path:process.env.PLAZCODE_UI_PREVIEW_DIR+'/plazcode-bar-approval-menu.png'});await page.keyboard.press('Escape');await page.locator('#rs-hide').click();await page.waitForTimeout(300);await page.screenshot({path:process.env.PLAZCODE_UI_PREVIEW_DIR+'/plazcode-collapsed-alignment.png'});}
  assert.deepEqual(errors,[]);await page.close();
- const restored=await load(browser,'bypass');assert.match(await restored.page.locator('#rs-approval-mode').innerText(),/Bypass approval/i); // the Studio look shows it in spaced capitals (CSS)await restored.page.close();
+ const restored=await load(browser,'bypass');assert.match(await restored.page.locator('#rs-approval-mode').innerText(),/Bypass approval/i); // the Studio look shows it in spaced capitals (CSS)
+ await restored.page.close();
  console.log('PASS real bar approval menus, strict edit/deletion/bypass policy, saved-mode restoration, external sync, failed-save handling and composer-relative expanded/collapsed placement across resize/remount.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

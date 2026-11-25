@@ -331,7 +331,7 @@ const PlazCodeSkillsUI=(()=>{
         </div>
         <div class="wb-lib-list" data-sk="list"></div>
         <div class="wb-lib-foot">
-          <div class="wb-folder-path" data-sk="folder-path" title="">skill-files/</div>
+          <div class="wb-folder-path" data-sk="folder-path" dir="ltr" data-i18n-user-content title="">skill-files/</div>
           <div class="wb-lib-foot-row">
             <button type="button" class="softbtn" data-sk="open-folder">Open Folder</button>
             <button type="button" class="softbtn" data-sk="refresh-lib">Refresh</button>
@@ -346,13 +346,13 @@ const PlazCodeSkillsUI=(()=>{
       <section class="wb-pane" aria-label="Editor">
         <div class="wb-file-tabs" data-sk="file-tabs"></div>
         <div class="wb-editor-bar">
-          <span class="wb-editor-path" data-sk="editor-path">SKILL.md</span>
+          <span class="wb-editor-path" data-sk="editor-path" dir="ltr" data-i18n-user-content>SKILL.md</span>
           <div class="wb-editor-btns">
             <button type="button" class="softbtn" data-sk="add-files">+ Add Files</button>
             <button type="button" class="accentbtn" data-sk="save-file">Save (Ctrl+S)</button>
           </div>
         </div>
-        <textarea class="wb-editor-area" data-sk="editor-text" spellcheck="false" aria-label="Skill file editor"></textarea>
+        <textarea class="wb-editor-area" data-sk="editor-text" dir="ltr" data-i18n-user-content spellcheck="false" aria-label="Skill file editor"></textarea>
         <div class="wb-telemetry" data-sk="telemetry">
           <div class="wb-tel-row">
             <div class="wb-tel-stat"><small>FILE</small><b data-sk="tel-file">0 B · 0 chars</b></div>
@@ -400,7 +400,7 @@ const PlazCodeSkillsUI=(()=>{
               <button type="button" class="softbtn" data-sk="read" hidden>Read the full skill</button>
               <button type="button" class="softbtn" data-sk="export">Export JSON</button>
             </div>
-            <pre data-sk="instructions" class="wb-modal-pre" style="min-height:0;max-height:140px" hidden></pre>
+            <pre data-sk="instructions" class="wb-modal-pre" dir="ltr" data-i18n-user-content style="min-height:0;max-height:140px" hidden></pre>
           </div>
         </div>
       </aside>
@@ -416,14 +416,14 @@ const PlazCodeSkillsUI=(()=>{
             <input type="file" data-sk="import-folder" webkitdirectory multiple hidden>
             <input type="file" data-sk="import-file" accept=".json,.plazskills.json,.zip,.md,.markdown,.txt">
           </div>
-          <label>Import title (optional)<input type="text" data-sk="import-title" placeholder="Title for pasted instructions"></label>
-          <label>Paste JSON, share code, or skill link<textarea rows="3" data-sk="import-text" placeholder="Paste exported JSON, share code, or GitHub/Gist link"></textarea></label>
+          <label>Import title (optional)<input type="text" data-sk="import-title" dir="auto" placeholder="Title for pasted instructions"></label>
+          <label>Paste JSON, share code, or skill link<textarea rows="3" data-sk="import-text" dir="auto" placeholder="Paste exported JSON, share code, or GitHub/Gist link"></textarea></label>
           <div><button type="button" class="accentbtn" data-sk="import">Import skill</button></div>
         </div>
         <div style="display:grid;gap:8px">
-          <label>Title<input type="text" data-sk="title" placeholder="Skill title"></label>
-          <label>Instructions / steps<textarea rows="3" data-sk="steps" placeholder="Reusable steps"></textarea></label>
-          <label>Project scope<input type="text" data-sk="scope" placeholder="Leave blank for all projects"></label>
+          <label>Title<input type="text" data-sk="title" dir="auto" placeholder="Skill title"></label>
+          <label>Instructions / steps<textarea rows="3" data-sk="steps" dir="auto" placeholder="Reusable steps"></textarea></label>
+          <label>Project scope<input type="text" data-sk="scope" dir="auto" placeholder="Leave blank for all projects"></label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="softbtn" data-sk="save">Save</button>
           </div>
@@ -435,14 +435,14 @@ const PlazCodeSkillsUI=(()=>{
               <button type="button" class="softbtn" data-sk="share-file">Download pack</button>
               <button type="button" class="softbtn" data-sk="share-code">Copy share code</button>
             </div>
-            <textarea data-sk="share-out" rows="2" readonly hidden></textarea>
+            <textarea data-sk="share-out" dir="ltr" data-i18n-user-content rows="2" readonly hidden></textarea>
           </details>
           <details data-sk="advanced-fields">
             <summary>More card metadata</summary>
-            <label>Description<textarea rows="2" data-sk="description"></textarea></label>
+            <label>Description<textarea rows="2" data-sk="description" dir="auto"></textarea></label>
             <label>Domain<select data-sk="domain"><option value="all">All</option><option value="roblox">Roblox</option><option value="local">Local / AgentScript</option><option value="blender">Blender</option><option value="model">3D Model</option><option value="ui">UI</option></select></label>
-            <label>Pitfalls<textarea rows="2" data-sk="pitfalls"></textarea></label>
-            <label>Verification<textarea rows="2" data-sk="verification"></textarea></label>
+            <label>Pitfalls<textarea rows="2" data-sk="pitfalls" dir="auto"></textarea></label>
+            <label>Verification<textarea rows="2" data-sk="verification" dir="auto"></textarea></label>
             <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-sk="confirmed" style="width:auto"> Mark tested</label>
           </details>
         </div>
@@ -478,7 +478,7 @@ const PlazCodeSkillsUI=(()=>{
           <button type="button" class="softbtn" data-sk="preview-close">Close</button>
         </div>
       </div>
-      <pre class="wb-modal-pre" data-sk="preview-body"></pre>
+      <pre class="wb-modal-pre" data-sk="preview-body" dir="ltr" data-i18n-user-content></pre>
     </div>
   </div>
 
@@ -489,10 +489,10 @@ const PlazCodeSkillsUI=(()=>{
         <button type="button" class="softbtn" data-sk="add-file-close">Close</button>
       </div>
       <label style="display:grid;gap:6px;font-size:12.5px">Relative path (e.g. references/guide.md or scripts/check.luau)
-        <input type="text" data-sk="add-file-path" placeholder="references/notes.md" style="padding:9px 11px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff)">
+        <input type="text" data-sk="add-file-path" dir="ltr" data-i18n-user-content placeholder="references/notes.md" style="padding:9px 11px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff)">
       </label>
       <label style="display:grid;gap:6px;font-size:12.5px">Initial content
-        <textarea rows="6" data-sk="add-file-content" placeholder="# Reference Notes" style="padding:9px 11px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff);font-family:var(--pz-mono,monospace)"></textarea>
+        <textarea rows="6" data-sk="add-file-content" dir="ltr" data-i18n-user-content placeholder="# Reference Notes" style="padding:9px 11px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff);font-family:var(--pz-mono,monospace)"></textarea>
       </label>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <label class="softbtn" style="cursor:pointer">Pick text files from PC<input type="file" data-sk="add-file-picker" multiple hidden></label>
@@ -503,7 +503,7 @@ const PlazCodeSkillsUI=(()=>{
 </div>`;
 
   const find=<T extends HTMLElement=HTMLElement>(name: string)=>host.querySelector('[data-sk="'+name+'"]') as T;
-  const status=(message: string)=>{find('status').textContent=message||'';};
+  const status=(message: string,raw=false)=>{const el=find('status');el.toggleAttribute?.('data-i18n-user-content',raw);el.textContent=message||'';};
   let records: Skill[]=[],metaMap: Record<string, any>={},deletedRecords: Skill[]=[],trashRevision=0,skillsDir='skill-files/';
   let current: Skill | null=null,wbFiles: WorkbenchFile[]=[{path:'SKILL.md',text:''}],openTabs: string[]=['SKILL.md'],activeFile='SKILL.md';
   let readOnly=false,dirty=false,editorTouched=false,busy=false,syncing=false,activeTab='active',listGeneration=0,confirmDeleteAll=false,confirmActiveDeleteAll=false,pendingPurge: string | null=null,pendingRemove: string | null=null;
@@ -589,7 +589,9 @@ const PlazCodeSkillsUI=(()=>{
    find<HTMLInputElement>('confirmed').checked=Boolean(skill?.confirmed);
    find('delete').hidden=!skill||starter(skill);
    const isFolder=Boolean(skill?.files?.length||skill?.id?.startsWith('folder-'));
-   find('detail-title').textContent=skill?displayName(skill):'New skill';
+   const detailTitle=find('detail-title');
+   detailTitle.toggleAttribute?.('data-i18n-user-content',Boolean(skill&&!starter(skill)));
+   detailTitle.textContent=skill?displayName(skill):'New skill';
    find('detail-source').textContent=isFolder?'Skill from a folder':(skill?.community?'Workshop community skill':'Local skill');
    find('read').hidden=!skill||(!isFolder&&!starter(skill));
    find('instructions').hidden=true;find('instructions').textContent='';
@@ -638,14 +640,14 @@ const PlazCodeSkillsUI=(()=>{
     const row=document.createElement('div');row.setAttribute('data-sk-card',skill.id);
     const btn=document.createElement('button');btn.type='button';btn.className='wb-card-btn';
     btn.setAttribute('aria-pressed',String(current?.id===skill.id));
-    const titleEl=document.createElement('span');titleEl.className='wb-card-title';titleEl.textContent=displayName(skill);
+    const titleEl=document.createElement('span');titleEl.className='wb-card-title';if(!starter(skill))titleEl.setAttribute('data-i18n-user-content','');titleEl.textContent=displayName(skill);
     const meta=metaMap[skill.id];
     const fileCount=meta?.file_count??(skill.files?.length||1);
     const bytes=meta?.total_bytes??JSON.stringify(skill.steps||[]).length;
     const tag=(skill.files?.length||skill.id?.startsWith('folder-')?' · From a folder':(skill.community?' · Community':(starter(skill)?' · Built-in':'')))+(skill.favorite?' · Favourite':'');
     const metaEl=document.createElement('span');metaEl.className='wb-card-meta';
     metaEl.textContent=`${fileCount} file${fileCount===1?'':'s'} · ${formatBytes(bytes)}${tag}`;
-    const slugEl=document.createElement('span');slugEl.className='wb-card-slug';slugEl.textContent=skill.id;
+    const slugEl=document.createElement('span');slugEl.className='wb-card-slug';slugEl.setAttribute('data-i18n-user-content','');slugEl.textContent=skill.id;
     btn.append(titleEl,metaEl,slugEl);
     btn.onclick=run(()=>loadWorkbenchFor(skill));
     const actions=document.createElement('div');actions.className='sk-actions';
@@ -680,7 +682,7 @@ const PlazCodeSkillsUI=(()=>{
    if(!list.length){const p=document.createElement('p');p.style.color='var(--ink-soft,#9aa8be)';p.textContent=deletedRecords.length?'No matching deleted skills.':'No deleted skills.';box.appendChild(p);return;}
    for(const skill of list){
     const card=document.createElement('div');card.setAttribute('data-sk-deleted',skill.id);card.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid var(--pz-line,#253650);border-radius:12px';
-    const info=document.createElement('div');const b=document.createElement('strong');b.textContent=displayName(skill);const sm=document.createElement('div');sm.style.cssText='font-size:11.5px;color:var(--ink-soft,#9aa8be)';sm.textContent=skill.id;info.append(b,sm);
+    const info=document.createElement('div');const b=document.createElement('strong');if(!starter(skill))b.setAttribute('data-i18n-user-content','');b.textContent=displayName(skill);const sm=document.createElement('div');sm.style.cssText='font-size:11.5px;color:var(--ink-soft,#9aa8be)';sm.setAttribute('data-sk-deleted-id','');sm.setAttribute('data-i18n-user-content','');sm.textContent=skill.id;info.append(b,sm);
     const btns=document.createElement('div');btns.style.cssText='display:flex;gap:8px';
     const resBtn=document.createElement('button');resBtn.type='button';resBtn.className='softbtn';resBtn.setAttribute('data-sk-restore',skill.id);resBtn.textContent='Restore';
     resBtn.onclick=run(async()=>{await request({action:'restore',id:skill.id,revision:skill.revision});await refreshDeleted();await refresh(true);status('Restored.');});
@@ -690,20 +692,22 @@ const PlazCodeSkillsUI=(()=>{
    }
   }
 
-  const run=(fn: (...args: any[]) => any)=>async(...args: any[])=>{if(busy)return;busy=true;try{await fn(...args);}catch(error){status((error as Error)?.message||String(error));}finally{busy=false;}};
+  const run=(fn: (...args: any[]) => any)=>async(...args: any[])=>{if(busy)return;busy=true;try{await fn(...args);}catch(error){status((error as Error)?.message||String(error),true);}finally{busy=false;}};
 
   async function refresh(keepStatus=false){
    const generation=++listGeneration;
-   const res=await request({action:'list'});
-   if(generation!==listGeneration)return;
-   records=((res?.skills||[]) as Skill[]).filter(s=>!hiddenBuiltin(s));
-   metaMap=res?.meta||{};
-   if(res?.skills_dir)skillsDir=String(res.skills_dir).replace(/[\\/]?$/,'/');
-   renderList();
-   if(!current&&records.length){await loadWorkbenchFor(records[0]);}
-   else if(current){const match=records.find(s=>s.id===current!.id);if(match){current=match;if(!dirty)fill(match,true);}else fill(null,true);}
-   else fill(null,true);
-   if(!keepStatus)status(records.length+' saved skill(s).');
+   try{
+    const res=await request({action:'list'});
+    if(generation!==listGeneration)return;
+    records=((res?.skills||[]) as Skill[]).filter(s=>!hiddenBuiltin(s));
+    metaMap=res?.meta||{};
+    if(res?.skills_dir)skillsDir=String(res.skills_dir).replace(/[\\/]?$/,'/');
+    renderList();
+    if(!current&&records.length){await loadWorkbenchFor(records[0]);}
+    else if(current){const match=records.find(s=>s.id===current!.id);if(match){current=match;if(!dirty)fill(match,true);}else fill(null,true);}
+    else fill(null,true);
+    if(!keepStatus)status(records.length+' saved skill(s).');
+   }catch(error){status((error as Error)?.message||String(error),true);}
   }
 
   async function refreshDeleted(){

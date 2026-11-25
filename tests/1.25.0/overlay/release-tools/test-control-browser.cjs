@@ -76,7 +76,7 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     reply = await act('click', { selector: '#buy' });
     assert(reply.ok && reply.result.clicked, 'the next action goes ahead instead of pausing again: ' + JSON.stringify(reply));
     const bg = fs.readFileSync(path.join(root, 'PlazCode-Extension', 'background.js'), 'utf8');
-    assert(/m\.action === "pause" \|\| m\.action === "resume"\) && Number\.isInteger\(port\.watch\)/.test(bg) && /c\[a\]\(\)/.test(bg), 'the live view tells the tab layer');
+    assert(/m\.action === "pause" \|\| m\.action === "resume"\) && (?:port\.watch != null && )?Number\.isInteger\(port\.watch\)/.test(bg) && /c\[a\]\(\)/.test(bg), 'the live view tells the tab layer');
 
     // Escape in the tab (real key) is Stop: the AI chat that worked there is told to stop, and new actions are refused.
     await shop.keyboard.press('Escape');

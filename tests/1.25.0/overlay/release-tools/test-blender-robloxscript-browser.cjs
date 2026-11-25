@@ -39,9 +39,9 @@ const {load}=new Function('require',prefix+';return {load};')(req);
  assert.doesNotMatch(r.text,/no server named "blender"/);assert.match(r.text,/blender commands/);
  // The status line that rides on every result says Blender belongs to this mode.
  const tag=await page.evaluate(()=>{window.__rsEngine=()=>'roblox';fixture.A.bridge={connected:true,blender:true,roblox_connected:false};return fixture.asStateTag();});
- assert.match(tag,/ENGINE=ROBLOXSCRIPT/);assert.match(tag,/BLENDER ON/);assert.match(tag,/"blender_write"/);assert.match(tag,/Blender commands \(blender_\*\) belong to this mode too/);
+ assert.match(tag,/ENGINE=ROBLOXSCRIPT/);assert.match(tag,/BLENDER[= ]ON/);assert.match(tag,/"blender_write"/);assert.match(tag,/blender_\* active|Blender commands \(blender_\*\) belong to this mode too/);
  const noBlender=await page.evaluate(()=>{fixture.A.bridge={connected:true,blender:false,roblox_connected:true};return fixture.asStateTag();});
- assert.doesNotMatch(noBlender,/belong to this mode too/);
+ assert.doesNotMatch(noBlender,/blender_\* active|belong to this mode too/);
  // Not connected: the AI points the person at Apps & servers (the old Blender-panel steps are gone).
  r=await page.evaluate(async()=>{window.__rsEngine=()=>'roblox';fixture.A.bridge={connected:true,blender:false,roblox_connected:true};const old=chrome.runtime.sendMessage;chrome.runtime.sendMessage=(msg,cb)=>{const v=/^blender_/.test(msg.type)?{ok:false,blender:false}:null;if(v){if(cb)queueMicrotask(()=>cb(v));return Promise.resolve(v);}return old(msg,cb);};try{return String(await fixture.runTool({tool:'blender_add_cube',arguments:{}}));}finally{chrome.runtime.sendMessage=old;}});
  assert.match(r,/Apps & servers/);assert.doesNotMatch(r,/N-panel/);

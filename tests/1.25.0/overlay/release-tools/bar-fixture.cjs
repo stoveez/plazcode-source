@@ -61,7 +61,7 @@ async function pageFor(browser, _agent = false, core = false) {
       }
       if (msg.type === "list_tools") return { ok: true, fresh: true, connected: true, blender: true, servers: [{ id: "roblox", alive: true, tools: 1 }, { id: "local", alive: true, tools: 2 }, { id: "blender", alive: true, tools: 1 }], tools };
       if (msg.type === "rs-memory") return { ok: true, memory: { entries: [] } };
-      return { ok: true, connected: true, mcpAlive: true, roblox_connected: true, local_connected: true, blender: true, tools, skills: [], templates: [], servers: [] };
+      return { ok: true, engine: "roblox", connected: true, mcpAlive: true, roblox_connected: true, local_connected: true, blender: true, tools, skills: [], templates: [], servers: [] };
     };
     const get = (_k, cb) => { const value = {}; if (cb) queueMicrotask(() => cb(value)); return Promise.resolve(value); };
     window.chrome = { runtime: { id: "fixture", getManifest: () => ({ version: "1.25.0" }), getURL: (p) => "https://chatgpt.com/fixture/" + p, onMessage: { addListener() {} },
