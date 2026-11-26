@@ -91,6 +91,77 @@ const RSProvider: PlazCodeProvider = (() => {
     return true;
   }
 
+  const THINKING_SEL = ".reasoning, [class*='thinking'], [class*='reason']";
+  const CHROME_SEL = "button, [role='button'], [role='tooltip'], svg, textarea, input, form, .sr-only, .visually-hidden, .feedback, [class*='feedback'], [class*='suggestion'], [class*='follow-up'], [class*='followup']";
+  const BODY_CONTAINER_SEL = ".prose, .markdown, .bubble, [class*='message-content']";
+
+  function codeLang(pre: Element, headerText: string): string {
+    const code = safeQuery(pre, "code");
+    for (const node of [code, pre]) {
+      if (!node) continue;
+      const attr = (safeRead(() => node.getAttribute("data-language"), null) || safeRead(() => node.getAttribute("data-lang"), null) || "").trim().toLowerCase();
+      if (attr && /^[a-z0-9+#.-]{1,20}$/.test(attr)) return attr;
+      const cls = String(safeRead(() => node.className, "") || "");
+      const m = cls.match(/\b(?:language|lang)-([A-Za-z0-9+#._-]+)/i);
+      if (m) return m[1].toLowerCase();
+    }
+    const clean = headerText.trim().toLowerCase();
+    if (clean && /^[a-z][a-z0-9+#.-]{0,19}$/.test(clean)) return clean;
+    return "";
+  }
+
+  function preText(pre: Element, excludeSel?: string): string {
+    const skip = excludeSel ? `.rs-chip, button, [role='button'], [role='tooltip'], svg, ${excludeSel}` : ".rs-chip, button, [role='button'], [role='tooltip'], svg";
+    let t = "";
+    const walkPre = (n: Node): void => {
+      const nt = safeRead(() => n.nodeType, 0);
+      if (nt === 3) { t += safeRead(() => n.nodeValue, "") || ""; return; }
+      if (nt !== 1) return;
+      const el = n as Element;
+      if (el !== pre && safeRead(() => el.matches(skip), false)) return;
+      const tag = safeRead(() => el.tagName, "");
+      if (tag === "BR") { t += "\n"; return; }
+      const isLine = /^(DIV|P|LI|TR)$/.test(tag);
+      if (isLine && t && !t.endsWith("\n")) t += "\n";
+      for (const c of safeRead(() => n.childNodes, [])) walkPre(c);
+      if (isLine && !t.endsWith("\n")) t += "\n";
+    };
+    walkPre(pre);
+    return t;
+  }
+
+  function codeFrameInfo(el: Element, root: Element, skipSel: string): { pre: Element; lang: string } | null {
+    if (el === root) return null;
+    const tag = safeRead(() => el.tagName, "");
+    if (!/^(DIV|SECTION|FIGURE)$/.test(tag)) return null;
+    if (safeRead(() => el.matches(BODY_CONTAINER_SEL), false)) return null;
+    const pres = safeQueryAll(el, "pre").filter((p) => !safeClosest(p, skipSel) && !safeClosest(p, CHROME_SEL));
+    if (pres.length !== 1) return null;
+    if (safeQuery(el, ".rs-chip, p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, textarea, form, .prose, .markdown, .bubble, [class*='message-content']")) return null;
+    const pre = pres[0];
+    let hdr = "";
+    const collectHdr = (n: Node): void => {
+      if (n === pre) return;
+      const nt = safeRead(() => n.nodeType, 0);
+      if (nt === 3) { hdr += safeRead(() => n.nodeValue, "") || ""; return; }
+      if (nt !== 1) return;
+      const elem = n as Element;
+      if (safeRead(() => elem.matches(skipSel), false) || safeRead(() => elem.matches(CHROME_SEL), false)) return;
+      for (const c of safeRead(() => n.childNodes, [])) collectHdr(c);
+    };
+    collectHdr(el);
+    const cleanHdr = hdr
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\s*(?:copy(?: code)?|copied!?|download|wrap|collapse|expand)\s*$/i, "")
+      .trim();
+    const cls = String(safeRead(() => el.className, "") || "");
+    const namedWrap = /md-code|block-clip|code-?block|not-prose/i.test(cls);
+    const shortHeader = cleanHdr === "" || /^[A-Za-z][A-Za-z0-9+#._ -]{0,24}$/.test(cleanHdr);
+    if (namedWrap ? cleanHdr.length > 40 : !shortHeader) return null;
+    return { pre, lang: codeLang(pre, cleanHdr) };
+  }
+
   function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
@@ -98,10 +169,27 @@ const RSProvider: PlazCodeProvider = (() => {
     const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
-      if (safeRead(() => (n as Element).tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => (n as Element).tagName, ""));
+      const el = n as Element;
+      if (safeRead(() => el.matches, null) && safeRead(() => el.matches(skip), false)) return;
+      if (el !== root && safeRead(() => el.matches(CHROME_SEL), false)) return;
+      const tag = safeRead(() => el.tagName, "");
+      if (tag === "BR") { t += "\n"; return; }
+      if (tag === "PRE") {
+        const lang = codeLang(el, "");
+        const code = preText(el, excludeSel).replace(/\n+$/, "");
+        t += (t && !t.endsWith("\n") ? "\n" : "") + "```" + lang + "\n" + code + "\n```\n";
+        return;
+      }
+      const frame = codeFrameInfo(el, root, skip);
+      if (frame) {
+        const code = preText(frame.pre, excludeSel).replace(/\n+$/, "");
+        t += (t && !t.endsWith("\n") ? "\n" : "") + "```" + frame.lang + "\n" + code + "\n```\n";
+        return;
+      }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(tag);
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
+      const shadow = safeRead(() => el.shadowRoot, null);
+      if (shadow) for (const c of safeRead(() => shadow.childNodes, [])) walk(c);
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
     };
@@ -234,14 +322,15 @@ const RSProvider: PlazCodeProvider = (() => {
 
   function itemText(item: Element | null): string {
     if (!item) return "";
-    const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content'], [class*='md']") || item;
-    return textWithout(body);
+    return textWithout(item, isAssistantItem(item) ? THINKING_SEL : undefined);
   }
   function classifyText(item: Element | null, excludeSel?: string): string {
     if (!item) return "";
-    const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content']") || item;
-    if (excludeSel && safeRead(() => body.closest, null) && safeClosest(body, excludeSel)) return "";
-    return textWithout(body, excludeSel);
+    if (excludeSel && safeRead(() => item.closest, null) && safeClosest(item, excludeSel)) return "";
+    const skip = isAssistantItem(item)
+      ? (excludeSel ? `${THINKING_SEL}, ${excludeSel}` : THINKING_SEL)
+      : excludeSel;
+    return textWithout(item, skip);
   }
 
   const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
@@ -869,7 +958,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!item) return null;
     let parent: Element | null = null, ref: Element | null = null;
     for (const pre of safeQueryAll(item, "pre")) {
-      if (safeRead(() => pre.closest, null) && safeClosest(pre, ".rs-chip")) continue;
+      if (safeRead(() => pre.closest, null) && (safeClosest(pre, ".rs-chip") || safeClosest(pre, THINKING_SEL))) continue;
       if (!CMD_SHAPE.test(safeRead(() => pre.textContent, "") || "")) continue;
       pre.classList.add("rs-tool-hide");
       item.classList.add("rs-cmd-mask");
@@ -877,7 +966,18 @@ const RSProvider: PlazCodeProvider = (() => {
       // a "json / Copy" header). The card was placed inside that shell, which gets hidden with the code, so it never showed. Put the
       // card before the OUTERMOST code wrapper instead, and hide the wrapper (header and all) with the code.
       let anchor: Element = pre;
-      for (let up: Element | null = safeRead(() => pre.parentElement, null), n = 0; up && up !== item && n < 4 && /md-code|block-clip|code-?block/i.test(String(safeRead(() => up!.className, "") || "")); up = safeRead((): Element | null => up!.parentElement, null), n++) anchor = up;
+      for (
+        let up: Element | null = safeRead(() => pre.parentElement, null), n = 0;
+        up && up !== item && n < 6 && !safeRead(() => up!.matches(BODY_CONTAINER_SEL), false);
+        up = safeRead((): Element | null => up!.parentElement, null), n++
+      ) {
+        const upCls = String(safeRead(() => up!.className, "") || "");
+        if (/md-code|block-clip|code-?block|not-prose/i.test(upCls) || codeFrameInfo(up, item, ".rs-chip")) {
+          anchor = up;
+        } else {
+          break;
+        }
+      }
       if (anchor !== pre) anchor.classList.add("rs-tool-hide");
       if (!ref && safeRead(() => anchor.parentElement, null)) { parent = safeRead(() => anchor.parentElement, null); ref = anchor; }
     }
@@ -889,7 +989,7 @@ const RSProvider: PlazCodeProvider = (() => {
     displayName: "Freebuff",
     supportsVision: true,
     timings,
-    thinkingSel: ".reasoning, [class*='thinking'], [class*='reason']",
+    thinkingSel: THINKING_SEL,
     // 2026-11-14: the taller Studio bar filled the whole chat box when it sat inside it; it floats above the box instead.
     barOutside: true,
     init({ diag: d } = {}) {

@@ -5,7 +5,13 @@ const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:a
 const {JSDOM} = require('jsdom');
 
 const SOURCE = fs.readFileSync('providers/freebuff.js', 'utf8');
+const PARSER_SOURCE = fs.readFileSync('core/parser.js', 'utf8');
 const BASELINE = fs.readFileSync('test-support/provider-baseline/freebuff.js', 'utf8');
+function loadParser() {
+  const ctx = {};
+  vm.runInNewContext(PARSER_SOURCE + ';this.RSParse=RSParse;', ctx);
+  return ctx.RSParse;
+}
 const NEW_CHAT = 'https://freebuff.com/';
 const SAVED_CHAT = 'https://freebuff.com/chat/abc123';
 const COMPOSER = '<form><textarea placeholder="Ask Freebuff... Use / for commands"></textarea><button type="submit" aria-label="Send message" disabled>Send</button></form>';
@@ -315,6 +321,103 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     const at = main.indexOf('start.handshakeFailed');
     assert(at > 0 && main.indexOf('listRes.kind === "context_limit"', at) > at && main.indexOf('listRes.kind === "context_limit"', at) < main.indexOf('"Startup handshake failed"', at));
   });
+
+  // ── 8. Sibling prose + code blocks are read as fenced commands (not truncated to the first prose node) ─
+  const RSParse = loadParser();
+  const siblingTurn =
+    '<div data-message-role="assistant">' +
+      '<div class="prose"><p>Checking the available PlazCode commands before acting.</p></div>' +
+      '<div class="md-code not-prose"><div class="block-clip">' +
+        '<div class="md-code-head"><span>json</span><button aria-label="Copy code">Copy</button></div>' +
+        '<pre class="md-pre"><code>{"command": "list_commands"}</code></pre>' +
+      '</div></div>' +
+      '<div class="suggestion-list"><button>Show my workspace</button><button>Summarize the project</button><button>Check for issues</button></div>' +
+      '<div class="action-bar"><button aria-label="Good response"></button><button aria-label="Bad response"></button><button aria-label="Copy"></button></div>' +
+    '</div>';
+  {
+    const old = load(SAVED_CHAT, siblingTurn + COMPOSER, BASELINE);
+    ok('reproduces on the old code: sibling code block dropped after first 55-char prose block', () => {
+      const oldReply = old.p.readAssistant().reply;
+      assert.equal(oldReply, 'Checking the available PlazCode commands before acting.');
+      assert.equal(oldReply.length, 55);
+      assert.equal(RSParse.parseToolCalls(oldReply).length, 0);
+    });
+    old.w.close();
+
+    const f = load(SAVED_CHAT, siblingTurn + COMPOSER);
+    const reply = f.p.readAssistant().reply;
+    const item = f.p.lastAssistant();
+    ok('reads full turn including sibling fenced code block and excludes Copy/suggestion buttons', () => {
+      assert(reply.includes('Checking the available PlazCode commands before acting.'));
+      assert(reply.includes('```json\n{"command": "list_commands"}\n```'));
+      assert(!reply.includes('Copy') && !reply.includes('Show my workspace'));
+      assert.equal(RSParse.hasCommandShape(reply), true);
+      const calls = JSON.parse(JSON.stringify(RSParse.parseToolCalls(reply)));
+      assert.deepEqual(calls, [{ tool: 'list_commands', arguments: {} }]);
+    });
+    ok('hides the entire code-block shell before placing the card', () => {
+      const spot = f.p.findToolBlockSpot(item);
+      assert(spot && spot.ref.className.includes('md-code') && spot.parent === item);
+      assert(spot.ref.classList.contains('rs-tool-hide') && item.querySelector('pre').classList.contains('rs-tool-hide'));
+    });
+    f.w.close();
+  }
+  {
+    const tailwindTurn =
+      '<article data-message-role="assistant">' +
+        '<div class="prose"><p>Checking the available commands.</p></div>' +
+        '<div id="outer-shell" class="rounded-lg border">' +
+          '<div class="flex items-center justify-between"><span>json</span><button>Copy</button></div>' +
+          '<div class="overflow-x-auto"><pre><code>{"command": "list_commands", "params": {}}</code></pre></div>' +
+        '</div>' +
+        '<div class="prose"><p>Done checking.</p></div>' +
+      '</article>';
+    const f = load(SAVED_CHAT, tailwindTurn + COMPOSER);
+    const reply = f.p.readAssistant().reply;
+    const item = f.p.lastAssistant();
+    ok('reads generic Tailwind code shell and trailing prose blocks without special wrapper classes', () => {
+      assert(reply.includes('Checking the available commands.'));
+      assert(reply.includes('```json\n{"command": "list_commands", "params": {}}\n```'));
+      assert(reply.includes('Done checking.'));
+      assert.deepEqual(JSON.parse(JSON.stringify(RSParse.parseToolCalls(reply))), [{ tool: 'list_commands', arguments: {} }]);
+    });
+    ok('hides the outer generic Tailwind code shell (including its json/Copy header)', () => {
+      const spot = f.p.findToolBlockSpot(item);
+      assert(spot && spot.ref.id === 'outer-shell' && spot.parent === item);
+      assert(spot.ref.classList.contains('rs-tool-hide') && item.querySelector('pre').classList.contains('rs-tool-hide'));
+      assert(!item.querySelector('.prose').classList.contains('rs-tool-hide'));
+    });
+    f.w.close();
+  }
+  {
+    const quotedTurn =
+      '<div data-message-role="assistant">' +
+        '<div class="md-code not-prose"><div class="md-code-head"><span>text</span><button>Copy</button></div>' +
+        '<pre><code>{"command": "list_commands"}</code></pre></div>' +
+      '</div>';
+    const f = load(SAVED_CHAT, quotedTurn + COMPOSER);
+    const reply = f.p.readAssistant().reply;
+    ok('preserves ```text fence so quoted command examples never execute as tools', () => {
+      assert(reply.includes('```text\n{"command": "list_commands"}\n```'));
+      assert.equal(RSParse.parseToolCalls(reply).length, 0);
+    });
+    f.w.close();
+  }
+  {
+    const readyTurn =
+      '<div data-message-role="assistant">' +
+        '<div class="reasoning"><pre><code>{"command": "read_file", "params": {"path": "draft"}}</code></pre></div>' +
+        '<div class="prose"><p>PlazCode is ready.</p></div>' +
+        '<div class="suggestion-chips"><button>Show my workspace</button><button>Check for issues</button></div>' +
+        '<div class="feedback"><textarea placeholder="What could be better?"></textarea><button>Send</button></div>' +
+      '</div>';
+    const f = load(SAVED_CHAT, readyTurn + COMPOSER);
+    ok('excludes reasoning blocks, suggestion chips, and feedback boxes from ready replies', () => {
+      assert.equal(f.p.readAssistant().reply, 'PlazCode is ready.');
+      assert.equal(f.p.findToolBlockSpot(f.p.lastAssistant()), null);
+    });
+    f.w.close();
+  }
 
   console.log('PASS ' + checks + ' Freebuff provider checks.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
