@@ -24,7 +24,7 @@ Some extension files are written in TypeScript in `development/1.24.36/ts/` (now
 4. A new file loaded on AI pages must be added to the manifest's content-script lists (and to the page bundle the typecheck uses) in the right order, before the code that uses it.
 
 ## Hash pins
-Protected files (`core/main.js`, `core/config.js`, `providers/vani.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.30/PlazCode/<file>` and update the pin. Redo after every merge touching them.
+Protected files (`core/main.js`, `core/config.js`, `providers/freebuff.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.30/PlazCode/<file>` and update the pin. Redo after every merge touching them.
 
 ## Code protection checks
 - `node development/1.24.30/test-protection.mjs`: signatures, file tampering, encrypted maps, obfuscation and old-browser recovery.

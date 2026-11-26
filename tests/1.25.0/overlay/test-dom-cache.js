@@ -227,11 +227,11 @@ const DomCache = require("./core/dom-cache.js");
     dom.window.close();
   }
 
-  // 5. Manifest & core/main.js wiring check across all 19 providers.
+  // 5. Manifest & core/main.js wiring check across all 18 providers.
   {
     const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
     const providerGroups = manifest.content_scripts.filter((c) => (c.js || []).includes("core/main.js"));
-    assert.equal(providerGroups.length, 19);
+    assert.equal(providerGroups.length, 18);
     for (const group of providerGroups) {
       const idxCache = group.js.indexOf("core/dom-cache.js");
       const idxMain = group.js.indexOf("core/main.js");

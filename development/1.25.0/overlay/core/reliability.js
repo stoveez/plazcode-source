@@ -18,7 +18,7 @@ const PlazCodeReliability = (() => {
   function fingerprint(image) {let hash=2166136261;const s=String(image.data || '');for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619);}return s.length+':'+(hash>>>0);}
   // 1.24.30 (owner, 2026-11-01: "sometimes i make a new chat or switch ai but the [continue] pop up never pops up").
   // Messages PlazCode itself sends during startup are not the user's request: the plain first-person startup
-  // (Notion, Vani, MiMo), its one follow-up, and the saved-memory pages sent before "PlazCode is ready.".
+  // (Notion, MiMo), its one follow-up, and the saved-memory pages sent before "PlazCode is ready.".
   // Counting them as a request made every fresh chat look already in use, so the offer never appeared.
   function startupMessage(text) {
     const t=String(text||'').trim();

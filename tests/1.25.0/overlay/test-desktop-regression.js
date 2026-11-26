@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "11bc62877df0413e9ecb3bf96ce4f7d27f2e8c66",
   "core/headless-builder.js": "cf0a4b60aeb5b13292f009fa4d3bd7642669b2f0",
   "core/luau-knowledge.js": "a0fa2ec5a667d430a32320ff3f8d75c272adeab1",
-  "core/main.js": "debb362430b6dec97ff4f086b055c954f7a06113",
+  "core/main.js": "82c98aba126153c4fc50283524e6a5a955d28e09",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "bce06905c1dab5c961bb433c61f9b0e24fe277fb",
   "core/motion-tools.js": "d9ce1e19ef84263d5023c46ee7ddb95a215938e5",
@@ -34,8 +34,7 @@ const baseline = {
   "providers/qwen-net.js": "a78562576a2b095a669ccae863876c28636baa81",
   "providers/qwen.js": "32bad0f67bf5eb005f8f1e2404924ceb5963e3f9",
   "providers/useai.js": "e9ffac9b4d599cdeb53122ebb06da10cf8eb477a",
-  "providers/vani.js": "7417007b5fbb4bf470484c55022c4f478ac13f0f",
-  "providers/mimo.js": "aee2148bc5ad303e9142ee4d95bbd0727ad0bd0a"
+  "providers/mimo.js": "de8d6b19e2361050c6806b4a01ffdab2ea923819"
 };
 const requiredProviders = [
   "providers/deepseek.js",
@@ -49,7 +48,6 @@ const requiredProviders = [
   "providers/freebuff.js",
   "providers/crax.js",
   "providers/useai.js",
-  "providers/vani.js",
   "providers/mimo.js",
   "providers/oxalpha.js",
   "providers/notion.js",

@@ -8,7 +8,8 @@ BINARY={'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2
 REMOVED=['core/ultracode-deepseek.js','PlazCode-Extension/core/ultracode-deepseek.js','PlazCode-Extension/ultra','PlazCode-Extension/ultragui',
  'test-deepseek-ultracode.js','test-ultracode-efficiency.js','agent/src/ultra-index.json','agent/src/ultra-resources.json','agent/src/ultragui-index.json','agent/src/ultragui-resources.json',
  'providers/clickup.js','PlazCode-Extension/providers/clickup.js','test-clickup-provider.js','release-tools/test-clickup-browser.cjs','release-tools/test-clickup-startup.cjs',
- 'release-tools/test-clickup-results.cjs','release-tools/test-clickup-send-readiness.cjs','release-tools/test-clickup-startup-model.cjs','release-tools/test-clickup-performance.cjs']
+ 'release-tools/test-clickup-results.cjs','release-tools/test-clickup-send-readiness.cjs','release-tools/test-clickup-startup-model.cjs','release-tools/test-clickup-performance.cjs',
+ 'providers/vani.js','PlazCode-Extension/providers/vani.js','test-vani-provider.js','test-vani-startup.js']
 def extract(archive,destination):
  with zipfile.ZipFile(archive) as z:
   for name in z.namelist():

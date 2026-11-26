@@ -1,7 +1,7 @@
 const fs=require('fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
 const html=fs.readFileSync('agent/src/desktop.html','utf8'),native=fs.readFileSync('agent/src/gui.rs','utf8');
 const dom=new JSDOM(html),d=dom.window.document,card=d.querySelector('#homeSupportedAis'),buttons=[...card.querySelectorAll('[data-ipc]')];
-assert.equal(buttons.length,20);assert.equal(new Set(buttons.map(x=>x.dataset.ipc)).size,20); // 1.24.30: + MiMo; 1.25.0: ClickUp removed, + Grok, AI Studio, Mistral, WorkBuddy
+assert.equal(buttons.length,19);assert.equal(new Set(buttons.map(x=>x.dataset.ipc)).size,19); // 1.24.30: + MiMo; 1.25.0: ClickUp & Vani removed, + Grok, AI Studio, Mistral, WorkBuddy
 assert(card.compareDocumentPosition(d.querySelector('#homeTasks'))&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
 const manifest=JSON.parse(fs.readFileSync('manifest.json'));const providers=new Set(manifest.content_scripts.filter(x=>x.js?.includes('core/main.js')).flatMap(x=>x.js.filter(y=>y.startsWith('providers/') && !['providers/media.js','providers/cm.js','providers/net.js'].includes(y)).map(y=>y.split('/')[1].replace('.js',''))));
 for(const provider of providers)assert(buttons.some(x=>x.dataset.ipc==='open:'+provider),'Missing registered provider '+provider);

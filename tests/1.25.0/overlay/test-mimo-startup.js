@@ -22,16 +22,16 @@ function makeMimo() {
 }
 
 function scenario(replies) {
-  const vani = makeMimo();
+  const mimo = makeMimo();
   const sent = [], banners = [], queue = replies.slice();
   let current = { id: "turn-1", text: command, dataset: {} }, items = [current], commandsRun = 0;
   const box = {
     Map, Set, Date,
     A: { startGen: 0, sessionGen: 1, toolList: [{ name: "read_file", description: "Read a file.", inputSchema: { properties: { path: { type: "string" } }, required: ["path"] } }] },
     P: {
-      id: vani.id, displayName: vani.displayName,
-      userVoiceStartup: vani.userVoiceStartup, compactStartup: vani.compactStartup,
-      startupRequest: vani.startupRequest, startupCorrection: vani.startupCorrection,
+      id: mimo.id, displayName: mimo.displayName,
+      userVoiceStartup: mimo.userVoiceStartup, compactStartup: mimo.compactStartup,
+      startupRequest: mimo.startupRequest, startupCorrection: mimo.startupCorrection,
       chatIsEmpty: () => true, lastAssistantId: () => current.id, lastAssistant: () => current,
       conversationKey: () => "chat-a", setInputLock() {}, ensureComposerReady: async () => ({ ready: true }),
       classifyText: (i) => i.text, itemText: (i) => i.text, isAssistantItem: (i) => i.role !== "user", isUserItem: (i) => i.role === "user",

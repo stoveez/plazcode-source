@@ -176,9 +176,6 @@ jobs:
       - name: Safety, What happened and site setups with the full core in Chromium
         run: node release-tools/test-power-features-browser.cjs
         working-directory: build-src-1.25.0/PlazCode
-      - name: Vani AI provider registration and turn reading
-        run: node test-vani-provider.js
-        working-directory: build-src-1.25.0/PlazCode
       - name: Desktop effort menu stays above neighboring cards and inside the window
         run: node release-tools/test-effort-picker-browser.cjs
         working-directory: build-src-1.25.0/PlazCode

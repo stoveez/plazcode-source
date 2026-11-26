@@ -891,7 +891,7 @@
   }
   let plazcodeTheme = "night";
   applySharedAppearance({theme:"default",glow:"subtle",gradients:"on"});
-  // Some sites (Vani's Next.js app) re-render <html> on client-side navigation
+  // Some Next.js sites re-render <html> on client-side navigation
   // and drop every attribute they did not set themselves, which wiped the bar's
   // theme and left its labels black. When all of PlazCode's own marks vanish at
   // once, put them back; the site's own attributes are never touched.
@@ -1029,7 +1029,6 @@
     { name: "Freebuff", url: "https://freebuff.ai/chat" },
     { name: "Crax GPT", url: "https://gpt.crax.lol/" },
     { name: "Use AI", url: "https://use.ai/chat" },
-    { name: "Vani AI", url: "https://c.vani.ai/c" },
     { name: "MiMo", url: "https://aistudio.xiaomimimo.com/#/c" },
     { name: "Ox Alpha", url: "https://oxalpha.com/chat" },
     { name: "Grok", url: "https://grok.com/" },
@@ -1869,8 +1868,8 @@
       // up" symptom (scrolling re-attached old turns and bumped the count).
       const curTok = P.lastAssistantId ?  P.lastAssistantId() : undefined;
       const chat = readChat();
-      // A brand-new chat that gets its address a moment after the send (Vani
-      // assigns /chat/<id> about a second later) is the SAME chat gaining its id,
+      // A brand-new chat that gets its address a moment after the send
+      // (assigning /chat/<id> about a second later) is the SAME chat gaining its id,
       // not a different conversation: adopt the id instead of abandoning the reply.
       if (!sendChat && chat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
         diag("response.chatIdAssigned", {});
@@ -4915,7 +4914,7 @@ return result`;
   // handshake", "no filesystem access", or a JSON status object saying so) has
   // said no. Used only for providers that opt in (userVoiceStartup), so the user
   // sees "the AI declined" with what to try instead of a vague "handshake failed".
-  // Plain-voice startup (MiMo, Vani): "PlazCode is ready." first, then optionally a few sentences of the
+  // Plain-voice startup (MiMo): "PlazCode is ready." first, then optionally a few sentences of the
   // model's own (limits it keeps). Never a command, and never a long essay that only mentions the phrase.
   function startupVoiceReady(text: unknown) {
     const t = String(text || "").replace(/[`*#]/g, "").trim().replace(/^_+/, "");
@@ -6309,7 +6308,7 @@ return result`;
     return null;
   }
   // A brand-new chat is remembered under an empty address until the site
-  // assigns one (Vani). Re-file those memories under the real address so the
+  // assigns one. Re-file those memories under the real address so the
   // startup command keeps its "ran" state instead of falling back to "not run".
   function adoptChatId(chat: string) {
     if (!chat) return;
@@ -6944,13 +6943,13 @@ return result`;
       diag("start.listCommands", { phase: "run" });
       rememberExecuted(listRes.item);
       const startupToolCall = { tool: "list_commands", arguments: startupCall.arguments || {} };
-      markToolTelemetry(startupToolCall, { silent: true });
+      if (typeof markToolTelemetry === "function") markToolTelemetry(startupToolCall, { silent: true });
       const toolFeedback = await runTool(startupToolCall);
       if (!alive()) return;
       const cur = activeEngine();
       let scoped = A.toolList.filter((t) => (t.server || cur) === cur);
       const offline = /Roblox Studio is currently OFFLINE|Unreal Editor is currently OFFLINE|AgentScript is currently OFFLINE/.test(toolFeedback);
-      if (offline && !feedbackIsError(String(toolFeedback || ""))) {
+      if (offline && typeof reportCommandTelemetry === "function" && (typeof feedbackIsError !== "function" || !feedbackIsError(String(toolFeedback || "")))) {
         reportCommandTelemetry("list_commands", false, String(toolFeedback || "").length);
       }
       rememberStartupOutcome(startupTurn, offline ? "err" : "done", offline ? "offline" : `${scoped.length} commands`);
@@ -7043,7 +7042,7 @@ return result`;
       // no longer matched and startup stalled with it left in the chat box.
       // Use equivalent plain-text markers for the Notion preferences only.
       if(P.id==="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\nThe list_commands handshake already ran. These user preferences apply to future requested project work:\n${notionPlainText(prompt)}\n\nThe command-list request succeeded. Please acknowledge this connection with "PlazCode is ready."`;
-      // Providers that opened with a plain first-person request (Vani) get the long
+      // Providers that opened with a plain first-person request get the long
       // operating notes framed the same way: as the user's own notes for the
       // extension, delivered only after the model has already taken part.
       // 1.24.30: say plainly where the result came from and what the tag at the start of the notes is (MiMo

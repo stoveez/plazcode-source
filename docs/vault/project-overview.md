@@ -7,7 +7,7 @@ updated: 2026-10-26
 
 # What PlazCode is
 
-A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Vani, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio (engine "Roblox", `RS`) or on the user's computer (engine "AgentScript", `AS`).
+A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio (engine "Roblox", `RS`) or on the user's computer (engine "AgentScript", `AS`).
 
 ## Where things live
 - Private repo `stoveez/plazcode-source`: source overlay, build scripts, tests, release tooling.

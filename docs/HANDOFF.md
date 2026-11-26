@@ -38,7 +38,7 @@ Older dated entries below are historical; docs/NOW.md is the live handoff.
 Written 2026-10-23 for the owner (stoveez) and for **any AI the owner uses** (Claude, Codex, or any other). If you are an AI picking this up, read this file first, then `CLAUDE.md` or `AGENTS.md` (they carry the same rules), `docs/MAINTAINER-GUIDE.md` and `docs/TASK-BOARD.md`. The owner may switch between AIs at any time, for example when one runs out of limits, so **the latest work must always be on GitHub**.
 
 ## 1. What PlazCode is
-A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Vani, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio ("Roblox" engine, `RS`) or on the user's computer ("AgentScript" engine, `AS`). This private repo is `stoveez/plazcode-source`. The public repo `stoveez/PlazCode` holds only downloads and update feeds.
+A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio ("Roblox" engine, `RS`) or on the user's computer ("AgentScript" engine, `AS`). This private repo is `stoveez/plazcode-source`. The public repo `stoveez/PlazCode` holds only downloads and update feeds.
 
 ## 2. Where the latest work is (read this before anything else)
 - Do NOT start from `release/1.24.25` or `main` on GitHub. `release/1.24.25` on GitHub is old (`480b5cb`). `main` is older still.
@@ -187,7 +187,7 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 - One JavaScript test: `cd build-src-1.24.27/PlazCode && NODE_PATH=release-tools/node_modules node test-<name>.js`
 - Full JavaScript suite (about 10-15 minutes): from the build folder, `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`
 - Rust tests: `cargo test --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml` (about 180 tests).
-- **Protected files and hash pins:** after editing a protected file (for example `core/main.js`, `providers/vani.js`, `providers/notion.js`, other providers), update its pin in the overlay copy of `test-desktop-regression.js`. The pin is `git hash-object build-src-1.24.27/PlazCode/<file>` computed AFTER running `prepare.py`. Recompute pins again after every merge that touches those files.
+- **Protected files and hash pins:** after editing a protected file (for example `core/main.js`, `providers/freebuff.js`, `providers/notion.js`, other providers), update its pin in the overlay copy of `test-desktop-regression.js`. The pin is `git hash-object build-src-1.24.27/PlazCode/<file>` computed AFTER running `prepare.py`. Recompute pins again after every merge that touches those files.
 - CI: `.github/workflows/validate-1.24.27.yml` on the branch. The standard test build for the owner is the two CI artifacts `plazcode-<version>-Windows-test-lean` and `plazcode-<version>-macOS-test-lean` (see `CLAUDE.md` rule 6). Starting CI needs a push; pushing to a `claude/` task branch is allowed, but check `CLAUDE.md` before triggering any publish workflow (not allowed).
 
 ## 5. Owner rules that always apply (short form; the full list is in CLAUDE.md)

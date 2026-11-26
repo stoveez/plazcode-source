@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// Studio floating dock integration & UI state tests: 19 AI sites, bridge dispatch, Feel modes, media video warning, and desktop settings toggle.
+// Studio floating dock integration & UI state tests: 18 AI sites, bridge dispatch, Feel modes, media video warning, and desktop settings toggle.
 const fs = require("fs");
 const vm = require("vm");
 const assert = require("node:assert/strict");
@@ -9,7 +9,7 @@ const mainSrc = fs.readFileSync("core/main.js", "utf8");
 const dockHtml = fs.readFileSync("agent/src/studio_dock.html", "utf8");
 const desktopHtml = fs.readFileSync("agent/src/desktop.html", "utf8");
 
-// 1. All 19 AI sites + openOrFocusAiTab + dock-send in background.js
+// 1. All 18 AI sites + openOrFocusAiTab + dock-send in background.js
 const siteStart = bgSrc.indexOf("const DOCK_AI_SITES = [");
 const actionEnd = bgSrc.indexOf("setInterval(() => { reportDesktopAgentState(); }, 750);");
 assert(siteStart > 0 && actionEnd > siteStart, "dock helpers found in background.js");
@@ -52,14 +52,14 @@ const ctx = vm.createContext({
 });
 vm.runInContext(slice, ctx);
 
-const ALL_19 = [
+const ALL_18 = [
   "chatgpt", "claude", "gemini", "grok", "aistudio", "deepseek", "mistral", "kimi",
-  "qwen", "glm", "arena", "notion", "workbuddy", "freebuff", "crax", "useai", "vani",
+  "qwen", "glm", "arena", "notion", "workbuddy", "freebuff", "crax", "useai",
   "mimo", "oxalpha",
 ];
 const dockSites = vm.runInContext("DOCK_AI_SITES", ctx);
-assert.equal(dockSites.length, 19, "exactly 19 browser AI providers configured");
-assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider IDs present");
+assert.equal(dockSites.length, 18, "exactly 18 browser AI providers configured");
+assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_18, "all 18 AI provider IDs present");
 
 (async () => {
   // Open new AI tab when none exists (Grok)
@@ -473,7 +473,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   assert(mainSrc.includes('type: "rs-dock-feed"') && mainSrc.includes("isDockWritingNow()") && mainSrc.includes("busy, writing,"), "main.ts emits feed events and writing state");
   assert(bgSrc.includes('case "rs-dock-feed":') && bgSrc.includes('/api/studio-dock/feed'), "background.ts relays dock feed events");
 
-  console.log("PASS Studio floating dock bridge, 19 AI providers, Feel modes, hotkeys, Live Command Feed, Writing status, and UI shell checks.");
+  console.log("PASS Studio floating dock bridge, 18 AI providers, Feel modes, hotkeys, Live Command Feed, Writing status, and UI shell checks.");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

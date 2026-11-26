@@ -24,7 +24,7 @@ function functions(source){const ast=parse(source,{ecmaVersion:'latest'}),out={}
 // Notion block-transcript/result/readiness changes are covered by test-notion-block-transcript and native Chromium/Firefox block-card fixtures.
 // Notion pasteRichText is covered by native Chromium/Firefox startup integration: Firefox creates a separate empty clipboard transfer.
 // 1.24.12: Notion draftLooksWritten tolerates Notion's own reformatting of PlazCode startup drafts; covered by test-1.24.10-fixes and test-1.24.11-fixes.
-// 1.24.21: clicks on PlazCode's own bar are never the site's Send button (Fix connection started a phantom send); covered by test-vani-provider.
+// 1.24.21: clicks on PlazCode's own bar are never the site's Send button (Fix connection started a phantom send); covered by test-freebuff-provider.
 // 1.24.21: Claude itemKey (stable per-turn position instead of text prefix that included PlazCode's own chip) and clickContinueBtn (returns whether it clicked); covered by test-1.24.21-stall-recovery.
 // 1.24.21: Notion lastAssistant/sampleStream/startupReplySettled: a command part followed by a spoken part is the turn that counts; covered by test-notion-split-reply and test-notion-start-explains.
 // 1.24.21: Freebuff new-chat / false-"generating" / verified-send fixes; covered by test-freebuff-provider.

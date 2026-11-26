@@ -1,5 +1,5 @@
 // A brand-new chat that gets its address a moment after the startup message is
-// the SAME chat gaining its id (Vani: /chat -> /chat/<id>, about a second after
+// the SAME chat gaining its id (/chat -> /chat/<id>, about a second after
 // the send). The startup must finish and the agent must connect instead of
 // being abandoned as "response owner changed" ("Not connected to this chat yet").
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
@@ -10,7 +10,7 @@ async function run(page, assignAfterMs) {
     const banners=[],banner=fixture.ui.banner;fixture.ui.banner=(...args)=>{banners.push(args);return banner.apply(fixture.ui,args);};
     window.__key = ''; provider.conversationKey = () => window.__key;
     // The AI answers slowly, and the site assigns the chat its address while the
-    // reply is still on its way (Vani: about a second after the send).
+    // reply is still on its way (about a second after the send).
     autoReply = false;
     const button = document.querySelector('[data-testid="send-button"]'), original = button.onclick;
     button.onclick = (event) => {

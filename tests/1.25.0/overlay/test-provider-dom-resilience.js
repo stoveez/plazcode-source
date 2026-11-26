@@ -14,7 +14,6 @@ const fixtures={
  qwen:['https://chat.qwen.ai/c/test','<textarea class="message-input-textarea"></textarea>'],
  crax:['https://gpt.crax.lol/','<textarea id="promptInput"></textarea>'],
  useai:['https://use.ai/chat/test','<textarea placeholder="Ask anything"></textarea>'],
- vani:['https://c.vani.ai/c/test','<textarea placeholder="Ask anything"></textarea>'],
  oxalpha:['https://oxalpha.com/chat/test','<textarea placeholder="Ask anything"></textarea>'],
  notion:['https://app.notion.com/chat/test','<textarea placeholder="Ask Notion AI"></textarea>'],
  copilot:['https://copilot.microsoft.com/chats/test','<textarea id="userInput" placeholder="Message Copilot"></textarea>'],

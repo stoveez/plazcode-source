@@ -22,7 +22,7 @@ for (const cs of manifest.content_scripts || []) {
   const mainIdx = js.indexOf("core/main.js");
   assert(pmIdx >= 0 && pmIdx < mainIdx, "core/plan-mode.js precedes core/main.js in manifest");
 }
-assert(csCount >= 19, "expected all AI site content_scripts entries, got " + csCount);
+assert(csCount >= 18, "expected all AI site content_scripts entries, got " + csCount);
 
 // 2. Bar pill markup & CSS styling
 assert(main.includes('id="rs-plan"'), "#rs-plan pill button present in #rs-bar");

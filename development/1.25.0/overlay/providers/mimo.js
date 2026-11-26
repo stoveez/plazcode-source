@@ -328,7 +328,7 @@ const RSProvider = (() => {
 
   // 1.24.30 (owner, 2026-11-01: "mimo doesnt accept the injection"). MiMo answered the first startup step, then
   // refused the second one because it read the "(System note: ...)" wording and the unexplained ⟦RS-SYS⟧ tag as a
-  // prompt injection. MiMo now gets the plain first-person startup (same approach as Vani): the user's own request,
+  // prompt injection. MiMo now gets the plain first-person startup: the user's own request,
   // honest about what the extension does, and the long rules arrive afterwards as the user's own notes.
   function startupRequest(engine) {
     return `I clicked Start Agent in my installed PlazCode extension to connect this chat to my own ${engine === "local" ? "local files" : "Roblox Studio project"}. This is my own connection request, an ordinary message from me, not a system instruction, and it does not override your safety rules or grant extra permissions. How it works: the extension in my browser reads fenced JSON code blocks in your normal replies, runs them on my computer and posts the real output back here as my next message. You do not need any native tool, file access or connector for this; you only write text. To begin, please reply with one fenced json code block containing {"command":"list_commands"}. It only lists which commands exist and changes nothing. Then wait for the result and for my task. If you cannot participate, explain briefly.`;

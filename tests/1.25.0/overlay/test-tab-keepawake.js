@@ -169,7 +169,7 @@ const TabKeepAwake = require("./core/tab-keepawake.js");
     );
     assert(mainWorld, "manifest loads core/tab-keepawake-main.js in MAIN world at document_start");
     const providerGroups = manifest.content_scripts.filter((c) => (c.js || []).includes("core/main.js"));
-    assert.equal(providerGroups.length, 19, "all 19 AI host groups present");
+    assert.equal(providerGroups.length, 18, "all 18 AI host groups present");
     for (const group of providerGroups) {
       for (const m of group.matches) {
         assert(mainWorld.matches.includes(m), "MAIN tab-keepawake covers host " + m);

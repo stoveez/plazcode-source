@@ -72,7 +72,6 @@ fn supported_ai_url(action: &str) -> Option<&'static str> {
         "open:freebuff" => Some("https://freebuff.ai/chat"),
         "open:crax" => Some("https://gpt.crax.lol/"),
         "open:useai" => Some("https://use.ai/"),
-        "open:vani" => Some("https://c.vani.ai/c"),
         "open:mimo" => Some("https://aistudio.xiaomimimo.com/#/c"),
         "open:oxalpha" => Some("https://oxalpha.com/chat"),
         "open:notion" => Some("https://www.notion.so/ai"),
@@ -667,11 +666,12 @@ mod tests {
 
     #[test] fn supported_ai_links_are_fixed_and_match_desktop_buttons() {
         let html=include_str!("desktop.html");
-        let actions=["chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","vani","mimo","oxalpha","notion","grok","aistudio","mistral","workbuddy","ollama"];
+        let actions=["chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","mimo","oxalpha","notion","grok","aistudio","mistral","workbuddy","ollama"];
         for name in actions {
             let action=format!("open:{name}");let url=supported_ai_url(&action).expect("missing supported AI action");
             assert!(url.starts_with("https://"));assert!(html.contains(&format!("data-ipc=\"{action}\"")));
         }
+        assert_eq!(supported_ai_url("open:vani"),None);
         assert_eq!(supported_ai_url("open:https://example.com"),None);assert_eq!(supported_ai_url("open:unknown"),None);
     }
 

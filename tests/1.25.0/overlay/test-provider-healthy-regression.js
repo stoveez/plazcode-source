@@ -13,12 +13,10 @@ const matrix={
  qwen:['https://chat.qwen.ai/c/test','<textarea class="message-input-textarea"></textarea>','<div class="qwen-chat-message-user">hello</div><div class="qwen-chat-message-assistant"><div class="markdown">COMMAND</div></div>','<button class="send-button">Send</button>'],
  crax:['https://gpt.crax.lol/','<textarea id="promptInput"></textarea>','<div class="thread"><div class="msg msg-user"><div class="bubble">hello</div></div><div class="msg msg-assistant"><div class="bubble">COMMAND</div></div></div>','<button id="sendBtn">Send</button>'],
  useai:['https://use.ai/chat/test','<textarea></textarea>','<article data-message-role="user">hello</article><article data-message-role="assistant">COMMAND</article>','<button type="submit" aria-label="Send message">Send</button>'],
- vani:['https://c.vani.ai/c/test','<textarea></textarea>','<article data-message-role="user">hello</article><article data-message-role="assistant">COMMAND</article>','<button type="submit" aria-label="Send message">Send</button>'],
  oxalpha:['https://oxalpha.com/chat/test','<textarea></textarea>','<article data-message-role="user">hello</article><article data-message-role="assistant">COMMAND</article>','<button type="submit" aria-label="Send message">Send</button>'],
  notion:['https://app.notion.com/chat/test','<textarea placeholder="Ask Notion AI"></textarea>','<div data-agent-service-scroll-anchor="user" style="display:flex;justify-content:flex-end">hello</div><div data-agent-service-scroll-anchor="assistant" style="display:flex;justify-content:flex-start"><div>COMMAND</div></div>','<button data-testid="agent-chat-send-button" aria-label="Send message">Send</button>'],
 };
-// Vani AI's adapter is the Use AI adapter with Vani's selectors, so it must behave like the Use AI baseline.
-const baselineOf={vani:'useai'};
+const baselineOf={};
 const command='{"command":"list_commands","params":{}}';
 function setup(name,baseline){
  const [url,editor,turns,button]=matrix[name];

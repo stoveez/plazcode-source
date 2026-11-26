@@ -419,5 +419,31 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     f.w.close();
   }
 
+  // ── 9. Clicking PlazCode bar buttons never counts as the site Send button ─
+  for (const name of ['freebuff', 'oxalpha', 'useai']) {
+    const f = load('https://example.test/chat/test',
+      '<form><textarea>A draft to keep</textarea><button id="nativeSend" type="submit" aria-label="Send message">Send</button></form>' +
+      '<div id="rs-root"><button id="barSend" type="submit" aria-label="Send message"><span>Enhance</span></button>' +
+      '<button id="barStop" aria-label="Stop generation"><span>Stop</span></button></div>',
+      fs.readFileSync('providers/' + name + '.js', 'utf8'));
+    f.w.document.addEventListener('submit', (e) => e.preventDefault());
+    let sends = 0, stops = 0;
+    f.p.installSendHooks({isStarted: () => true, isBlocked: () => false,
+      onUserMessage: () => sends++, onNativeStop: () => stops++,
+      onBlockedAttempt() { assert.fail(name + ': bar click must not start a blocked task'); }});
+    for (const id of ['barSend', 'barStop']) {
+      f.w.document.querySelector('#' + id + ' span').dispatchEvent(new f.w.MouseEvent('click', {bubbles: true, cancelable: true}));
+    }
+    ok(name + ': bar clicks never trigger Send/Stop and preserve draft', () => {
+      assert.equal(sends, 0); assert.equal(stops, 0);
+      assert.equal(f.p.editorText(), 'A draft to keep');
+    });
+    ok(name + ': real native Send click still starts a task', () => {
+      f.w.document.querySelector('#nativeSend').dispatchEvent(new f.w.MouseEvent('click', {bubbles: true, cancelable: true}));
+      assert.equal(sends, 1);
+    });
+    f.w.close();
+  }
+
   console.log('PASS ' + checks + ' Freebuff provider checks.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

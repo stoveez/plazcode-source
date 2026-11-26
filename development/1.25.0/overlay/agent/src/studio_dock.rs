@@ -35,7 +35,7 @@ pub struct AiSiteSpec {
     pub url: &'static str,
 }
 
-/// All 19 browser AI sites supported by the PlazCode extension.
+/// All 18 browser AI sites supported by the PlazCode extension.
 pub const AI_SITES: &[AiSiteSpec] = &[
     AiSiteSpec { id: "chatgpt", name: "ChatGPT", url: "https://chatgpt.com/" },
     AiSiteSpec { id: "claude", name: "Claude", url: "https://claude.ai/" },
@@ -53,7 +53,6 @@ pub const AI_SITES: &[AiSiteSpec] = &[
     AiSiteSpec { id: "freebuff", name: "FreeBuff", url: "https://freebuff.ai/" },
     AiSiteSpec { id: "crax", name: "Crax", url: "https://gpt.crax.lol/" },
     AiSiteSpec { id: "useai", name: "Use.ai", url: "https://use.ai/" },
-    AiSiteSpec { id: "vani", name: "Vani", url: "https://c.vani.ai/" },
     AiSiteSpec { id: "mimo", name: "MiMo", url: "https://aistudio.xiaomimimo.com/" },
     AiSiteSpec { id: "oxalpha", name: "OxAlpha", url: "https://oxalpha.com/" },
 ];
@@ -2428,11 +2427,11 @@ mod tests {
     use crate::preferences::Appearance;
 
     #[test]
-    fn supports_all_19_browser_ai_providers() {
-        assert_eq!(AI_SITES.len(), 19);
+    fn supports_all_18_browser_ai_providers() {
+        assert_eq!(AI_SITES.len(), 18);
         for id in [
             "chatgpt", "claude", "gemini", "grok", "aistudio", "deepseek", "mistral", "kimi",
-            "qwen", "glm", "arena", "notion", "workbuddy", "freebuff", "crax", "useai", "vani",
+            "qwen", "glm", "arena", "notion", "workbuddy", "freebuff", "crax", "useai",
             "mimo", "oxalpha",
         ] {
             let resolved = resolve_ai_site(Some(id));

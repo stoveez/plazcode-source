@@ -1,4 +1,4 @@
-// Sites that re-render <html> (Vani's Next.js app on its /c -> /chat redirect)
+// Sites that re-render <html> on client-side navigation (/c -> /chat redirect)
 // drop every attribute they did not set, which wiped PlazCode's theme and left
 // the bar's labels black. The full core must put its own marks back and leave
 // the site's attributes alone; a single mark PlazCode itself removes stays gone.
