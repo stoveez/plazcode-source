@@ -1501,17 +1501,15 @@ html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83)
    repaint everything behind each card on every frame of the animated theme, which halved the frame rate. With no glass
    blur chosen, there is now no blur at all; and while the app window is in the background (not focused), its endless
    animations pause. */
-html:not([data-look-blur]) :is(.nx-card,.nx-row,.panel,.settingcard,.stat,.sidebar,.titlebar){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html:not([data-look-blur]) :is(.nx-card,.nx-row,.panel,.settingcard,.stat,.sidebar,.titlebar,.dx-top){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
-.content{will-change:scroll-position;contain:style}
+.content{position:relative;will-change:scroll-position;contain:style}
 .sidebar{contain:layout paint style}
 .page.active{contain:style}
 .page.active :is(.toolcard,.mcpcard,.desktop-ai-card,.cn-tile,.nx-theme,.nx-card,.nx-block,.settingcard,.ws-card){contain:layout style}
-#pzScrollShield{position:fixed;inset:110px 16px 0 260px;z-index:60;display:none;pointer-events:auto}
-html[data-sidebar-collapsed] #pzScrollShield{left:84px}
-@media(max-width:760px){#pzScrollShield{left:76px}}
-html[data-pz-scrolling] #pzScrollShield{display:block}
-html[data-pz-scrolling] .app::before,html[data-pz-scrolling] .app::after,html[data-pz-turning] .app::before,html[data-pz-turning] .app::after,html[data-pz-scrolling] .hero-agent::before,html[data-pz-scrolling] #homeStartAgent::before,html[data-pz-turning] .hero-agent::before,html[data-pz-turning] #homeStartAgent::before,html[data-pz-scrolling] .pz-preview::before,html[data-pz-turning] .pz-preview::before,html[data-pz-scrolling] .pc-ultra-label,html[data-pz-turning] .pc-ultra-label,html[data-pz-scrolling] .pz-preview,html[data-pz-turning] .pz-preview{animation-play-state:paused!important}
+#pzScrollCover{position:absolute;top:0;left:0;right:0;z-index:60;display:none;pointer-events:auto}
+#content.pz-sc>#pzScrollCover{display:block}
+html[data-pz-scrolling] .app::before,html[data-pz-scrolling] .app::after,html[data-pz-scrolling] .app,html[data-pz-turning] .app::before,html[data-pz-turning] .app::after,html[data-pz-scrolling] .hero-agent::before,html[data-pz-scrolling] #homeStartAgent::before,html[data-pz-turning] .hero-agent::before,html[data-pz-turning] #homeStartAgent::before,html[data-pz-scrolling] .pz-preview::before,html[data-pz-turning] .pz-preview::before,html[data-pz-scrolling] .pc-ultra-label,html[data-pz-turning] .pc-ultra-label,html[data-pz-scrolling] .pz-preview,html[data-pz-turning] .pz-preview{animation-play-state:paused!important}
 .toolcard,.mcpcard,.desktop-ai-card{contain:layout style;content-visibility:auto;contain-intrinsic-size:auto 84px}
 .toolcard,.mcpcard{contain:layout style paint;contain-intrinsic-size:auto 92px}
 .page.active .toolcard,.page.active .mcpcard,.page.active .desktop-ai-card{content-visibility:visible}
@@ -4492,33 +4490,47 @@ __PLAZCODE_BACKDROP_FX__
   // Page turns (Appearance > Feel > Interface motion: Full). The page being left stays painted for a moment and
   // fades away while the next one settles in; Reduced, Off and the system's reduced-motion setting skip it.
   function Pzscrollperf() {
-    var Content = Byid('content'), Root = document.documentElement, Timer = 0;
+    var Content = Byid('content'), Root = document.documentElement, Timer = 0, LastX = -1, LastY = -1;
     if (!Content || Content._pzScrollPerf) return;
     Content._pzScrollPerf = true;
-    if (!Byid('pzScrollShield')) {
-      var Shield = Pzel('div', '');
-      Shield.id = 'pzScrollShield';
-      Shield.setAttribute('aria-hidden', 'true');
-      Content.insertBefore(Shield, Content.firstChild);
+    var Cover = Byid('pzScrollCover');
+    if (!Cover) {
+      Cover = Pzel('div', '');
+      Cover.id = 'pzScrollCover';
+      Cover.setAttribute('aria-hidden', 'true');
+      Content.appendChild(Cover);
     }
     function EndScroll() {
-      Timer = 0;
+      if (Timer) { window.clearTimeout(Timer); Timer = 0; }
+      Content.classList.remove('pz-sc');
+      Cover.style.height = '';
       Root.removeAttribute('data-pz-scrolling');
+      LastX = -1;
+      LastY = -1;
       if (window.__pzDeferredRefresh) { window.__pzDeferredRefresh = false; try { Refresh(); } catch (Error) {} }
     }
-    function OnScroll() {
+    function OnContentScroll(Event) {
+      if (Event && Event.target !== Content) return;
+      if (Content.scrollHeight <= Content.clientHeight + 2) return;
       if (!Root.hasAttribute('data-pz-scrolling')) {
+        Cover.style.height = Math.max(0, Content.scrollHeight - 2) + 'px';
+        Content.classList.add('pz-sc');
         Root.setAttribute('data-pz-scrolling', '');
         try { if (typeof window.__pzFlowPauseAll === 'function') window.__pzFlowPauseAll(); } catch (Error) {}
       }
       if (Timer) window.clearTimeout(Timer);
-      Timer = window.setTimeout(EndScroll, 200);
+      Timer = window.setTimeout(EndScroll, 130);
     }
-    Content.addEventListener('scroll', OnScroll, { passive: true });
-    Content.addEventListener('wheel', OnScroll, { passive: true });
+    Content.addEventListener('scroll', OnContentScroll, { passive: true });
     Content.addEventListener('pointerdown', function () {
-      if (Root.hasAttribute('data-pz-scrolling')) {
-        if (Timer) window.clearTimeout(Timer);
+      if (Root.hasAttribute('data-pz-scrolling')) EndScroll();
+    }, { passive: true });
+    Cover.addEventListener('pointermove', function (Event) {
+      if (!Root.hasAttribute('data-pz-scrolling')) return;
+      if (LastX < 0) {
+        LastX = Event.clientX;
+        LastY = Event.clientY;
+      } else if (Math.abs(Event.clientX - LastX) + Math.abs(Event.clientY - LastY) > 6) {
         EndScroll();
       }
     }, { passive: true });
@@ -4649,6 +4661,7 @@ __PLAZCODE_BACKDROP_FX__
     }
     function StartSettle(Node) {
       if (!Node || !Node.animate) return;
+      if (document.documentElement.hasAttribute('data-pz-scrolling')) { StopFlow(Node, false); return; }
       var Entry = FlowMap.get(Node);
       if (!Entry || Entry.kind !== 'flow') return;
       var Cur = StopFlow(Node, true);

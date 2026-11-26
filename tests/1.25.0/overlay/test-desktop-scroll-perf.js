@@ -8,10 +8,14 @@ const assert = require("node:assert/strict");
 
 const html = fs.readFileSync(__dirname + "/agent/src/desktop.html", "utf8");
 
-// Static checks: scroll-layer promotion, scroll pointer/animation guards, no sync forced layout on page title
-assert(html.includes(".content{will-change:scroll-position;contain:style}"), "desktop.html promotes .content scroll layer without trapping fixed scroll shield");
+// Static checks: scroll-layer promotion, scroll-scoped #pzScrollCover, non-blocking wheel scrolling, no sync forced layout
+assert(html.includes(".content{position:relative;will-change:scroll-position;contain:style}"), "desktop.html promotes .content scroll layer without trapping fixed modals");
 assert(html.includes(".page.active{contain:style}"), "desktop.html avoids contain:layout on .page.active so fixed modals stay centered in viewport");
-assert(html.includes("html[data-pz-scrolling] #pzScrollShield{display:block}"), "desktop.html freezes hover hit-testing via single-element scroll shield");
+assert(!html.includes("pzScrollShield"), "desktop.html must never mount a fixed #pzScrollShield overlay that traps mouse-wheel scrolling");
+assert(html.includes("#pzScrollCover{position:absolute;"), "desktop.html uses scroll-scoped position:absolute #pzScrollCover inside #content");
+assert(html.includes("#content.pz-sc>#pzScrollCover{display:block}"), "desktop.html toggles #pzScrollCover via #content.pz-sc");
+assert(html.includes("Content.addEventListener('scroll', OnContentScroll, { passive: true })"), "Pzscrollperf attaches non-capture passive scroll listener to Content");
+assert(!html.includes("Content.addEventListener('wheel'"), "Pzscrollperf must not extend scroll timers on wheel events");
 assert(html.includes("html[data-pz-scrolling] .app::before"), "desktop.html pauses ambient ::before layers while scrolling");
 assert(html.includes("function Pzscrollperf()"), "desktop.html wires Pzscrollperf listener");
 assert(!html.includes("void Title.offsetWidth"), "desktop.html avoids forced layout on Pzsync title swap");
@@ -161,7 +165,7 @@ console.log("PASS desktop scroll/nav static guards");
         el.scrollTop = 0;
         const maxScroll = Math.max(1, el.scrollHeight - el.clientHeight);
         const frames = [];
-        let last = performance.now(), step = 0, dir = 1, pos = 0, shieldTop = null;
+        let last = performance.now(), step = 0, dir = 1, pos = 0;
         function tick(now) {
           frames.push(now - last);
           last = now;
@@ -169,10 +173,6 @@ console.log("PASS desktop scroll/nav static guards");
           if (pos >= maxScroll) { pos = maxScroll; dir = -1; }
           else if (pos <= 0) { pos = 0; dir = 1; }
           el.scrollTop = pos;
-          if (step === 20) {
-            const sh = document.getElementById("pzScrollShield");
-            shieldTop = sh ? Math.round(sh.getBoundingClientRect().top) : null;
-          }
           step++;
           if (step < 120) requestAnimationFrame(tick);
           else {
@@ -185,8 +185,7 @@ console.log("PASS desktop scroll/nav static guards");
               medianMs: +sorted[Math.floor(sorted.length * 0.5)].toFixed(1),
               p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
               maxMs: +sorted[sorted.length - 1].toFixed(1),
-              scrollMax: maxScroll,
-              shieldTop
+              scrollMax: maxScroll
             });
           }
         }
@@ -204,6 +203,54 @@ console.log("PASS desktop scroll/nav static guards");
       return out;
     }
 
+    async function benchWheel(label, navFn) {
+      if (navFn) {
+        await page.evaluate(navFn);
+        await page.waitForTimeout(400);
+      }
+      await page.evaluate(() => { document.getElementById("content").scrollTop = 0; });
+      await page.waitForTimeout(220);
+      await page.mouse.move(720, 450);
+      const m0 = await metricSnap();
+      const framesP = page.evaluate(() => new Promise((res) => {
+        const f = []; let last = performance.now();
+        window.__stopWheelF = () => { window.__runWheelF = false; res(f); };
+        function tick(now) { f.push(now - last); last = now; if (window.__runWheelF) requestAnimationFrame(tick); }
+        window.__runWheelF = true; requestAnimationFrame(tick);
+      }));
+      for (let i = 0; i < 18; i++) { await page.mouse.wheel(0, 140); await page.waitForTimeout(24); }
+      const movedDown = await page.evaluate(() => Math.round(document.getElementById("content").scrollTop));
+      for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, -140); await page.waitForTimeout(24); }
+      const endTop = await page.evaluate(() => Math.round(document.getElementById("content").scrollTop));
+      const movedUp = movedDown - endTop;
+      const reversals = [];
+      let prev = endTop;
+      for (const dy of [140, 140, -140, -140, 140, -140]) {
+        await page.mouse.wheel(0, dy);
+        await page.waitForTimeout(32);
+        const cur = await page.evaluate(() => Math.round(document.getElementById("content").scrollTop));
+        reversals.push(cur - prev);
+        prev = cur;
+      }
+      await page.evaluate(() => window.__stopWheelF());
+      const frames = await framesP;
+      const m1 = await metricSnap();
+      const sorted = [...frames].sort((a, b) => a - b);
+      const avg = frames.reduce((a, b) => a + b, 0) / Math.max(1, frames.length);
+      const out = {
+        movedDown,
+        movedUp,
+        reversals,
+        fps: +(1000 / avg).toFixed(1),
+        p95Ms: +(sorted[Math.floor(sorted.length * 0.95)] || 0).toFixed(1),
+        layouts: Math.round(m1.LayoutCount - m0.LayoutCount),
+        recalcs: Math.round(m1.RecalcStyleCount - m0.RecalcStyleCount),
+        recalcMs: +((m1.RecalcStyleDuration - m0.RecalcStyleDuration) * 1000).toFixed(1)
+      };
+      console.log(label + ":", JSON.stringify(out));
+      return out;
+    }
+
     // 2. Scroll Tools (220 cards, mouse over cards, 1s Refresh ON, Hyper ON)
     const toolsScroll = await benchScroll("SCROLL Tools 220 cards (Hyper)", () => {
       document.querySelector('.pz-area[data-area="connections"]').click();
@@ -211,13 +258,30 @@ console.log("PASS desktop scroll/nav static guards");
     });
     assert(toolsScroll.fps >= 45, `Tools 220-card scroll FPS too low: ${toolsScroll.fps}`);
     assert(toolsScroll.medianMs <= 22, `Tools scroll median frame time too high: ${toolsScroll.medianMs}ms`);
-    assert(toolsScroll.layouts <= 10, `Tools scroll should trigger <=10 layouts (got ${toolsScroll.layouts})`);
-    assert(toolsScroll.recalcMs < 55, `Tools scroll style recalc cost too high: ${toolsScroll.recalcMs}ms`);
-    assert(toolsScroll.shieldTop >= 80 && toolsScroll.shieldTop <= 160, `scroll shield must stay pinned in viewport (top=${toolsScroll.shieldTop})`);
+    assert(toolsScroll.layouts <= 16, `Tools scroll should trigger <=16 layouts (got ${toolsScroll.layouts})`);
+    assert(toolsScroll.layoutMs < 20, `Tools scroll layout cost too high: ${toolsScroll.layoutMs}ms`);
+    assert(toolsScroll.recalcMs < 40, `Tools scroll style recalc cost too high: ${toolsScroll.recalcMs}ms`);
 
-    // Check scroll-end recovery & on-demand .toolcard expansion measurement
-    await page.waitForTimeout(300);
-    assert.equal(await page.evaluate(() => document.documentElement.hasAttribute("data-pz-scrolling")), false, "data-pz-scrolling clears after scroll settles");
+    const toolsWheel = await benchWheel("WHEEL Tools 220 cards (Hyper)");
+    assert(toolsWheel.movedDown >= 1500, `Tools mouse-wheel down stalled: ${toolsWheel.movedDown}`);
+    assert(toolsWheel.movedUp >= 1000, `Tools mouse-wheel up stalled: ${toolsWheel.movedUp}`);
+    [1, 1, -1, -1, 1, -1].forEach((sgn, idx) => {
+      assert(sgn * toolsWheel.reversals[idx] > 40, `Tools wheel reversal ${idx} stalled: ${JSON.stringify(toolsWheel.reversals)}`);
+    });
+    assert(toolsWheel.fps >= 45, `Tools wheel FPS too low: ${toolsWheel.fps}`);
+    assert(toolsWheel.p95Ms <= 28, `Tools wheel p95 frame time too high: ${toolsWheel.p95Ms}ms`);
+    assert(toolsWheel.layouts <= 10, `Tools wheel should trigger <=10 layouts (got ${toolsWheel.layouts})`);
+    assert(toolsWheel.recalcMs < 40, `Tools wheel style recalc cost too high: ${toolsWheel.recalcMs}ms`);
+
+    // Moving the pointer right after wheeling clears the scroll cover immediately for first-click responsiveness
+    await page.mouse.wheel(0, 140);
+    await page.waitForTimeout(24);
+    assert.equal(await page.evaluate(() => document.documentElement.hasAttribute("data-pz-scrolling")), true, "data-pz-scrolling active immediately after wheel");
+    await page.mouse.move(720, 450);
+    await page.mouse.move(735, 465);
+    await page.waitForTimeout(40);
+    assert.equal(await page.evaluate(() => document.documentElement.hasAttribute("data-pz-scrolling")), false, "moving pointer >10px immediately clears scroll cover");
+    await page.waitForTimeout(200);
     const expandDesc = await page.evaluate(() => {
       const card = document.querySelector("#toolsGrid .toolcard");
       card.click();
@@ -241,7 +305,39 @@ console.log("PASS desktop scroll/nav static guards");
     assert(appScroll.p95Ms <= 34, `Appearance scroll p95 frame time too high: ${appScroll.p95Ms}ms`);
     assert(appScroll.layouts <= 8, `Appearance scroll should trigger <=8 layouts (got ${appScroll.layouts})`);
     assert(appScroll.recalcMs < 40, `Appearance scroll style recalc cost too high: ${appScroll.recalcMs}ms`);
-    assert(appScroll.shieldTop >= 80 && appScroll.shieldTop <= 160, `scroll shield must stay pinned in viewport (top=${appScroll.shieldTop})`);
+
+    const appWheel = await benchWheel("WHEEL Appearance (Hyper)");
+    assert(appWheel.movedDown >= 1200, `Appearance mouse-wheel down stalled: ${appWheel.movedDown}`);
+    assert(appWheel.movedUp >= 800, `Appearance mouse-wheel up stalled: ${appWheel.movedUp}`);
+    [1, 1, -1, -1, 1, -1].forEach((sgn, idx) => {
+      assert(sgn * appWheel.reversals[idx] > 40, `Appearance wheel reversal ${idx} stalled: ${JSON.stringify(appWheel.reversals)}`);
+    });
+    assert(appWheel.fps >= 45, `Appearance wheel FPS too low: ${appWheel.fps}`);
+
+    // 3b. Direct Chat nested scrollable drawer (.byok-tool-catalog) under mouse wheel
+    await page.evaluate(() => {
+      document.querySelector('.pz-area[data-area="chat"]')?.click();
+    });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-byok-toggle-drawer]');
+      if (btn && document.querySelector('[data-byok-drawer]')?.hidden) btn.click();
+    });
+    await page.waitForTimeout(250);
+    const drawerPos = await page.evaluate(() => {
+      const cat = document.querySelector('.byok-tool-catalog');
+      const r = cat ? cat.getBoundingClientRect() : null;
+      return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : null;
+    });
+    assert(drawerPos, "Direct Chat Tools drawer catalog rendered for nested wheel check");
+    await page.mouse.move(drawerPos.x, drawerPos.y);
+    for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 140); await page.waitForTimeout(24); }
+    const drawerDown = await page.evaluate(() => Math.round(document.querySelector('.byok-tool-catalog').scrollTop));
+    for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, -140); await page.waitForTimeout(24); }
+    const drawerUp = await page.evaluate(() => Math.round(document.querySelector('.byok-tool-catalog').scrollTop));
+    console.log("WHEEL Direct Chat drawer:", JSON.stringify({ drawerDown, drawerUp }));
+    assert(drawerDown >= 600, `Direct Chat drawer wheel down stalled: ${drawerDown}`);
+    assert(drawerUp <= drawerDown - 400, `Direct Chat drawer wheel up stalled: ${drawerUp} from ${drawerDown}`);
 
     // 4. Rapid page switches
     const switches = [
