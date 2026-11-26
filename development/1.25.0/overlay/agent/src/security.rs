@@ -102,6 +102,38 @@ fn can_auto_pair_with(headers: &HeaderMap, official: &Option<Vec<String>>) -> bo
 pub fn allowed_origin(headers: &HeaderMap) -> bool {
     allowed_origin_with(headers, official_extension_ids())
 }
+
+/// Origins allowed to complete CORS preflights and read local error responses (such as
+/// `403 UNOFFICIAL_EXTENSION`). Pairing and authentication remain strictly enforced in
+/// `require_pairing`, `can_auto_pair`, and `authorized`.
+pub fn cors_allowed_origin(headers: &HeaderMap) -> bool {
+    allowed_origin_with(headers, &None)
+}
+
+/// Echoes `Access-Control-Allow-Private-Network: true` on Chromium/Edge/Brave Private Network
+/// Access preflights for CORS-allowed local/extension origins so loopback fetches don't fail
+/// with an opaque `TypeError: Failed to fetch`.
+pub async fn allow_private_network(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let pna = request
+        .headers()
+        .get("access-control-request-private-network")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+        && cors_allowed_origin(request.headers());
+    let mut response = next.run(request).await;
+    if pna {
+        response.headers_mut().insert(
+            axum::http::header::HeaderName::from_static("access-control-allow-private-network"),
+            axum::http::header::HeaderValue::from_static("true"),
+        );
+    }
+    response
+}
+
 fn allowed_origin_with(headers: &HeaderMap, official: &Option<Vec<String>>) -> bool {
     match headers.get("origin") {
         None => true,
@@ -230,6 +262,96 @@ mod tests {
         assert!(!authorized(&h, &key));
         h.insert("origin", "http://plazcode.localhost".parse().unwrap());
         assert!(authorized(&h, &key));
+    }
+
+    #[test]
+    fn cors_allows_well_formed_extensions_and_loopback_while_rejecting_web_origins() {
+        let mut h = HeaderMap::new();
+        for origin in [
+            format!("chrome-extension://{}", "a".repeat(32)),
+            format!("chrome-extension://{}", "p".repeat(32)),
+            "moz-extension://12345678-1234-1234-1234-123456789abc".to_string(),
+            "http://127.0.0.1:3000".to_string(),
+            "http://localhost:3000".to_string(),
+            "http://plazcode.localhost".to_string(),
+        ] {
+            h.insert("origin", origin.parse().unwrap());
+            assert!(cors_allowed_origin(&h), "expected cors_allowed_origin for {origin}");
+        }
+        for origin in [
+            "https://evil.example",
+            "null",
+            "chrome-extension://notvalid",
+            "moz-extension://notvalid",
+        ] {
+            h.insert("origin", origin.parse().unwrap());
+            assert!(!cors_allowed_origin(&h), "expected cors_allowed_origin=false for {origin}");
+        }
+        let official = "a".repeat(32);
+        let unofficial = "b".repeat(32);
+        let pinned = Some(vec![official]);
+        let mut copy_headers = HeaderMap::new();
+        copy_headers.insert("host", "127.0.0.1:3000".parse().unwrap());
+        copy_headers.insert("content-type", "application/json".parse().unwrap());
+        copy_headers.insert("x-plazcode-extension", unofficial.parse().unwrap());
+        copy_headers.insert("origin", format!("chrome-extension://{unofficial}").parse().unwrap());
+        assert!(cors_allowed_origin(&copy_headers), "CORS preflight should still allow reading 403 reason");
+        assert!(!allowed_origin_with(&copy_headers, &pinned));
+        assert!(!can_auto_pair_with(&copy_headers, &pinned));
+        assert!(unofficial_extension_with(&copy_headers, &pinned));
+    }
+
+    #[tokio::test]
+    async fn pna_preflight_adds_header_for_extension_origin_only() {
+        use axum::http::Method;
+        use tower_http::cors::{Any, CorsLayer};
+        let cors = CorsLayer::new()
+            .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
+                let mut headers = HeaderMap::new();
+                headers.insert("origin", origin.clone());
+                cors_allowed_origin(&headers)
+            }))
+            .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+            .allow_headers(Any);
+        let app = axum::Router::new()
+            .route("/api/pair", axum::routing::post(|| async { axum::http::StatusCode::OK }))
+            .layer(cors)
+            .layer(axum::middleware::from_fn(allow_private_network));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+        let client = reqwest::Client::new();
+        let ext_origin = format!("chrome-extension://{}", "a".repeat(32));
+        let ok_res = client
+            .request(reqwest::Method::OPTIONS, format!("http://{addr}/api/pair"))
+            .header("Origin", &ext_origin)
+            .header("Access-Control-Request-Method", "POST")
+            .header("Access-Control-Request-Private-Network", "true")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            ok_res.headers().get("access-control-allow-private-network").and_then(|v| v.to_str().ok()),
+            Some("true")
+        );
+        assert_eq!(
+            ok_res.headers().get("access-control-allow-origin").and_then(|v| v.to_str().ok()),
+            Some(ext_origin.as_str())
+        );
+
+        let evil_res = client
+            .request(reqwest::Method::OPTIONS, format!("http://{addr}/api/pair"))
+            .header("Origin", "https://evil.example")
+            .header("Access-Control-Request-Method", "POST")
+            .header("Access-Control-Request-Private-Network", "true")
+            .send()
+            .await
+            .unwrap();
+        assert!(evil_res.headers().get("access-control-allow-private-network").is_none());
+        assert!(evil_res.headers().get("access-control-allow-origin").is_none());
+        server.abort();
     }
 }
 

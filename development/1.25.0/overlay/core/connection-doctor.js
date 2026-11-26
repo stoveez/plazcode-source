@@ -38,6 +38,8 @@ const PlazCodeConnectionDoctor = (() => {
 
 
 
+
+
   const tr = (text, values) => {
     try { const i18n = (globalThis).PlazCodeI18n; if (i18n) return i18n.t(text, values); } catch {}
     return values ? String(text).replace(/\{(\w+)\}/g, (m, k) => (k in values ? String(values[k]) : m)) : String(text);
@@ -92,19 +94,26 @@ const PlazCodeConnectionDoctor = (() => {
       try { await act.reconnect(); } catch (err) { reconnectErr = String((err)?.message || err || ""); }
       status = await waitUntil(s => !!(s && s.connected), act.status, opts.bridgeWaitMs ?? 10000, stepMs) || {};
       if (!status.connected) {
-        // Distinguish: (1) unofficial/wrong unpacked folder, (2) browser blocking localhost/local network access,
-        // (3) HTTP 401/403 pairing refusal, vs (4) app not running ("Failed to fetch" / timeout).
+        // Distinguish: (1) profile selection required, (2) unofficial/wrong unpacked folder,
+        // (3) browser blocking localhost/local network access, (4) HTTP 401/403 pairing refusal,
+        // (5) desktop app reachable on HTTP while WS socket failed, vs (6) app not running.
         const rawErr = String(status.bridge_error || reconnectErr || "");
+        const profileReq = status.profile_required === true;
         const unofficial = /not the official one|PlazCode-Extension folder/i.test(rawErr);
         const blocked = /Site access to localhost|Local network access is blocked/i.test(rawErr);
         const pairing = /\bHTTP 40[13]\b/.test(rawErr);
+        const appReachable = status.bridge_reachable === true;
         if (!opts.passive) steps.pop();
-        push({ id: "app", state: "action", text: unofficial
+        push({ id: "app", state: "action", text: profileReq
+          ? tr("The PlazCode app is open, but you need to choose a profile or Use PlazCode as a guest first, then click Fix connection again.")
+          : unofficial
           ? tr("This browser loaded PlazCode from another folder. Remove this copy in Extensions and load PlazCode-Extension from your PlazCode app folder.")
           : blocked
           ? tr("This browser blocked PlazCode from reaching the local app. Allow Local network access and localhost site access for PlazCode in browser settings, then click Fix connection again.")
           : pairing
           ? tr("The PlazCode app refused this browser. Close and reopen the PlazCode app, then click Fix connection again.")
+          : appReachable
+          ? tr("The PlazCode app is running, but the live bridge connection could not finish. Click Check again, or restart the PlazCode app if it stays stuck.")
           : tr("The PlazCode app isn't running. Open PlazCode on your computer, then click Fix connection again."),
           detail: (rawErr || reconnectErr).replace(/\s+/g, " ").slice(0, 240) });
         return done("");

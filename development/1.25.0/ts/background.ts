@@ -232,11 +232,11 @@ async function ensurePairing(force = false): Promise<string> {
   await pairingReady;
   if (pairingInFlight) return pairingInFlight;
   if (!force && /^[a-f0-9]{64}$/i.test(pairingKey)) return pairingKey;
-  pairingInFlight = (async () => {
+  const pairAt = async (base: string, timeoutMs: number): Promise<string> => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch("http://127.0.0.1:3000/api/pair", {
+      const response = await fetch(`${base}/api/pair`, {
         method: "POST", mode: "cors", credentials: "omit", redirect: "error",
         headers: { "Content-Type": "application/json", "X-PlazCode-Extension": pairingIdentity() },
         body: "{}", signal: controller.signal,
@@ -245,20 +245,30 @@ async function ensurePairing(force = false): Promise<string> {
         // 1.24.30: the app pairs only with the PlazCode-Extension folder inside its own verified PlazCode folder.
         const reason = response.status === 403 ? String(await response.text().catch(() => "")).slice(0, 600) : "";
         if (/not the official one/i.test(reason)) throw Object.assign(new Error(reason), { plazcodeUnofficial: true });
-        throw new Error("Automatic pairing failed (HTTP "+response.status+"). Update the desktop and extension together, then reload this browser’s extension and AI tab.");
+        throw Object.assign(new Error("Automatic pairing failed (HTTP "+response.status+"). Update the desktop and extension together, then reload this browser’s extension and AI tab."), { plazcodeHttp: true });
       }
       const data = await response.json();
       if (!/^[a-f0-9]{64}$/i.test(data.key || "")) throw new Error("Agent returned an invalid pairing response");
       pairingKey = data.key;
       try { await chrome.storage.local.set({ [PAIRING_KEY]: pairingKey }); } catch {}
       return pairingKey;
+    } finally { clearTimeout(timer); }
+  };
+  pairingInFlight = (async () => {
+    try {
+      try {
+        return await pairAt("http://127.0.0.1:3000", 5000);
+      } catch (firstErr: any) {
+        if (firstErr && (firstErr.plazcodeUnofficial || firstErr.plazcodeHttp)) throw firstErr;
+        return await pairAt("http://localhost:3000", 2500);
+      }
     } catch(error: any) {
       if (error && error.plazcodeUnofficial) throw error;
+      if (error && error.plazcodeHttp) throw error;
       const permDiag = await diagnoseLocalNetworkBlock();
       if (permDiag) throw new Error("Local bridge pairing failed: " + permDiag);
       throw new Error("Local bridge pairing failed: "+String(error?.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio.");
     }
-    finally { clearTimeout(timer); }
   })();
   try { return await pairingInFlight; } finally { pairingInFlight = null; }
 }
@@ -268,7 +278,15 @@ async function ensureAccountContext(liveStatus?: any): Promise<void>{
   accountCheck=(async()=>{
     let status=liveStatus;
     if(!status){
-      const response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
+      let response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
+      if(response.status===401 && typeof ensurePairing==='function'){
+        await ensurePairing(true);
+        response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
+      }
+      if(response.status===403){
+        const reason=String(await response.text().catch(()=>'')).slice(0,600);
+        if(/not the official one/i.test(reason))throw Object.assign(new Error(reason),{plazcodeUnofficial:true});
+      }
       if(!response.ok)throw new Error('Cannot check the PlazCode profile.');
       status=await response.json();
     }
@@ -963,12 +981,17 @@ async function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   if (connectInFlight) return connectInFlight;
   connectInFlight = (async () => {
-  try { await ensurePairing(wsAuthSuspect || !/^[a-f0-9]{64}$/i.test(pairingKey)); } catch (error: any) {
-    bridgeError = String(error.message || "Agent unavailable for automatic pairing");
-    log(bridgeError);
-    broadcastStatus();
-    scheduleReconnect();
-    return;
+  const hasValidKey = /^[a-f0-9]{64}$/i.test(pairingKey);
+  try {
+    await ensurePairing(wsAuthSuspect || !hasValidKey);
+  } catch (error: any) {
+    if (!(wsAuthSuspect && hasValidKey && bridgeReachable && !error?.plazcodeUnofficial && !error?.plazcodeHttp)) {
+      bridgeError = String(error.message || "Agent unavailable for automatic pairing");
+      log(bridgeError);
+      broadcastStatus();
+      scheduleReconnect();
+      return;
+    }
   }
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
@@ -1023,6 +1046,7 @@ async function connect() {
   sock.onmessage = (ev) => {
     if (sock !== ws) return;
     lastMessageAt = Date.now();
+    if (connected && bridgeError) bridgeError = "";
     let msg: any;
     try {
       msg = JSON.parse(ev.data);
@@ -1400,7 +1424,7 @@ function statusObj(mode = engine) {
   return {
     type: "rs-status", connected: ready, mcpAlive: mode === "local" ? ready : mcpAlive, studio: studioConnected, studioApp, studioProc,
     bridge_reachable: bridgeReachable || connected, profile_required: profileRequired,
-    bridge_connecting: !ready && !profileRequired && (bridgeReachable || (!bridgeError && !!(connectInFlight || procStatusReading))),
+    bridge_connecting: !ready && !profileRequired && !bridgeError && (bridgeReachable || !!(connectInFlight || procStatusReading)),
     robloxProc, roblox_connected: robloxEditorConnected, studio_checking: studioChecking,
     local_connected: localReady && !profileRequired, local_full: localFull,
     local_root: localRoot,
@@ -1462,6 +1486,7 @@ async function refreshProcStatus() {
     // authenticated snapshot instead of fetching the same status a second time.
     await ensureAccountContext(j);
     if (!rustMode) { rustMode = true; readReleaseStatus(); }
+    const hadBridgeError = !!bridgeError;
     bridgeError = "";
     // The desktop's editor probe is authoritative; a browser socket or a
     // process-name scan alone cannot establish Studio readiness.
@@ -1477,7 +1502,7 @@ async function refreshProcStatus() {
     const nf = j.local_full === true;
     const nrRoot = typeof j.local_root === "string" ? j.local_root : localRoot;
     const nextDesktopVersion = typeof j.version === "string" ? j.version : "";
-    const changed = !wasUsable || nextDesktopVersion !== desktopVersion || editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
+    const changed = !wasUsable || hadBridgeError || nextDesktopVersion !== desktopVersion || editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
     desktopVersion = nextDesktopVersion;
     robloxProc = nr;
     localReady = nl;
@@ -1486,12 +1511,11 @@ async function refreshProcStatus() {
     if (changed) broadcastStatus();
     // Settings are optional background work, not a health-check dependency.
     const prefSyncPromise = syncDesktopPreferencesAfterHealth();
-    if (!wasUsable) {
+    if (!wasUsable || (!connected && !connectInFlight)) {
       reconnectAttempts = 0;
+      reconnectDelay = RECONNECT_MIN;
       clearTimeout(reconnectTimer ?? undefined);
       reconnectTimer = null;
-      connect();
-    } else if (!connected && !connectInFlight && !reconnectTimer) {
       connect();
     }
     // Full access re-sync: run ONLY after initial preference sync converges so a stale
@@ -3173,13 +3197,26 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         }catch(error: any){sendResponse({ok:false,error:String(error.message || error)});}
         break;
       }
-      case "status":
+      case "status": {
         // A status request wakes native discovery too. The primary Roblox
         // socket may be unavailable while AgentScript is perfectly usable.
-        if (Date.now() - lastNativeHealthAt >= 1000) refreshProcStatus();
-        if (!connected && !reconnectTimer) connect();
+        const forceFresh = msg.fresh === true;
+        if (forceFresh || Date.now() - lastNativeHealthAt >= 1000) {
+          const p = refreshProcStatus();
+          if (forceFresh) await Promise.race([p, new Promise<void>((r) => setTimeout(r, 2500))]);
+        }
+        if (!connected && !connectInFlight && (forceFresh || !reconnectTimer)) {
+          if (forceFresh) {
+            clearTimeout(reconnectTimer ?? undefined);
+            reconnectTimer = null;
+            reconnectAttempts = 0;
+            reconnectDelay = RECONNECT_MIN;
+          }
+          connect();
+        }
         sendResponse(statusObj(mode));
         break;
+      }
       case "desktop_tools_snapshot": {
         try {
           const rows = Array.isArray(msg.tools) ? msg.tools : [];
@@ -3387,19 +3424,27 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         sendResponse(r);
         break;
       }
-      case "reconnect":
+      case "reconnect": {
         reconnectDelay = RECONNECT_MIN;
         reconnectAttempts = 0;
         clearTimeout(reconnectTimer ?? undefined);
         reconnectTimer = null;
-        if (ws && (ws.readyState === WebSocket.CONNECTING || (ws.readyState === WebSocket.OPEN && lastMessageAt && Date.now() - lastMessageAt > HEARTBEAT_MS * 2))) {
+        bridgeError = "";
+        if (ws && (!connected || ws.readyState !== WebSocket.OPEN || (lastMessageAt && Date.now() - lastMessageAt > HEARTBEAT_MS * 2))) {
           const stale = ws; ws = null; connected = false;
+          clearTimeout(socketConnectTimer ?? undefined);
+          socketConnectTimer = null;
           try { stale.close(); } catch {}
         }
-        refreshProcStatus();
-        connect();
-        sendResponse({ ok: true });
+        await Promise.race([refreshProcStatus(), new Promise<void>((r) => setTimeout(r, 3000))]);
+        if (!connected && !profileRequired) {
+          const cp = connect();
+          if (cp) await Promise.race([cp, new Promise<void>((r) => setTimeout(r, 2500))]);
+        }
+        broadcastStatus();
+        sendResponse({ ok: true, status: statusObj(mode) });
         break;
+      }
       // ── ZeroScript Rust pipe — CORS bypass via background (content script → background → 127.0.0.1) ──
       case "rs-push":
       case "push_payload": {

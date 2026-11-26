@@ -56,6 +56,15 @@ const ids = r => r.steps.map(s => s.id + ":" + s.state).join(" ");
   { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Failed to fetch. In Edge or Brave, check that PlazCode is enabled" }]);
     const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
     assert.match(r.steps[1].text, /isn't running/); }
+  // App reachable on HTTP while WS socket failed: never claim the app isn't running.
+  { const { act } = actions([{ connected: false, bridge_reachable: true, bridge_error: "PlazCode did not finish opening its local socket." }]);
+    const r = await D.run({ engine: "roblox", status: { connected: false, bridge_reachable: true }, composer: ready }, act, fast);
+    assert.match(r.steps[1].text, /PlazCode app is running/);
+    assert.ok(!/isn't running/i.test(r.steps[1].text)); }
+  // App open but waiting at the profile picker: direct the user to choose a profile or guest.
+  { const { act } = actions([{ connected: false, bridge_reachable: true, profile_required: true }]);
+    const r = await D.run({ engine: "local", status: { connected: false, bridge_reachable: true, profile_required: true }, composer: ready }, act, fast);
+    assert.match(r.steps[1].text, /choose a profile/i); }
 
   // Studio open, MCP off: restart MCP once; comes back -> fixed.
   { const down = { connected: true, studioProc: true, studioApp: false, roblox_connected: false };

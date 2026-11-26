@@ -1457,7 +1457,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     let cors = CorsLayer::new().allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
         let mut headers = axum::http::HeaderMap::new();
         headers.insert("origin", origin.clone());
-        security::allowed_origin(&headers)
+        security::cors_allowed_origin(&headers)
     })).allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
     let s_power = state.clone();
@@ -1591,7 +1591,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/helper", get(helper_socket::upgrade))
         .merge(linux_launch)
         .route("/api/integrity/extension",post(integrity::extension_signature).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
-        .layer(cors);
+        .layer(cors)
+        .layer(axum::middleware::from_fn(security::allow_private_network));
     info!("PlazCode bridge listening on http://{} (WS /ws)", addr);
     info!("Legacy WS on ws://127.0.0.1:17613 (roblox) and 17615 (AgentScript FS: {})", ws_root_display);
     info!("Boot completed in {}ms", start.elapsed().as_millis());

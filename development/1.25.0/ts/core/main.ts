@@ -8506,7 +8506,7 @@ return result`;
       if (!passive) { fixNext = ""; go.hidden = true; again.disabled = true; }
       if (!passive) renderFixSteps([{ id: "start", state: "working", text: (globalThis.PlazCodeI18n?.t || ((x: any) => x))("Checking the connection…") }]);
       const status = async () => {
-        const s = await bg({ type: "status" });
+        const s = await bg({ type: "status", fresh: !passive });
         if (s && s.kind === "stale-extension") { staleExtensionAlert(); return { connected: false, stale: true }; }
         try { setStatus(s); } catch {}
         return s || {};
@@ -11086,21 +11086,21 @@ function renderCards(panel: any) {
       } else if (A.bridge?.profile_required) {
         toneClass = "warn"; warn = true;
         msg = "Choose a profile or <b>Use PlazCode as a guest</b> in the desktop app.";
-        kind = ""; disabled = true;
+        label = "▶︎ Start Agent"; kind = ""; disabled = true;
       } else if (!A.started && A.bridge?.bridge_connecting && !A.bridge.connected) {
         toneClass = "starting";
         indicator = `<span class="rs-spin"></span>`;
         msg = "Connecting to PlazCode…";
-        kind = ""; disabled = true;
+        label = "Connecting…"; kind = ""; disabled = true;
       } else if (!A.started && A.bridge && !A.bridge.connected && A.bridge.bridge_error) {
         toneClass = "warn"; warn = true;
         msg = "Can't connect to PlazCode. Click <b>Fix connection</b> for details.";
-        kind = ""; disabled = true;
+        label = "▶︎ Start Agent"; kind = ""; disabled = true;
       } else if (A.bridge && A.bridge.connected && A.bridge.studio_checking === true && currentEngine !== "local" && !A.bridge.roblox_connected) {
         toneClass = "starting";
         indicator = `<span class="rs-spin"></span>`;
         msg = "Checking Roblox Studio connection…";
-        kind = ""; disabled = true;
+        label = "Checking…"; kind = ""; disabled = true;
       } else if (A.started) {
         // Prefer the ADVERTISED list length (A.toolList - the AGGREGATE catalogue
         // across every connected MCP server, already filtered by the vision/blocked
@@ -14085,6 +14085,16 @@ rsInterval(() => {
   loadSysCount();
 bg({ type: "status" }).then(onStatus);
 statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
+  let lastFocusStatusAt = 0;
+  const refreshStatusOnReturn = () => {
+    if (A.staleExtension || document.hidden) return;
+    const now = Date.now();
+    if (now - lastFocusStatusAt < 1000) return;
+    lastFocusStatusAt = now;
+    bg({ type: "status" }).then(onStatus);
+  };
+  document.addEventListener("visibilitychange", refreshStatusOnReturn);
+  window.addEventListener("focus", refreshStatusOnReturn);
 
   // Session state is derived from the ACTUAL chat, but sites VIRTUALIZE their
   // message lists: the system-prompt turn is dropped from the DOM once it
