@@ -168,17 +168,18 @@ html[data-desktop-gradients=off] .navbtn.active{background:var(--orange2)}
   33%{border-color:rgba(255,222,238,.86);box-shadow:0 0 calc(24px * var(--pz-g,1)) rgba(255,255,255,.28),0 0 calc(14px * var(--pz-g,1)) rgba(255,216,232,.24)}
   66%{border-color:rgba(217,255,236,.86);box-shadow:0 0 calc(24px * var(--pz-g,1)) rgba(255,255,255,.28),0 0 calc(14px * var(--pz-g,1)) rgba(210,246,255,.24)}
 }
-@keyframes pc-hyper-shimmer{from{background-position:200% 50%}to{background-position:-60% 50%}}
-html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],.pz-brand-logo,.pz-glide){border-color:rgba(255,255,255,.78)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
+@keyframes pc-hyper-shimmer{0%,100%{opacity:.78}50%{opacity:1}}
+html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(#page-home.active .hero-agent,#page-settings.active .pc-effort-trigger,#page-settings.active select[data-pref=rsThinkingLevel]){border-color:rgba(255,255,255,.78)!important;box-shadow:0 0 calc(22px * var(--pz-g,1)) rgba(255,255,255,.24),0 0 calc(12px * var(--pz-g,1)) rgba(210,246,255,.18)}
+html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(.pz-brand-logo,.pz-glide){border-color:rgba(255,255,255,.78)!important}
 html[data-desktop-thinking=ultracode][data-look-rainbow] .pz-glide{animation:none!important}
-html[data-desktop-thinking=ultracode] #homeStartAgent{color:#181b22!important;border-color:rgba(255,255,255,.88)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
-html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) .hero-agent::before{background-size:240% 240%;animation:pc-hyper-shimmer 7s linear infinite}
-html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #homeStartAgent::before{background-size:240% 100%;animation:pc-hyper-shimmer 4.5s linear infinite}
+html[data-desktop-thinking=ultracode] #page-home.active #homeStartAgent{color:#181b22!important;border-color:rgba(255,255,255,.88)!important;box-shadow:0 0 calc(22px * var(--pz-g,1)) rgba(255,255,255,.24),0 0 calc(12px * var(--pz-g,1)) rgba(210,246,255,.18)}
+html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home.active .hero-agent::before{opacity:.94}
+html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home.active #homeStartAgent::before{opacity:.96}
 html[data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.explorer-layout,.pz-brand-logo,.pz-glide){animation:none!important;box-shadow:none!important}
 html[data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.hero-agent,#homeStartAgent)::before{animation:none!important}
-html[data-desktop-thinking=ultracode]:is([data-pz-motion=off],[data-pz-motion=reduced],[data-pz-asleep]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide,.hero-agent::before,#homeStartAgent::before){animation:none!important}
+html[data-desktop-thinking=ultracode]:is([data-pz-motion=off],[data-pz-motion=reduced],[data-pz-asleep]) :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide),html[data-desktop-thinking=ultracode][data-pz-motion=off] .hero-agent::before,html[data-desktop-thinking=ultracode][data-pz-motion=reduced] .hero-agent::before,html[data-desktop-thinking=ultracode][data-pz-asleep] .hero-agent::before,html[data-desktop-thinking=ultracode][data-pz-motion=off] #homeStartAgent::before,html[data-desktop-thinking=ultracode][data-pz-motion=reduced] #homeStartAgent::before,html[data-desktop-thinking=ultracode][data-pz-asleep] #homeStartAgent::before{animation:none!important}
 :is(html[data-pz-motion=off],html[data-pz-motion=reduced],html[data-pz-asleep]) .pc-ultra-label{animation:none!important;background-position:38% 50%}
-@media(prefers-reduced-motion:reduce){html[data-desktop-thinking=ultracode] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide,.hero-agent::before,#homeStartAgent::before){animation:none!important}}
+@media(prefers-reduced-motion:reduce){html[data-desktop-thinking=ultracode] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.pz-brand-logo,.pz-glide),html[data-desktop-thinking=ultracode] .hero-agent::before,html[data-desktop-thinking=ultracode] #homeStartAgent::before{animation:none!important}}
 
 /* Workspace refinement: event-driven CSS only; no animation timers or observers. */
 :root{--ui-ease:cubic-bezier(.22,1,.36,1);--ui-fast:160ms;--ui-enter:220ms}
@@ -342,7 +343,7 @@ html[data-desktop-thinking=ultracode] .explorer-layout{border-color:rgba(255,255
 /* Donation destinations stay readable in every shared desktop palette. */
 #page-donations .donation-list{max-width:900px;padding:26px 28px}#page-donations .donation-entry+ .donation-entry{margin-top:28px}#page-donations h2{font-size:16px;line-height:1.5;margin:0 0 8px;color:var(--ink)}#page-donations .donation-amount{margin-left:10px;font-size:12px;font-weight:500;color:var(--ink-soft)}#page-donations a{display:inline-block;max-width:100%;color:var(--orange);line-height:1.7;font-size:13px;overflow-wrap:anywhere;text-underline-offset:4px}#page-donations a:focus-visible{outline:2px solid var(--orange);outline-offset:5px;border-radius:2px}
 /* Hyper text stays branded in every visible effort control; native select state is preserved. */
-.pc-ultra-label{font-weight:700;color:#f7f9ff}
+.pc-ultra-label{display:inline-block;contain:layout style paint;font-weight:700;color:#f7f9ff}
 @supports ((-webkit-background-clip:text) or (background-clip:text)){
  .pc-ultra-label{background-image:linear-gradient(110deg,#ffffff 0%,#fffafd 22%,#ffd8e8 30%,#fff1dd 38%,#ffffff 48%,#d9ffec 57%,#d2f6ff 65%,#e7dcff 73%,#ffffff 84%,#ffffff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
 }
@@ -949,7 +950,7 @@ html[data-pz-studio] .titlebar .tb-brand,html[data-pz-studio] .titlebar .nx-area
 html[data-pz-studio] .pz-head{display:flex;flex-direction:column;gap:9px;min-width:0}
 html[data-pz-studio] .pz-head .pz-eyebrow{color:var(--orange2,#ffc052)}
 html[data-pz-studio] .pz-title{margin:0;font:500 38px/1.02 var(--pz-serif);letter-spacing:-.6px;color:var(--text,#f5f8ff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-html[data-pz-studio] .pz-title.pz-swap{animation:pz-title .5s var(--pz-ease)}
+html[data-pz-studio] .pz-title.pz-swap{animation:pz-title .16s var(--pz-ease);will-change:opacity,transform}
 @keyframes pz-title{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 html[data-pz-studio] .pz-pill{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;margin-right:10px;border:1px solid var(--pz-line);border-radius:9px;background:var(--pz-card);font:600 10.5px/1 var(--pz-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft,#9299aa);white-space:nowrap}
 html[data-pz-studio] .pz-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -980,8 +981,8 @@ html[data-pz-studio] .pz-tabs::after{content:"";position:absolute;left:40px;righ
 /* Content: roomier pages, serif section headings, cards that lift and glow. */
 html[data-pz-studio] .content{padding:30px 40px 56px!important}
 html[data-pz-studio] .page{max-width:1240px}
-html[data-pz-studio] .page.active{animation:pz-page .55s var(--pz-ease) backwards}
-@keyframes pz-page{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html[data-pz-studio] .page.active{animation:none}
+@keyframes pz-page{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 html[data-pz-studio] .page>.nx-pagehead h1,html[data-pz-studio] .page>.page-head h1,html[data-pz-studio] .page>.page-head>div>h1,html[data-pz-studio] .page>.nx-pagehead>div>h1{display:none}
 html[data-pz-studio] .page>.page-head .page-title{display:none!important}
 html[data-pz-studio] .page>.page-head .page-sub{margin:0!important;font-size:14.5px;line-height:1.6;color:var(--ink-soft,#9299aa);max-width:70ch}
@@ -1123,7 +1124,7 @@ html[data-pz-studio] .page.pz-leaving{display:block!important;position:absolute;
 html[data-pz-studio][data-pz-turning] .app::after,html[data-pz-studio][data-pz-turning] .app::before{animation-play-state:paused!important}
 html[data-pz-studio] .page.pz-leaving{will-change:opacity,transform}
 html[data-pz-studio] .page.pz-leaving *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none!important}
-html[data-pz-studio] .page.active.pz-entering{animation:pz-page .22s var(--pz-ease) backwards}
+html[data-pz-studio] .page.active.pz-entering{animation:pz-page .14s var(--pz-ease) backwards;will-change:opacity,transform}
 
 @keyframes pz-settle{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 
@@ -1502,7 +1503,17 @@ html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83)
    animations pause. */
 html:not([data-look-blur]) :is(.nx-card,.nx-row,.panel,.settingcard,.stat,.sidebar,.titlebar){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
+.content{will-change:scroll-position;contain:style}
+.sidebar{contain:layout paint style}
+.page.active{contain:layout style}
+.page.active :is(.toolcard,.mcpcard,.desktop-ai-card,.cn-tile,.nx-theme,.nx-card,.nx-block,.settingcard,.ws-card){contain:layout style}
+#pzScrollShield{position:fixed;inset:110px 16px 0 260px;z-index:60;display:none;pointer-events:auto}
+html[data-sidebar-collapsed] #pzScrollShield{left:84px}
+@media(max-width:760px){#pzScrollShield{left:76px}}
+html[data-pz-scrolling] #pzScrollShield{display:block}
+html[data-pz-scrolling] .app::before,html[data-pz-scrolling] .app::after,html[data-pz-turning] .app::before,html[data-pz-turning] .app::after,html[data-pz-scrolling] .hero-agent::before,html[data-pz-scrolling] #homeStartAgent::before,html[data-pz-turning] .hero-agent::before,html[data-pz-turning] #homeStartAgent::before,html[data-pz-scrolling] .pz-preview::before,html[data-pz-turning] .pz-preview::before,html[data-pz-scrolling] .pc-ultra-label,html[data-pz-turning] .pc-ultra-label,html[data-pz-scrolling] .pz-preview,html[data-pz-turning] .pz-preview{animation-play-state:paused!important}
 .toolcard,.mcpcard,.desktop-ai-card{contain:layout style;content-visibility:auto;contain-intrinsic-size:auto 84px}
+.toolcard,.mcpcard{contain:layout style paint;contain-intrinsic-size:auto 92px}
 .page.active .toolcard,.page.active .mcpcard,.page.active .desktop-ai-card{content-visibility:visible}
 .nx-row,.logline{contain:layout style}
 /* 2026-11-19 (owner: "ensure all of the settings in Appearance actually work; panel opacity doesn't even do anything").
@@ -2831,13 +2842,17 @@ __PLAZCODE_BACKDROP_FX__
   function Go(Name, Cat) {
     if(!Byid("page-"+Name))Name="home";
     try { Pzturn(Name); } catch (Error) {}
+    var TargetPage = Byid("page-" + Name), Content = Byid("content");
     Toarray(document.querySelectorAll(".page")).forEach(function (Node) {
-      Node.classList.toggle("active", Node.id === "page-" + Name);
+      if (Node !== TargetPage && Node.classList.contains("active")) Node.classList.toggle("active", false);
     });
+    if (Content && Content.scrollTop) Content.scrollTop = 0;
+    if (TargetPage && !TargetPage.classList.contains("active")) TargetPage.classList.toggle("active", true);
     Toarray(document.querySelectorAll(".navbtn")).forEach(function (Node) {
-      Node.classList.toggle("active", Node.getAttribute("data-page") === Name && (Name !== "settings" || (Node.getAttribute("data-cat") || "general") === (Cat || "general")));
+      var On = Node.getAttribute("data-page") === Name && (Name !== "settings" || (Node.getAttribute("data-cat") || "general") === (Cat || "general"));
+      if (Node.classList.contains("active") !== On) Node.classList.toggle("active", On);
     });
-    if (Name === "tools") {Rendertools();Measuredescriptions();}
+    if (Name === "tools") Rendertools();
     if (Name === "terminal") Renderlogs();
     if (Name === "logs") Logsui.refresh();
     if (Name === "mcp") Loadcatalog(true);
@@ -2850,10 +2865,6 @@ __PLAZCODE_BACKDROP_FX__
     if(Name === "toolkit")Toolkitui.refresh();
     if(Byokui && (Name === "chat" || (Name === "settings" && Cat === "models")))Byokui.refresh();
     try { Nxarea(Name, Cat); } catch (Error) {} try { Dxshow(Name); } catch (Error) {}
-    var Content = Byid("content");
-    if (Content) {
-      Content.scrollTop = 0;
-    }
   }
 
   function Sourcemeta(Source) {
@@ -2907,12 +2918,19 @@ __PLAZCODE_BACKDROP_FX__
     }).join("") : '<div class="empty">No matching tools.</div>';
     var Grid = Byid("toolsGrid");
     if (Grid._toolsHtml !== Html) { Grid.innerHTML = Html; Grid._toolsHtml = Html; }
-    Measuredescriptions();
   }
-  function Measuredescriptions() {
-    Toarray(document.querySelectorAll(".tooldesc")).forEach(function (Node) {
-      if (Node.scrollHeight) Node.style.setProperty("--desc-height", Node.scrollHeight + "px");
-    });
+  function Measuredescriptions(TargetCard) {
+    if (TargetCard && TargetCard.querySelector) {
+      var One = TargetCard.querySelector(".tooldesc");
+      if (One && One.scrollHeight) One.style.setProperty("--desc-height", One.scrollHeight + "px");
+      return;
+    }
+    var Expanded = Toarray(document.querySelectorAll(".toolcard.expanded .tooldesc"));
+    if (!Expanded.length) return;
+    var Heights = Expanded.map(function (Node) { return Node.scrollHeight; });
+    for (var I = 0; I < Expanded.length; I++) {
+      if (Heights[I]) Expanded[I].style.setProperty("--desc-height", Heights[I] + "px");
+    }
   }
 
   var Blendercheck = null;
@@ -3342,7 +3360,7 @@ __PLAZCODE_BACKDROP_FX__
     }
     if(!Byid('page-terminal').classList.contains('active'))return;
     if(Terminalrendered&&Logs.length===Terminallogs.length&&Logs.every(function(Line,Index){return Line===Terminallogs[Index];}))return;
-    var Terminal=Byid('terminal'),Follow=Terminal.scrollHeight-Terminal.scrollTop-Terminal.clientHeight<32;
+    var Terminal=Byid('terminal'),Follow=!Terminalrendered||(Terminal.scrollHeight-Terminal.scrollTop-Terminal.clientHeight<32);
     var Shift=Logs.length?Terminallogs.indexOf(Logs[0]):-1,Overlap=Shift<0?0:Terminallogs.length-Shift;
     var Append=Shift>=0&&Overlap<=Logs.length&&Terminallogs.slice(Shift).every(function(Line,Index){return Line===Logs[Index];});
     if(Append){for(var Index=0;Index<Shift;Index++)Terminal.firstChild.remove();}
@@ -3351,7 +3369,7 @@ __PLAZCODE_BACKDROP_FX__
     for(var Index=Overlap;Index<Logs.length;Index++){var Row=document.createElement('div');Row.className='logline '+(/ERROR/i.test(Logs[Index])?'error':/WARN/i.test(Logs[Index])?'warn':'');Row.textContent=Logs[Index];Fragment.appendChild(Row);}
     if(!Logs.length){var Empty=document.createElement('div');Empty.className='empty';Empty.textContent='No logs yet.';Fragment.appendChild(Empty);}
     Terminal.appendChild(Fragment);Terminallogs=Logs.slice();Terminalrendered=true;
-    if(Follow)Terminal.scrollTop=Terminal.scrollHeight;
+    if(Follow){if(typeof window.requestAnimationFrame==='function'){window.requestAnimationFrame(function(){Terminal.scrollTop=Terminal.scrollHeight;});}else{Terminal.scrollTop=Terminal.scrollHeight;}}
   }
 
   function Rendereffort(Level) {
@@ -3359,26 +3377,52 @@ __PLAZCODE_BACKDROP_FX__
     if(!Names[Level])Level='default';
     ['sidebarEffort','titleEffort'].forEach(function(Id){var Node=Byid(Id);if(Node.dataset.effort!==Level){Node.dataset.effort=Level;Node.querySelector('[data-effort-value]').textContent=Names[Level];Node.querySelector('[data-effort-value]').classList.toggle('pc-ultra-label',Level==='ultracode');}});
   }
+  var LastSettingsLang='',LastThinkingLevel='',LastSidebarCollapsed=null,LastAppearanceSig='',LastSettingsBodySig='';
   function Rendersettings() {
     var Preferences = State && State.preferences ? State.preferences : {};
     var Language = I18n ? I18n.normalize(Preferences.rsLanguage || "en") : "en";
-    if (I18n) {
-      I18n.setLanguage(Language);
-      if (Languagepicker) Languagepicker.refresh(Language);
+    if (Language !== LastSettingsLang) {
+      LastSettingsLang = Language;
+      if (I18n) {
+        I18n.setLanguage(Language);
+        if (Languagepicker) Languagepicker.refresh(Language);
+      }
+      var NextDir = Language === "ar" ? "rtl" : "ltr";
+      if (document.documentElement.lang !== Language) document.documentElement.lang = Language;
+      if (document.documentElement.dir !== NextDir) document.documentElement.dir = NextDir;
     }
     // This is the desktop-owned page, never the host page of an AI provider.
-    document.documentElement.lang = Language;
-    document.documentElement.dir = Language === "ar" ? "rtl" : "ltr";
-    document.documentElement.dataset.desktopThinking = Preferences.rsThinkingLevel || 'default';
-    Rendereffort(Preferences.rsThinkingLevel || 'default');
-    document.documentElement.toggleAttribute("data-sidebar-collapsed",!!Preferences.rsSidebarCollapsed);
-    Byid("sidebarCollapse").setAttribute("aria-expanded",String(!Preferences.rsSidebarCollapsed));
-    if (Preferences.rsAppearance && !Appearancepending) { try { Pzrestorecustom(Preferences.rsAppearance); } catch (Error) {} Applyappearance(Preferences.rsAppearance); try { Pzfeelsync(Preferences.rsAppearance); } catch (Error) {} }
+    var Thinking = Preferences.rsThinkingLevel || 'default';
+    if (Thinking !== LastThinkingLevel) {
+      LastThinkingLevel = Thinking;
+      document.documentElement.dataset.desktopThinking = Thinking;
+      Rendereffort(Thinking);
+    }
+    var Collapsed = !!Preferences.rsSidebarCollapsed;
+    if (Collapsed !== LastSidebarCollapsed) {
+      LastSidebarCollapsed = Collapsed;
+      document.documentElement.toggleAttribute("data-sidebar-collapsed", Collapsed);
+      Byid("sidebarCollapse").setAttribute("aria-expanded", String(!Collapsed));
+    }
+    if (Preferences.rsAppearance && !Appearancepending) {
+      var AppSig = JSON.stringify(Preferences.rsAppearance) + '|' + String(Nxcustomactive() || '');
+      if (AppSig !== LastAppearanceSig) {
+        LastAppearanceSig = AppSig;
+        try { Pzrestorecustom(Preferences.rsAppearance); } catch (Error) {}
+        Applyappearance(Preferences.rsAppearance);
+        try { Pzfeelsync(Preferences.rsAppearance); } catch (Error) {}
+      }
+    }
     else if (!Preferences.rsAppearance && !Appearancemigrated && !Appearancepending) {
       Appearancemigrated=true;
       var Legacy;try { Legacy=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
       if(Legacy) Saveappearance();
     }
+    var Engine = State && State.browser_agent && State.browser_agent.engine || "roblox";
+    var HkErr = State && typeof State.hotkeyError === "string" ? State.hotkeyError : "";
+    var BodySig = JSON.stringify([Preferences, Engine, HkErr]);
+    if (BodySig === LastSettingsBodySig) return;
+    LastSettingsBodySig = BodySig;
     var Folders = Byid("allowedFolders");
     if (Folders && document.activeElement !== Folders && !Folders.dataset.dirty) {
       Folders.value = (Array.isArray(Preferences.rsAllowedFolders) ? Preferences.rsAllowedFolders : []).join("\n");
@@ -3394,11 +3438,14 @@ __PLAZCODE_BACKDROP_FX__
 
     Toarray(document.querySelectorAll("select[data-pref], input[type=number][data-pref]")).forEach(function (Element) {
       var Name = Element.getAttribute("data-pref");
-      if(Name==="rs-engine"){Element.value=State && State.browser_agent && State.browser_agent.engine || "roblox";if(Element._pcRefresh)Element._pcRefresh();return;}
+      if(Name==="rs-engine"){if(Element.value!==Engine){Element.value=Engine;if(Element._pcRefresh)Element._pcRefresh();}return;}
       if (Preferences[Name] !== undefined && document.activeElement !== Element && !Element.dataset.saving) {
-        Element.value = Preferences[Name];
-        if(Element._ultraPicker)Element._ultraPicker.refresh();
-        if(Element._pcRefresh)Element._pcRefresh();
+        var NextVal = String(Preferences[Name]);
+        if (Element.value !== NextVal) {
+          Element.value = Preferences[Name];
+          if(Element._ultraPicker)Element._ultraPicker.refresh();
+          if(Element._pcRefresh)Element._pcRefresh();
+        }
       }
     });
 
@@ -3415,7 +3462,6 @@ __PLAZCODE_BACKDROP_FX__
     }
     var HotkeyStatus = Byid("dockHotkeyStatus");
     if (HotkeyStatus && !(HotkeyInput && HotkeyInput.dataset.capturing)) {
-      var HkErr = State && typeof State.hotkeyError === "string" ? State.hotkeyError : "";
       HotkeyStatus.hidden = !HkErr;
       HotkeyStatus.textContent = HkErr;
       HotkeyStatus.style.color = HkErr ? "#ffb33f" : "";
@@ -3545,6 +3591,11 @@ __PLAZCODE_BACKDROP_FX__
     });
   }
 
+  function SetText(Node, Value) { var S = String(Value); if (Node && Node.textContent !== S) Node.textContent = S; }
+  function SetBool(Node, Prop, Value) { var B = !!Value; if (Node && Node[Prop] !== B) Node[Prop] = B; }
+  function SetAttr(Node, Name, Value) { var S = String(Value); if (Node && Node.getAttribute(Name) !== S) Node.setAttribute(Name, S); }
+  function SetCls(Node, Cls, On) { if (Node && Node.classList.contains(Cls) !== !!On) Node.classList.toggle(Cls, !!On); }
+
   function Render() {
     if (!State) return;
     if(ProfileContext)ProfilePictures.current(State.profile_picture_revision);
@@ -3563,27 +3614,29 @@ __PLAZCODE_BACKDROP_FX__
     else if(Lastbridgestate===true){if(!Bridgelostat)Bridgelostat=Date.now();else if(Date.now()-Bridgelostat>=10000){Notice('Desktop bridge disconnected','Check the bridge status and reconnect.','warning');Lastbridgestate=false;Bridgelostat=0;}}
 
     var Activities = Control.activity || [], Lastactivity = Activities[Activities.length - 1];
-    Byid("homeActivity").hidden = !Lastactivity;
+    SetBool(Byid("homeActivity"), "hidden", !Lastactivity);
     if (Lastactivity) {
       if(Lastactivity.done)Notice("AI task finished",Lastactivity.status||"The latest task has finished. Review its activity in the chat.","info","task:"+String(Control.chat).slice(-180)+":"+Lastactivity.id);
-      Byid("homeActivityLabel").textContent = Lastactivity.label;
-      Byid("homeActivity").dataset.running = Lastactivity.done ? '' : Lastactivity.id;
+      SetText(Byid("homeActivityLabel"), Lastactivity.label);
+      var NextRunning = Lastactivity.done ? '' : String(Lastactivity.id);
+      if (Byid("homeActivity").dataset.running !== NextRunning) Byid("homeActivity").dataset.running = NextRunning;
       if (Activitykey && Activitykey !== Control.chat+'|'+Lastactivity.id) { Activitykey='';Activityrevision=-1;Byid("homeActivityDetails").replaceChildren(); }
       if (Byid("homeActivity").open) Refreshactivitydetails();
     }
-    Byid("mediaTarget").textContent = Control.provider ? "Send to " + Control.provider + " — selected browser chat" : "Choose a supported AI chat in your browser.";
-    Byid("openMedia").disabled = !Control.canMedia;
+    SetText(Byid("mediaTarget"), Control.provider ? "Send to " + Control.provider + " — selected browser chat" : "Choose a supported AI chat in your browser.");
+    SetBool(Byid("openMedia"), "disabled", !Control.canMedia);
     var Cowork = Control.cowork || { enabled: false, pending: [] };
-    Byid("resumeBudget").disabled = Control.canResumeBudget !== true;
-    Byid("saveContinuation").disabled = Control.canCoWork !== true;
-    Byid("homeCowork").disabled = Control.canCoWork !== true;
-    Byid("homeCowork").textContent = "Co-Work: " + (Cowork.enabled ? "On" : "Off") + (Cowork.pending.length ? " · " + Cowork.pending.length : "");
-    Byid("homeCowork").setAttribute("aria-pressed", String(Cowork.enabled === true));
-    Byid("coworkDialog").hidden = !Cowork.enabled;
-    Byid("coworkPrompt").placeholder = Cowork.enabled && Control.canStop ? "Follow up" : "Message";
-    Byid("queueCowork").disabled = Control.canQueue !== true;
-    Byid("resumeCowork").hidden = !Cowork.paused;
-    Byid("coworkStatus").textContent = Cowork.reason || (Cowork.enabled ? (Cowork.pending.length ? Cowork.pending.length + " follow-up(s) received. Sending at the next safe message boundary." : "Ready for your next request.") : "Off. Pending requests wait until Co-work is on.");
+    SetBool(Byid("resumeBudget"), "disabled", Control.canResumeBudget !== true);
+    SetBool(Byid("saveContinuation"), "disabled", Control.canCoWork !== true);
+    SetBool(Byid("homeCowork"), "disabled", Control.canCoWork !== true);
+    SetText(Byid("homeCowork"), "Co-Work: " + (Cowork.enabled ? "On" : "Off") + (Cowork.pending.length ? " · " + Cowork.pending.length : ""));
+    SetAttr(Byid("homeCowork"), "aria-pressed", Cowork.enabled === true);
+    SetBool(Byid("coworkDialog"), "hidden", !Cowork.enabled);
+    var CoworkPh = Cowork.enabled && Control.canStop ? "Follow up" : "Message";
+    if (Byid("coworkPrompt").placeholder !== CoworkPh) Byid("coworkPrompt").placeholder = CoworkPh;
+    SetBool(Byid("queueCowork"), "disabled", Control.canQueue !== true);
+    SetBool(Byid("resumeCowork"), "hidden", !Cowork.paused);
+    SetText(Byid("coworkStatus"), Cowork.reason || (Cowork.enabled ? (Cowork.pending.length ? Cowork.pending.length + " follow-up(s) received. Sending at the next safe message boundary." : "Ready for your next request.") : "Off. Pending requests wait until Co-work is on."));
     var Coworklist = Byid("coworkList"), Signature = JSON.stringify(Cowork.pending);
     if (Coworklist.dataset.signature !== Signature) {
       Coworklist.dataset.signature = Signature; Coworklist.replaceChildren();
@@ -3595,33 +3648,34 @@ __PLAZCODE_BACKDROP_FX__
         Entry.append(Text, Remove); Coworklist.appendChild(Entry);
       });
     }
-    Byid("enhancePrompt").disabled = Control.canEnhance !== true;
-    Byid("enhancerStatus").textContent = Control.enhancerStatus || (Control.canEnhance ? "Ready for the selected AI chat." : "Select an idle AI chat with an empty composer.");
-    Byid("homeStartAgent").hidden = Control.canStop === true;
+    SetBool(Byid("enhancePrompt"), "disabled", Control.canEnhance !== true);
+    SetText(Byid("enhancerStatus"), Control.enhancerStatus || (Control.canEnhance ? "Ready for the selected AI chat." : "Select an idle AI chat with an empty composer."));
+    SetBool(Byid("homeStartAgent"), "hidden", Control.canStop === true);
     var Activeengine=Control.engine || "roblox";
-    Toarray(document.querySelectorAll("[data-home-engine]")).forEach(function(Button){Button.setAttribute("aria-pressed",String(Button.getAttribute("data-home-engine")===Activeengine));Button.disabled=Homeenginepending;});
-    Byid("homeStartAgent").disabled = Control.canStart !== true || Homeenginepending || (!!Control.engine && Control.engine!==Activeengine);
-    Byid("homeStopAgent").hidden = Control.canStop !== true;
-    Byid("homeAgentStatus").textContent = (Control.memoryImportStatus ? Control.memoryImportStatus + ' · ' : '') + (Control.provider ? Control.provider + " · " : "") + (Control.status || "Select a supported AI chat in your browser.");
+    Toarray(document.querySelectorAll("[data-home-engine]")).forEach(function(Button){SetAttr(Button,"aria-pressed",Button.getAttribute("data-home-engine")===Activeengine);SetBool(Button,"disabled",Homeenginepending);});
+    SetBool(Byid("homeStartAgent"), "disabled", Control.canStart !== true || Homeenginepending || (!!Control.engine && Control.engine!==Activeengine));
+    SetBool(Byid("homeStopAgent"), "hidden", Control.canStop !== true);
+    SetText(Byid("homeAgentStatus"), (Control.memoryImportStatus ? Control.memoryImportStatus + ' · ' : '') + (Control.provider ? Control.provider + " · " : "") + (Control.status || "Select a supported AI chat in your browser."));
     var Tools = State.tools || [];
 
-    Byid("sideDot").classList.toggle("on", Bridge);
-    Byid("sideStatus").textContent = Bridge ? "Bridge connected" : "Bridge waiting";
-    Byid("sideStudioDot").classList.toggle("on", Studio);
-    Byid("sideStudioStatus").textContent = Studio ? "Studio connected" : State.studio_running ? "Studio open · not linked" : "Studio closed";
-    Byid("heroBrowser").textContent = Control.barVisible === true ? "bar visible" : Control.pageMounted === true ? "bar hidden" : Control.provider ? "refresh AI tab" : "open AI tab";
-    Byid("bridgeDot").classList.toggle("on", Bridge);
-    Byid("bridgeVal").textContent = Bridge ? "Connected" : "Waiting";
-    Byid("studioDot").classList.toggle("on", Studio);
-    Byid("studioVal").textContent = Studio ? "Connected" : State.studio_running ? "Open" : "Offline";
-    Byid("toolCount").textContent = String(Tools.length);
-    Byid("workspaceVal").textContent = Workspace ? "Ready" : "Off";
-    Byid("workspaceSub").textContent = Workspace ? (State.workspace_root || "AgentScript files") : "AgentScript files";
+    SetCls(Byid("sideDot"), "on", Bridge);
+    SetText(Byid("sideStatus"), Bridge ? "Bridge connected" : "Bridge waiting");
+    SetCls(Byid("sideStudioDot"), "on", Studio);
+    SetText(Byid("sideStudioStatus"), Studio ? "Studio connected" : State.studio_running ? "Studio open · not linked" : "Studio closed");
+    SetText(Byid("heroBrowser"), Control.barVisible === true ? "bar visible" : Control.pageMounted === true ? "bar hidden" : Control.provider ? "refresh AI tab" : "open AI tab");
+    SetCls(Byid("bridgeDot"), "on", Bridge);
+    SetText(Byid("bridgeVal"), Bridge ? "Connected" : "Waiting");
+    SetCls(Byid("studioDot"), "on", Studio);
+    SetText(Byid("studioVal"), Studio ? "Connected" : State.studio_running ? "Open" : "Offline");
+    SetText(Byid("toolCount"), Tools.length);
+    SetText(Byid("workspaceVal"), Workspace ? "Ready" : "Off");
+    SetText(Byid("workspaceSub"), Workspace ? (State.workspace_root || "AgentScript files") : "AgentScript files");
 
     var Fatal = Byid("fatal");
     var Fatalmessage=State.fatal||PreferenceError||"";
-    Fatal.style.display = Fatalmessage ? "block" : "none";
-    Fatal.textContent = Fatalmessage;
+    var FatalDisp = Fatalmessage ? "block" : "none";
+    if (Fatal.style.display !== FatalDisp) Fatal.style.display = FatalDisp;
+    SetText(Fatal, Fatalmessage);
 
     Renderlogs();
     Rendertools();
@@ -3650,6 +3704,11 @@ __PLAZCODE_BACKDROP_FX__
 
   function Refresh() {
     if(Boot.profiles&&!ProfileContext)return Promise.resolve();
+    var RootEl = typeof document !== "undefined" ? document.documentElement : null;
+    if (RootEl && typeof RootEl.hasAttribute === "function" && (RootEl.hasAttribute("data-pz-scrolling") || RootEl.hasAttribute("data-pz-turning"))) {
+      if (typeof window !== "undefined") window.__pzDeferredRefresh = true;
+      return Promise.resolve();
+    }
     if (Refreshing) {if(!RefreshQueued)RefreshQueued=RefreshPromise.then(function(){RefreshQueued=null;return Refresh();});return RefreshQueued;}
     Refreshing = true;
 
@@ -3668,8 +3727,8 @@ __PLAZCODE_BACKDROP_FX__
         }
       }
       var WsRegCard=Byid("workshopRegistrySettings");
-      if(WsRegCard)WsRegCard.hidden=!(Boolean(Nextstate.profile&&Nextstate.profile.is_owner)||Boolean(Nextstate.owner_unlocked));
-      if(Byid("profileSyncStatus"))Byid("profileSyncStatus").textContent=State.account_sync||"";
+      SetBool(WsRegCard, "hidden", !(Boolean(Nextstate.profile&&Nextstate.profile.is_owner)||Boolean(Nextstate.owner_unlocked)));
+      SetText(Byid("profileSyncStatus"), State.account_sync||"");
       Render();
       Homesetupcheck();
       return Loadcatalog();
@@ -3779,6 +3838,7 @@ __PLAZCODE_BACKDROP_FX__
     return {theme:Name,glow:Glow,gradients:Gradients};
   }
   function Saveappearance() {
+    LastAppearanceSig=''; LastSettingsBodySig='';
     var Value=Applyappearance({theme:Byid('desktopTheme').value,glow:Byid('desktopGlow').value,gradients:Byid('desktopGradients').value});
     try { ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Value));Byid('appearanceStatus').textContent='Theme saved.'; }
     catch (Error) { Byid('appearanceStatus').textContent='Applied for this window; appearance storage is unavailable.'; }
@@ -3808,10 +3868,16 @@ __PLAZCODE_BACKDROP_FX__
     });
     if (!Area) Area = Nxcurrentarea || 'home';
     Nxcurrentarea = Area;
-    Buttons.forEach(function (Button) { Button.classList.toggle('nx-off', Button.getAttribute('data-area') !== Area); });
-    var Title = Byid('sideTitle'); if (Title) Title.textContent = NXAREAS[Area] || 'Home';
+    Buttons.forEach(function (Button) {
+      var Off = Button.getAttribute('data-area') !== Area;
+      if (Button.classList.contains('nx-off') !== Off) Button.classList.toggle('nx-off', Off);
+    });
+    var Title = Byid('sideTitle'), NextSide = NXAREAS[Area] || 'Home';
+    if (Title && Title.textContent !== NextSide) Title.textContent = NextSide;
     Array.prototype.slice.call(document.querySelectorAll('.nx-area')).forEach(function (Button) {
-      var On = Button.getAttribute('data-area') === Area; Button.classList.toggle('active', On); Button.setAttribute('aria-current', On ? 'page' : 'false');
+      var On = Button.getAttribute('data-area') === Area, Cur = On ? 'page' : 'false';
+      if (Button.classList.contains('active') !== On) Button.classList.toggle('active', On);
+      if (Button.getAttribute('aria-current') !== Cur) Button.setAttribute('aria-current', Cur);
     });
     Nxsettingscat(Name === 'settings' ? (Cat || 'general') : '');
     try { Pzsync(Area); } catch (Error) {}
@@ -3821,9 +3887,11 @@ __PLAZCODE_BACKDROP_FX__
     if (!Cat) return;
     Array.prototype.slice.call(document.querySelectorAll('#page-settings .settings-section')).forEach(function (Section) {
       var Key = Section.dataset ? Section.dataset.settingsSection : ''; var Own = NXSETTINGSCAT[Key] || 'general';
-      Section.classList.toggle('nx-off', Own !== Cat);
+      var Off = Own !== Cat;
+      if (Section.classList.contains('nx-off') !== Off) Section.classList.toggle('nx-off', Off);
     });
-    var Head = document.querySelector('#page-settings .page-title'); if (Head) Head.textContent = Cat === 'general' ? 'Settings' : 'Settings · ' + (NXCATLABEL[Cat] || Cat);
+    var Head = document.querySelector('#page-settings .page-title'), NextHead = Cat === 'general' ? 'Settings' : 'Settings · ' + (NXCATLABEL[Cat] || Cat);
+    if (Head && Head.textContent !== NextHead) Head.textContent = NextHead;
   }
   function Nxoverview(Value) {
     Value = Value || {};
@@ -4064,8 +4132,8 @@ __PLAZCODE_BACKDROP_FX__
     Add.onclick = function () { if (Panel) { Panel.classList.toggle('nx-off'); var Current = Nxcustomactive(); if (Color && Current) Color.value = Current; if (Hex) Hex.value = (Color && Color.value) || '#e9ba53'; } };
     if (Color) Color.oninput = function () { if (Hex) Hex.value = Color.value; Nxpreviewcustom(Color.value); };
     if (Hex) Hex.oninput = function () { if (Nxparse(Hex.value)) { var V = Hex.value.charAt(0) === '#' ? Hex.value : '#' + Hex.value; if (Color) Color.value = V; Nxpreviewcustom(V); } };
-    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; Pzcustompreview = false; try { ProfileStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
-    var Remove = Byid('nxCustomRemove'); if (Remove) Remove.onclick = function () { Nxclearcustom(); var Saved; try { Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); } catch (Error) {} Applyappearance(Saved || {}); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
+    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; LastAppearanceSig = ''; LastSettingsBodySig = ''; Pzcustompreview = false; try { ProfileStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
+    var Remove = Byid('nxCustomRemove'); if (Remove) Remove.onclick = function () { LastAppearanceSig = ''; LastSettingsBodySig = ''; Nxclearcustom(); var Saved; try { Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); } catch (Error) {} Applyappearance(Saved || {}); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
   }
   function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; Pzcustompreview = true; try { ProfileStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
 
@@ -4288,7 +4356,7 @@ __PLAZCODE_BACKDROP_FX__
     Pzpill();
     var Status = Byid('sideStatus'), Dot = Byid('sideDot');
     if (window.MutationObserver) { if (Status) new MutationObserver(Pzpill).observe(Status, {childList:true, characterData:true, subtree:true}); if (Dot) new MutationObserver(Pzpill).observe(Dot, {attributes:true, attributeFilter:['class']}); }
-    Pzfeel(); Pzripples(); try { Pzsparkclicks(); } catch (Error) {} try { Pztabglide(); } catch (Error) {} try { Pzflow(); } catch (Error) {} try { Pzskills(); } catch (Error) {}
+    Pzfeel(); Pzripples(); try { Pzscrollperf(); } catch (Error) {} try { Pzsparkclicks(); } catch (Error) {} try { Pztabglide(); } catch (Error) {} try { Pzflow(); } catch (Error) {} try { Pzskills(); } catch (Error) {}
     Pzsync(Nxcurrentarea);
   }
   function Pzpill() {
@@ -4312,41 +4380,89 @@ __PLAZCODE_BACKDROP_FX__
   function Pzskills() { return; }
   // Page turns (Appearance > Feel > Interface motion: Full). The page being left stays painted for a moment and
   // fades away while the next one settles in; Reduced, Off and the system's reduced-motion setting skip it.
+  function Pzscrollperf() {
+    var Content = Byid('content'), Root = document.documentElement, Timer = 0;
+    if (!Content || Content._pzScrollPerf) return;
+    Content._pzScrollPerf = true;
+    if (!Byid('pzScrollShield')) {
+      var Shield = Pzel('div', '');
+      Shield.id = 'pzScrollShield';
+      Shield.setAttribute('aria-hidden', 'true');
+      Content.insertBefore(Shield, Content.firstChild);
+    }
+    function EndScroll() {
+      Timer = 0;
+      Root.removeAttribute('data-pz-scrolling');
+      if (window.__pzDeferredRefresh) { window.__pzDeferredRefresh = false; try { Refresh(); } catch (Error) {} }
+    }
+    function OnScroll() {
+      if (!Root.hasAttribute('data-pz-scrolling')) {
+        Root.setAttribute('data-pz-scrolling', '');
+        try { if (typeof window.__pzFlowPauseAll === 'function') window.__pzFlowPauseAll(); } catch (Error) {}
+      }
+      if (Timer) window.clearTimeout(Timer);
+      Timer = window.setTimeout(EndScroll, 200);
+    }
+    Content.addEventListener('scroll', OnScroll, { passive: true });
+    Content.addEventListener('wheel', OnScroll, { passive: true });
+    Content.addEventListener('pointerdown', function () {
+      if (Root.hasAttribute('data-pz-scrolling')) {
+        if (Timer) window.clearTimeout(Timer);
+        EndScroll();
+      }
+    }, { passive: true });
+  }
   function Pzgone(Node) { window.clearTimeout(Node.pzLeaveTimer); Node.classList.remove('pz-leaving'); Node.style.top = Node.style.left = Node.style.width = ''; }
   function Pzturn(Name) {
     var Root = document.documentElement, Next = Byid('page-' + Name), Old = document.querySelector('.page.active'), Content = Byid('content');
     Toarray(document.querySelectorAll('.page.pz-leaving')).forEach(Pzgone);
     if (!Next || !Old || Old === Next || !Content || !Root.hasAttribute('data-pz-studio')) return;
     if (Root.getAttribute('data-pz-motion') !== 'full') return;
-    // Owner (2026-11-18): "in the app when clicking on pages there is still some delay/fps drop". The page being left used to stay
-    // painted and fade out while each block of the next page settled in one after another (about 0.7 s of two pages animating, and a
-    // layout read on every click). Now the old page goes at once and the new page fades in as one piece (0.22 s): measured in
-    // Chromium, about half the dropped frames per switch.
     Toarray(document.querySelectorAll('.page.pz-entering')).forEach(function (Node) { window.clearTimeout(Node.pzEnterTimer); Node.classList.remove('pz-entering'); });
-    Next.classList.add('pz-entering'); Next.pzEnterTimer = window.setTimeout(function () { Next.classList.remove('pz-entering'); }, 300);
-    Root.setAttribute('data-pz-turning', ''); window.clearTimeout(Pzturn.done); Pzturn.done = window.setTimeout(function () { Root.removeAttribute('data-pz-turning'); }, 320);
+    Next.classList.add('pz-entering'); Next.pzEnterTimer = window.setTimeout(function () { Next.classList.remove('pz-entering'); }, 160);
+    Root.setAttribute('data-pz-turning', ''); window.clearTimeout(Pzturn.done); Pzturn.done = window.setTimeout(function () {
+      Root.removeAttribute('data-pz-turning');
+      if (window.__pzDeferredRefresh && !Root.hasAttribute('data-pz-scrolling')) { window.__pzDeferredRefresh = false; try { Refresh(); } catch (Error) {} }
+    }, 180);
   }
   // The sidebar highlight is one element that glides to the selected section instead of jumping.
+  var PzglideRaf = 0;
   function Pzglide() {
     var Areas = document.querySelector('.pz-areas'); if (!Areas) return;
     var Glide = Areas.querySelector('.pz-glide');
     if (!Glide) { Glide = Pzel('span', 'pz-glide'); Glide.setAttribute('aria-hidden', 'true'); Areas.insertBefore(Glide, Areas.firstChild); Areas.classList.add('pz-glided');
       if (window.ResizeObserver) new ResizeObserver(function () { Pzglide(); }).observe(Areas); }
-    var Active = Areas.querySelector('.pz-area.active');
-    if (!Active || !Active.offsetHeight) { Glide.classList.remove('pz-on'); return; }
-    Glide.style.height = Active.offsetHeight + 'px'; Glide.style.transform = 'translateY(' + Active.offsetTop + 'px)';
-    if (!Glide.classList.contains('pz-on')) { Glide.classList.add('pz-on'); window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { Glide.classList.add('pz-live'); }); }); }
+    function PlaceGlide() {
+      PzglideRaf = 0;
+      var Active = Areas.querySelector('.pz-area.active');
+      if (!Active || !Active.offsetHeight) { Glide.classList.remove('pz-on'); return; }
+      Glide.style.height = Active.offsetHeight + 'px'; Glide.style.transform = 'translateY(' + Active.offsetTop + 'px)';
+      if (!Glide.classList.contains('pz-on')) { Glide.classList.add('pz-on'); window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { Glide.classList.add('pz-live'); }); }); }
+    }
+    if (!Glide.classList.contains('pz-on') || typeof window.requestAnimationFrame !== 'function') { PlaceGlide(); return; }
+    if (!PzglideRaf) PzglideRaf = window.requestAnimationFrame(PlaceGlide);
   }
   function Pzsync(Area) {
     if (!document.documentElement.hasAttribute('data-pz-studio')) return;
     var Meta = PZAREAS[Area] || PZAREAS.home;
-    Array.prototype.slice.call(document.querySelectorAll('.pz-area')).forEach(function (Button) { var On = Button.getAttribute('data-area') === Area; Button.classList.toggle('active', On); Button.setAttribute('aria-current', On ? 'page' : 'false'); });
+    Array.prototype.slice.call(document.querySelectorAll('.pz-area')).forEach(function (Button) {
+      var On = Button.getAttribute('data-area') === Area, Cur = On ? 'page' : 'false';
+      if (Button.classList.contains('active') !== On) Button.classList.toggle('active', On);
+      if (Button.getAttribute('aria-current') !== Cur) Button.setAttribute('aria-current', Cur);
+    });
     try { Pzglide(); } catch (Error) {}
     var Active = document.querySelector('.navbtn.active'), Label = Active ? ((Active.querySelector('.navlabel') || Active).textContent || '').trim() : Pzt(Meta[0]);
-    var Eyebrow = Byid('pzEyebrow'); if (Eyebrow) Eyebrow.textContent = Pzt(Meta[0]);
+    var Eyebrow = Byid('pzEyebrow'); if (Eyebrow && Eyebrow.textContent !== Pzt(Meta[0])) Eyebrow.textContent = Pzt(Meta[0]);
     var Title = Byid('pzTitle');
-    if (Title && Title.textContent !== Label) { Title.textContent = Label; Title.classList.remove('pz-swap'); void Title.offsetWidth; Title.classList.add('pz-swap'); }
-    var Tabs = document.querySelector('.pz-tabs'); if (Tabs) Tabs.setAttribute('data-single', document.querySelectorAll('.pz-tabs .navbtn:not(.nx-off)').length < 2 ? '1' : '0');
+    if (Title && Title.textContent !== Label) {
+      Title.textContent = Label;
+      Title.classList.remove('pz-swap');
+      if (document.documentElement.getAttribute('data-pz-motion') === 'full' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(function () { Title.classList.add('pz-swap'); });
+      }
+    }
+    var Tabs = document.querySelector('.pz-tabs'), Single = document.querySelectorAll('.pz-tabs .navbtn:not(.nx-off)').length < 2 ? '1' : '0';
+    if (Tabs && Tabs.getAttribute('data-single') !== Single) Tabs.setAttribute('data-single', Single);
   }
   // A soft ripple where a button or card is pressed (Appearance > Feel > Click ripples).
   /* Buttons and pills whose gradient flows while hovered: unified WAAPI controller captures live --pz-x
@@ -4365,7 +4481,7 @@ __PLAZCODE_BACKDROP_FX__
       if (Root.getAttribute('data-desktop-gradients') === 'off') return false;
       var Motion = Root.getAttribute('data-pz-motion');
       if (Motion === 'off' || Motion === 'reduced') return false;
-      if (Root.hasAttribute('data-pz-asleep') || document.hidden || Reduced()) return false;
+      if (Root.hasAttribute('data-pz-asleep') || Root.hasAttribute('data-pz-scrolling') || Root.hasAttribute('data-pz-turning') || document.hidden || Reduced()) return false;
       if (!Node || Node.disabled || (Node.getAttribute && Node.getAttribute('aria-disabled') === 'true')) return false;
       if (Node.matches && Node.matches('.pc-picture-remove')) return false;
       return true;
@@ -4474,23 +4590,40 @@ __PLAZCODE_BACKDROP_FX__
     if (Event && Event.detail !== 0 && (Event.clientX || Event.clientY)) return [Event.clientX, Event.clientY];
     var Box = Node.getBoundingClientRect(); return [Box.left + Box.width / 2, Box.top + Box.height / 2];
   }
-  function Pzburst(X, Y) {
-    if (!Pzsparkson() || !document.body.animate) return;
-    var Layer = Pzsparklayer(), Parts = [], Ease = 'cubic-bezier(.16,1,.3,1)';
-    function Add(Cls, Size) { var Node = Pzel('span', Cls); Node.style.left = X + 'px'; Node.style.top = Y + 'px'; Node.style.width = Node.style.height = Size + 'px'; Layer.appendChild(Node); Parts.push(Node); return Node; }
-    Add('pz-spark-ring', 12).animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: .85 }, { transform: 'translate(-50%,-50%) scale(7)', opacity: 0 }], { duration: 700, easing: Ease, fill: 'forwards' });
-    Add('pz-spark-flash', 34).animate([{ transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.5)', opacity: 0 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
-    for (var I = 0; I < 14; I++) {
-      var Angle = (I / 14) * Math.PI * 2 + Math.random() * .5, Far = 34 + Math.random() * 62, Size = 2 + Math.random() * 3, Time = 620 + Math.random() * 420;
-      var Dx = Math.cos(Angle) * Far, Dy = Math.sin(Angle) * Far + 10 * Math.random();
-      Add('pz-spark', Size).animate([{ transform: 'translate(-50%,-50%) translate(0,0) scale(1)', opacity: 1 }, { opacity: .9, offset: .35 }, { transform: 'translate(-50%,-50%) translate(' + Dx.toFixed(1) + 'px,' + Dy.toFixed(1) + 'px) scale(.2)', opacity: 0 }], { duration: Time, easing: Ease, fill: 'forwards' });
-    }
-    window.setTimeout(function () { Parts.forEach(function (Node) { Node.remove(); }); }, 1150);
+  function Pzburst(X, Y, Node) {
+    if (!Pzsparkson() || !document.body.animate || document.documentElement.hasAttribute('data-pz-scrolling')) return;
+    var Run = function () {
+      if (document.documentElement.hasAttribute('data-pz-scrolling')) return;
+      if ((X == null || Y == null) && Node) { var Box = Node.getBoundingClientRect(); X = Box.left + Box.width / 2; Y = Box.top + Box.height / 2; }
+      if (X == null || Y == null) return;
+      var Layer = Pzsparklayer(), Group = Pzel('span', 'pz-burst-group'), Ease = 'cubic-bezier(.16,1,.3,1)';
+      function Add(Cls, Size) { var Node = Pzel('span', Cls); Node.style.left = X + 'px'; Node.style.top = Y + 'px'; Node.style.width = Node.style.height = Size + 'px'; Group.appendChild(Node); return Node; }
+      var Ring = Add('pz-spark-ring', 12), Flash = Add('pz-spark-flash', 34), Specs = [];
+      for (var I = 0; I < 8; I++) {
+        var Angle = (I / 8) * Math.PI * 2 + Math.random() * .5, Far = 32 + Math.random() * 52, Size = 2 + Math.random() * 3, Time = 540 + Math.random() * 300;
+        Specs.push({ node: Add('pz-spark', Size), dx: (Math.cos(Angle) * Far).toFixed(1), dy: (Math.sin(Angle) * Far + 10 * Math.random()).toFixed(1), time: Time });
+      }
+      Layer.appendChild(Group);
+      Ring.animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: .85 }, { transform: 'translate(-50%,-50%) scale(7)', opacity: 0 }], { duration: 640, easing: Ease, fill: 'forwards' });
+      Flash.animate([{ transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.5)', opacity: 0 }], { duration: 380, easing: 'ease-out', fill: 'forwards' });
+      Specs.forEach(function (S) {
+        S.node.animate([{ transform: 'translate(-50%,-50%) translate(0,0) scale(1)', opacity: 1 }, { opacity: .9, offset: .35 }, { transform: 'translate(-50%,-50%) translate(' + S.dx + 'px,' + S.dy + 'px) scale(.2)', opacity: 0 }], { duration: S.time, easing: Ease, fill: 'forwards' });
+      });
+      function Clean() {
+        if (document.documentElement.hasAttribute('data-pz-scrolling')) { window.setTimeout(Clean, 260); return; }
+        Group.remove();
+      }
+      window.setTimeout(Clean, 1200);
+    };
+    if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(Run); else Run();
   }
   function Pzsparkclicks() {
     document.addEventListener('click', function (Event) {
       var Area = Event.target && Event.target.closest ? Event.target.closest('.pz-area') : null;
-      if (Area && !Area.classList.contains('active')) { var At = Pzpoint(Event, Area); Pzburst(At[0], At[1]); }
+      if (Area && !Area.classList.contains('active')) {
+        if (Event && Event.detail !== 0 && (Event.clientX || Event.clientY)) Pzburst(Event.clientX, Event.clientY);
+        else Pzburst(null, null, Area);
+      }
     }, true);
   }
   /* Picking a theme fades the whole app from the old colours to the new ones while the sparks fly, instead of
@@ -4992,13 +5125,16 @@ __PLAZCODE_BACKDROP_FX__
     Byid('savedChatsDownload').onclick=async function(){try{var Result=await Api('/api/chat-history',{method:'POST',body:JSON.stringify({action:'export',chat_id:Byid('savedChatsSelect').value})});if(!Result.ok)throw Error(Result.error);var Url=URL.createObjectURL(new Blob([JSON.stringify(Result.log,null,2)],{type:'application/json'}));var Link=document.createElement('a');Link.href=Url;Link.download='PlazCode-chat-log.json';Link.click();window.setTimeout(function(){URL.revokeObjectURL(Url);},1000);Byid('savedChatsStatus').textContent='Saved log downloaded.';}catch(Error){Byid('savedChatsStatus').textContent=Error.message || String(Error);}};
     Byid("saveContinuation").onclick=async function(){try{var Result=await Api("/api/desktop/agent",{method:"POST",body:JSON.stringify({action:"handoff-export",prompt:"saved",request_id:crypto.randomUUID()})});if(!Result.ok)throw Error(Result.error);var Url=URL.createObjectURL(new Blob([JSON.stringify(Result.transfer,null,2)],{type:"application/json"}));var Link=document.createElement("a");Link.href=Url;Link.download="PlazCode-continuation.json";Link.click();window.setTimeout(function(){URL.revokeObjectURL(Url);},1000);Byid("continuationStatus").textContent="Continuation downloaded. Import through Memory in the destination chat, then ask to continue.";}catch(Error){Byid("continuationStatus").textContent=Error.message||String(Error);}};
     Byid("resumeBudget").onclick=async function(){try{var Result=await Api("/api/desktop/agent",{method:"POST",body:JSON.stringify({action:"budget-resume",request_id:crypto.randomUUID()})});if(!Result.ok)throw Error(Result.error);Byid("continuationStatus").textContent="Resumed with a fresh command budget.";}catch(Error){Byid("continuationStatus").textContent=Error.message||String(Error);}};
-    window.addEventListener("resize", Measuredescriptions);
+    var ResizeMeasureRaf = 0;
+    window.addEventListener("resize", function () {
+      if (!ResizeMeasureRaf) ResizeMeasureRaf = window.requestAnimationFrame(function () { ResizeMeasureRaf = 0; Measuredescriptions(); });
+    }, { passive: true });
     Byid("toolsGrid").addEventListener("click", function (Event) {
       var Card = Event.target.closest(".toolcard");
       if (!Card || !Byid("toolsGrid").contains(Card)) return;
       var Expanded = Card.classList.toggle("expanded");
       Card.setAttribute("aria-expanded", String(Expanded));
-      Measuredescriptions();
+      if (Expanded) Measuredescriptions(Card);
     });
     Byid("toolsGrid").addEventListener("keydown", function (Event) {
       if (Event.key !== "Enter" && Event.key !== " ") return;

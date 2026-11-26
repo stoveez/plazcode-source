@@ -30,7 +30,7 @@ const normalize=(code)=>languages.find(x=>x.code===code)?.code||'en';
 const key=(text)=>String(text??'').replace(/\s+/g,' ').trim();
 const data=()=>global.PlazCodeLocaleData||{en:{}};
 const has=(source)=>Object.prototype.hasOwnProperty.call(data().en||{},key(source));
-let language='en';const bindings=new Set(),nodeBindings=new WeakMap(),mounts=new WeakMap(),owners=new Set(),pickers=new Set(),listeners=new Set();
+let language='en';let appliedLanguage='';const bindings=new Set(),nodeBindings=new WeakMap(),mounts=new WeakMap(),owners=new Set(),pickers=new Set(),listeners=new Set();
 const EXCLUDE='.brand-word,.pc-ultra-label,script,style,textarea,input,pre,code,kbd,samp,[contenteditable],[data-i18n-user-content],[data-pc-language-options],.rs-mcp-info,.rs-task-title,.rs-task-label,.rs-tool-raw,.rs-tool-output,.rs-template-name,.rs-memory-content,.rs-lib-card,.rs-cowork-item,.rs-task-row,[data-prompt-index]';
 const SAFE_NEW='button,label,option,summary,[data-pc-i18n],[data-plazcode-version],#rs-action,#rs-status,#rs-state,#titleEffort,#sidebarEffort';
 const excluded=(node)=>{const e=node.nodeType===1?(node):node.parentElement;return !e||!!e.closest(EXCLUDE);};
@@ -80,18 +80,20 @@ function ensureStyles(doc){
  @media(forced-colors:active){.pc-language-picker :is(input,select){background:Canvas;color:CanvasText;border-color:ButtonText}}
  `;(doc.head||doc.documentElement).append(style);
 }
-function applyOwner(root){if(!root.isConnected)return;const lang=languages.find(x=>x.code===language);root.setAttribute('lang',language);root.setAttribute('dir',lang.dir);root.setAttribute('data-pc-locale',language);}
+function applyOwner(root){if(!root.isConnected)return;const lang=languages.find(x=>x.code===language);if(root.getAttribute('lang')!==language)root.setAttribute('lang',language);if(root.getAttribute('dir')!==lang.dir)root.setAttribute('dir',lang.dir);if(root.getAttribute('data-pc-locale')!==language)root.setAttribute('data-pc-locale',language);}
 function mountStatic(rawRoot){
  if(!rawRoot)return null;const root=rawRoot;ensureStyles(root.ownerDocument||global.document);owners.add(root);applyOwner(root);scan(root);
  if(mounts.has(root))return mounts.get(root);
  let busy=false;
  const observer=new MutationObserver(records=>{
   if(busy)return;busy=true;
+  let hadRemovals=false;
   try{
    for(const record of records){
     if(record.type==='characterData'){const b=nodeBindings.get(record.target)?.get('text');if(b)applyBinding(b);}
     if(record.type==='attributes'&&record.attributeName){const b=nodeBindings.get(record.target)?.get(record.attributeName);if(b)applyBinding(b);}
     if(record.type==='childList'){
+     if(record.removedNodes&&record.removedNodes.length>0)hadRemovals=true;
      // New user data is never generally scanned. Only explicit UI controls or
      // marked built-in roots are eligible after the initial static snapshot.
      if(record.target.nodeType===1&&(record.target).matches(SAFE_NEW)&&!excluded(record.target))scan(record.target);
@@ -102,13 +104,16 @@ function mountStatic(rawRoot){
      }
     }
    }
-   for(const b of bindings)if(!b.node.isConnected)bindings.delete(b);
+   if(hadRemovals)for(const b of bindings)if(!b.node.isConnected)bindings.delete(b);
   }finally{busy=false;}
  });observer.observe(root,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['title','aria-label','placeholder']});
  const result={refresh:()=>scan(root),disconnect(){observer.disconnect();owners.delete(root);mounts.delete(root);}};mounts.set(root,result);return result;
 }
 function setLanguage(value){
- const next=normalize(value);language=next;
+ const next=normalize(value);
+ if(next===language&&appliedLanguage===next)return next;
+ language=next;
+ appliedLanguage=next;
  for(const owner of owners){if(owner.isConnected)applyOwner(owner);else owners.delete(owner);}
  for(const b of bindings){if(b.node.isConnected)applyBinding(b);else bindings.delete(b);}
  for(const picker of pickers){if(picker.host.isConnected)picker.refresh(next);else pickers.delete(picker);}
@@ -136,7 +141,7 @@ function mountPicker(host,options={}){
  search.addEventListener('input',fill);
  select.addEventListener('change',async()=>{if(saving)return;const prior=value,next=normalize(select.value);saving=true;saveError=false;fill();try{if(options.onChange)await options.onChange(next);value=next;setLanguage(next);}catch{value=prior;select.value=prior;saveError=true;}finally{saving=false;fill();}});
  host.append(searchLabel,search,label,select,status,help);
- const picker={host,refresh(next){value=normalize(next);fill();},get value(){return value;},destroy(){pickers.delete(picker);host.replaceChildren();delete host._pcLanguagePicker;}};
+ const picker={host,refresh(next){const normalized=normalize(next);if(normalized===value&&select.options.length>0&&!saving&&!saveError&&appliedLanguage===language)return;value=normalized;fill();},get value(){return value;},destroy(){pickers.delete(picker);host.replaceChildren();delete host._pcLanguagePicker;}};
  host._pcLanguagePicker=picker;pickers.add(picker);fill();return picker;
 }
 const api={languages,normalize,t,setLanguage,getLanguage:()=>language,mountStatic,mountPicker,onChange(fn){listeners.add(fn);return()=>listeners.delete(fn);}};

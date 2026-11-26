@@ -5,7 +5,8 @@ const setup=html.slice(html.indexOf('  function Setupsettingssections('),html.in
 const effort=html.slice(html.indexOf('  function Rendereffort('),html.indexOf('  function Rendersettings('));
 const go=html.slice(html.indexOf('  function Go('),html.indexOf('  function ',html.indexOf('  function Go(')+20));
 (async()=>{for(const [name,engine] of [['chromium',chromium],['firefox',firefox]]){
- const browser=await engine.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(15000);
+ if(process.env.PLAZCODE_TEST_BROWSER&&process.env.PLAZCODE_TEST_BROWSER!==name)continue;
+ const browser=await engine.launch({headless:true,...(name==='chromium'&&process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{}),args:name==='chromium'?['--no-sandbox']:[]}),page=await browser.newPage();page.setDefaultTimeout(15000);
  try{
  await page.route('http://localhost:34567/**',route=>route.fulfill({contentType:'text/html',body:clean}));
  await page.goto('http://localhost:34567/');await page.emulateMedia({reducedMotion:'reduce'});await page.addStyleTag({content:'#nxSplash{display:none!important}'});

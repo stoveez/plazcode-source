@@ -28,9 +28,12 @@ const PlazCodeBackdropFx = (() => {
     let alpha = typeof init?.alpha === "number" ? Math.max(0.05, Math.min(0.85, init.alpha)) : 0.24;
     let w = 0, h = 0, dpr = 1, raf = 0, last = 0, frames = 0, dead = false, paused = false;
     let drops = [], spd = [], seed = [];
-    let mode = "off";
+    let mode = "off", attrState = "";
     const stop = () => { if (raf && win && typeof win.cancelAnimationFrame === "function") win.cancelAnimationFrame(raf); raf = 0; };
     const asleep = () => !!(doc.hidden || (doc.documentElement && doc.documentElement.hasAttribute("data-pz-asleep")));
+    const busy = () => !!(doc.documentElement && (doc.documentElement.hasAttribute("data-pz-scrolling") || doc.documentElement.hasAttribute("data-pz-turning")));
+    const setHidden = (h) => { if (cv.hidden !== h) cv.hidden = h; };
+    const setAttr = (v) => { if (attrState !== v) { attrState = v; cv.setAttribute("data-signal-rain", v); } };
     function size() {
       const r = typeof cv.getBoundingClientRect === "function" ? cv.getBoundingClientRect() : null;
       const nw = Math.max(120, Math.round((r && r.width) || cv.clientWidth || (win && win.innerWidth) || 960));
@@ -65,24 +68,38 @@ const PlazCodeBackdropFx = (() => {
     }
     function tick(now) {
       raf = 0; if (dead || mode !== "running") return;
-      if (asleep() || paused) { mode = "paused"; cv.setAttribute("data-signal-rain", "paused"); return; }
+      if (asleep() || paused) { mode = "paused"; setAttr("paused"); return; }
+      if (busy()) return;
       if (!last || now - last >= 42) { const dt = last ? Math.min(0.08, (now - last) / 1000) : 0.032; last = now; draw(dt, false); }
       if (win && typeof win.requestAnimationFrame === "function") raf = win.requestAnimationFrame(tick);
     }
     function sync() {
       if (dead) return;
       const f = readFeel(doc, win, feelExp);
-      if (!on || f === "off") { stop(); mode = "off"; cv.hidden = true; cv.setAttribute("data-signal-rain", "off"); clear(); return; }
-      cv.hidden = false;
-      if (f === "reduced") { stop(); mode = "static"; cv.setAttribute("data-signal-rain", "static"); draw(0, true); return; }
-      if (paused || asleep()) { stop(); mode = "paused"; cv.setAttribute("data-signal-rain", "paused"); if (!frames) draw(0, true); return; }
-      mode = "running"; cv.setAttribute("data-signal-rain", "running");
+      if (!on || f === "off") {
+        if (mode === "off" && cv.hidden && attrState === "off") return;
+        stop(); mode = "off"; setHidden(true); setAttr("off"); clear(); return;
+      }
+      setHidden(false);
+      if (f === "reduced") { stop(); mode = "static"; setAttr("static"); draw(0, true); return; }
+      if (paused || asleep()) { stop(); mode = "paused"; setAttr("paused"); if (!frames) draw(0, true); return; }
+      mode = "running"; setAttr("running");
+      if (busy()) { stop(); return; }
       if (!raf) { last = 0; if (win && typeof win.requestAnimationFrame === "function") raf = win.requestAnimationFrame(tick); else draw(0, true); }
     }
     const onVis = () => sync();
+    const onRootMut = (records) => {
+      if (Array.isArray(records) && records.length && records.every((r) => r.attributeName === "data-pz-scrolling" || r.attributeName === "data-pz-turning")) {
+        if (dead || !on || mode !== "running" || paused || asleep()) return;
+        if (busy()) { stop(); return; }
+        if (!raf && win && typeof win.requestAnimationFrame === "function") { last = 0; raf = win.requestAnimationFrame(tick); }
+        return;
+      }
+      sync();
+    };
     try { doc.addEventListener("visibilitychange", onVis); } catch {}
     let mo = null, ro = null, mql = null;
-    try { if (typeof MutationObserver === "function" && doc.documentElement) { mo = new MutationObserver(onVis); mo.observe(doc.documentElement, { attributes: true, attributeFilter: ["data-pz-asleep", "data-pz-motion", "data-rs-motion", "data-desktop-theme", "data-rs-palette"] }); } } catch {}
+    try { if (typeof MutationObserver === "function" && doc.documentElement) { mo = new MutationObserver(onRootMut); mo.observe(doc.documentElement, { attributes: true, attributeFilter: ["data-pz-asleep", "data-pz-scrolling", "data-pz-turning", "data-pz-motion", "data-rs-motion", "data-desktop-theme", "data-rs-palette"] }); } } catch {}
     try { if (typeof ResizeObserver === "function") { ro = new ResizeObserver(() => { if (mode === "static" || mode === "paused") draw(0, true); }); ro.observe(cv); } } catch {}
     try { if (win && typeof win.matchMedia === "function") { mql = win.matchMedia("(prefers-reduced-motion: reduce)"); if (typeof mql.addEventListener === "function") mql.addEventListener("change", onVis); } } catch {}
     sync();
