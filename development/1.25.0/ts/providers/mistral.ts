@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Built from development/1.25.0/ts/providers/mistral.ts (TypeScript): edit that file, then run node development/1.25.0/ts/build.cjs.
 // providers/mistral.js — Mistral Le Chat (chat.mistral.ai) provider.
-// Supports BOTH Work (/work) and Code / Vibe Code routes & modes cleanly.
+// Supports Mistral Work (/work) and standard chat routes cleanly (Code / Vibe Code tab is not supported).
 //
 // Selectors flagged for live Chrome DevConsole verification on chat.mistral.ai:
 //  - S.turn / S.userTurn / S.assistantTurn (`[data-message-author-role]`, `[data-message-id]`, `[data-testid*="message"]`)
 //  - S.reply / S.thinking (`.prose`, `[class*="markdown"]`, `[class*="thinking" i]`, `[class*="reasoning" i]`)
-//  - S.editor (`div.ProseMirror`, `textarea`, excluding Vibe Code preview/sandbox `.cm-editor` / `.monaco-editor`)
-//  - S.modeActive / S.modeControl (Work vs Code / Vibe Code route & tab/pill selectors)
+//  - S.editor (`div.ProseMirror`, `textarea`, excluding preview/sandbox `.cm-editor` / `.monaco-editor`)
+//  - S.modeControl (Work vs unsupported Code / Vibe Code route & tab/pill detection)
 //  - S.sendBtn / S.stopBtn / S.attachBtn / S.fileInput
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
@@ -55,7 +55,6 @@ const RSProvider: PlazCodeProvider = (() => {
     editor: [
       'textarea[placeholder*="Ask" i]',
       'textarea[placeholder*="Message" i]',
-      'textarea[placeholder*="Build" i]',
       'div.ProseMirror[contenteditable]',
       'div.tiptap[contenteditable]',
       '[data-rs-locked="1"]',
@@ -63,7 +62,7 @@ const RSProvider: PlazCodeProvider = (() => {
       'textarea:not([disabled])',
       'div[contenteditable="true"]',
     ].join(", "),
-    // Exclude Vibe Code's live code editor / terminal / artifact preview panes so we never type into a preview file.
+    // Exclude artifact code editor / terminal / preview panes so we never type into a preview file.
     nonComposerScope: '#rs-root, nav, aside, [role="dialog"], .monaco-editor, .cm-editor, .xterm, [class*="code-editor"], [class*="preview-pane"], [data-panel="preview"], [class*="sandbox"]',
     composerWrap: 'form, [data-testid*="composer"], [class*="composer"], [class*="chat-input"]',
     modeControl: '[role="tab"], [role="radio"], a[href*="/work"], a[href*="/code"], a[href*="/vibe"], button[data-mode], [data-testid*="mode" i]',
@@ -83,7 +82,7 @@ const RSProvider: PlazCodeProvider = (() => {
     codeMode: /\b(?:vibe\s*code|vibecode|code)\b/i,
     workMode: /\bwork\b/i,
     sideBox: /rename|title|search|filter|feedback|report|comment/i,
-    mainBox: /ask|message|build|prompt|chat|mistral|le chat|code|work/i,
+    mainBox: /ask|message|prompt|chat|mistral|le chat|work/i,
   };
 
   const timings = {
@@ -110,7 +109,7 @@ const RSProvider: PlazCodeProvider = (() => {
     ""
   ).trim();
 
-  // ── Work & Code / Vibe Code Mode Detection & Switching ────────────────────
+  // ── Work Mode Detection & Unsupported Code Mode Guard ─────────────────────
   function isControlActive(el: Element | null | undefined): boolean {
     if (!el) return false;
     if (safeRead(() => el.getAttribute("aria-selected"), null) === "true") return true;
@@ -123,11 +122,11 @@ const RSProvider: PlazCodeProvider = (() => {
     return /\b(active|selected)\b/i.test(cls);
   }
 
-  function detectMode(): "work" | "code" | "chat" {
+  function isCodeMode(): boolean {
     const path = (location.pathname || "").toLowerCase();
-    const full = (path + " " + (location.search || "") + " " + (location.hash || "")).toLowerCase();
-    if (/\/(?:vibe-?code|vibe|code)(?:\/|$|\?)/.test(path) || /[?&](?:mode|view|tab)=(?:vibe|code)/i.test(full)) return "code";
-    if (/\/work(?:\/|$|\?)/.test(path) || /[?&](?:mode|view|tab)=work/i.test(full)) return "work";
+    const queryAndHash = ((location.search || "") + " " + (location.hash || "")).toLowerCase();
+    if (/\/(?:vibe-?code|vibe|code)(?:\/|$|\?)/.test(path)) return true;
+    if (/[?&](?:mode|view|tab)=(?:vibe-?code|vibe|code)(?:&|$|#|\s)/i.test(queryAndHash)) return true;
 
     for (const el of safeQueryAll(document, S.modeControl)) {
       if (safeClosest(el, "#rs-root") || !visible(el) || !isControlActive(el)) continue;
@@ -136,14 +135,29 @@ const RSProvider: PlazCodeProvider = (() => {
         safeRead(() => el.getAttribute("aria-label"), ""),
         safeRead(() => el.textContent, ""),
       ].filter(Boolean).join(" ").trim();
-      if (RE.codeMode.test(label)) return "code";
+      if (RE.codeMode.test(label) && !RE.workMode.test(label)) return true;
+    }
+    return false;
+  }
+
+  function detectMode(): "work" | "chat" {
+    const path = (location.pathname || "").toLowerCase();
+    const queryAndHash = ((location.search || "") + " " + (location.hash || "")).toLowerCase();
+    if (/\/work(?:\/|$|\?)/.test(path) || /[?&](?:mode|view|tab)=work(?:&|$|#|\s)/i.test(queryAndHash)) return "work";
+
+    for (const el of safeQueryAll(document, S.modeControl)) {
+      if (safeClosest(el, "#rs-root") || !visible(el) || !isControlActive(el)) continue;
+      const label = [
+        safeRead(() => el.getAttribute("data-mode"), ""),
+        safeRead(() => el.getAttribute("aria-label"), ""),
+        safeRead(() => el.textContent, ""),
+      ].filter(Boolean).join(" ").trim();
       if (RE.workMode.test(label)) return "work";
     }
     return "chat";
   }
 
-  function findModeControl(target: "work" | "code"): HTMLElement | null {
-    const re = target === "code" ? RE.codeMode : RE.workMode;
+  function findWorkControl(): HTMLElement | null {
     for (const el of safeQueryAll(document, S.modeControl)) {
       if (safeClosest(el, "#rs-root") || !visible(el)) continue;
       const label = [
@@ -152,22 +166,24 @@ const RSProvider: PlazCodeProvider = (() => {
         safeRead(() => el.getAttribute("href"), ""),
         safeRead(() => el.textContent, ""),
       ].filter(Boolean).join(" ").trim();
-      if (re.test(label)) return el;
+      if (RE.workMode.test(label)) return el;
     }
     return null;
   }
 
-  async function switchMode(target: "work" | "code"): Promise<boolean> {
-    if (detectMode() === target) return true;
-    const ctrl = findModeControl(target);
+  async function switchMode(target: "work"): Promise<boolean> {
+    if (target !== "work") return false;
+    if (!isCodeMode() && detectMode() === "work") return true;
+    const ctrl = findWorkControl();
     if (!ctrl) return false;
     try { ctrl.click(); } catch { return false; }
-    return waitFor(() => detectMode() === target && !!getEditor(), 3000);
+    return waitFor(() => !isCodeMode() && detectMode() === "work" && !!getEditor(), 3000);
   }
 
   // ── Editor & Composer ─────────────────────────────────────────────────────
   let lockedEditor: HTMLElement | null = null;
   function getEditor(): HTMLElement | null {
+    if (isCodeMode()) return null;
     if (lockedEditor && safeRead(() => lockedEditor?.isConnected ?? false, false) && visible(lockedEditor)) return lockedEditor;
     const seen = new Set<HTMLElement>();
     const candidates: HTMLElement[] = [];
@@ -324,12 +340,13 @@ const RSProvider: PlazCodeProvider = (() => {
   const lastAssistantId = (): string | null => itemKey(lastAssistant());
 
   const chatIsEmpty = (): boolean => allItems().length === 0;
-  const FRESH_PATH = /^\/(?:work|code|vibe|vibe-code|vibecode|chat)?\/?$/i;
-  const isFreshChat = (): boolean => chatIsEmpty() && !!getEditor() && FRESH_PATH.test(location.pathname || "/");
+  const FRESH_PATH = /^\/(?:work|chat)?\/?$/i;
+  const isFreshChat = (): boolean => !isCodeMode() && chatIsEmpty() && !!getEditor() && FRESH_PATH.test(location.pathname || "/");
   const conversationKey = (): string => {
+    if (isCodeMode()) return "";
     const p = location.pathname || "/";
     if (chatIsEmpty() || FRESH_PATH.test(p)) return "";
-    const m = p.match(/\/(?:chat|work|code|vibe(?:-code)?)\/([A-Za-z0-9_-]+)/i);
+    const m = p.match(/\/(?:chat|work)\/([A-Za-z0-9_-]+)/i);
     return m ? detectMode() + ":" + m[1] : p;
   };
 
@@ -647,7 +664,8 @@ const RSProvider: PlazCodeProvider = (() => {
 
   function modeWarning() {
     if (loginGatePresent()) return "<b>Sign in to Mistral</b> at chat.mistral.ai first, then press Start.";
-    if (!getEditor()) return "Open <b>chat.mistral.ai/work</b> or Code mode, then press Start.";
+    if (isCodeMode()) return 'PlazCode only supports Mistral <b>Work</b> mode (Code mode is not supported). Switch to <a href="https://chat.mistral.ai/work" style="color:inherit;text-decoration:underline">chat.mistral.ai/work</a>, then press Start.';
+    if (!getEditor()) return "Open <b>chat.mistral.ai/work</b>, then press Start.";
     return "";
   }
 
@@ -724,7 +742,7 @@ const RSProvider: PlazCodeProvider = (() => {
     reliableCounts: true,
     init({ diag: d } = {}) {
       if (d) diag = d;
-      diag("mistral.init", { mode: detectMode(), path: location.pathname, editor: !!getEditor() });
+      diag("mistral.init", { mode: isCodeMode() ? "unsupported" : detectMode(), path: location.pathname, editor: !!getEditor() });
     },
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant, streamLen, snapshot,
@@ -732,12 +750,16 @@ const RSProvider: PlazCodeProvider = (() => {
     setInputLock, writeDraft, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer(reason?: string) {
+      if (isCodeMode()) return { ready: false, mode: "unsupported", reason: reason || "" };
       const mode = detectMode();
       return { ready: !!getEditor() && !loginGatePresent(), mode, reason: reason || "" };
     },
     async ensureComposerReady(reason?: string) {
       if (reason === "mode:work") await switchMode("work");
-      else if (reason === "mode:code") await switchMode("code");
+      if (isCodeMode()) {
+        diag("mistral.mode_ready", { reason, mode: "unsupported", editor: false, loginGate: loginGatePresent() });
+        return { ready: false, detail: "Mistral Code mode is not supported. Switch to Work mode (chat.mistral.ai/work)." };
+      }
       const mode = detectMode();
       diag("mistral.mode_ready", { reason, mode, editor: !!getEditor(), loginGate: loginGatePresent() });
       return { ready: !!getEditor() && !loginGatePresent(), detail: mode };
