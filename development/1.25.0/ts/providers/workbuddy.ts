@@ -70,8 +70,8 @@ const RSProvider: PlazCodeProvider = (() => {
     attachBtn: 'button[aria-label*="Attach" i], button[aria-label*="Upload" i], button[aria-label*="Add file" i], button[data-testid*="attach" i]',
     fileInput: 'input[type="file"]',
     attachPreview: '[data-testid*="attachment" i], [class*="attachment" i], [class*="file-preview" i], [class*="thumbnail" i]',
-    sendAria: /^(?:send|submit|ask|send message|submit prompt)$/i,
-    stopAria: /^(?:stop|cancel|abort)(?:\s+(?:generating|generation|response|streaming))?$/i,
+    sendAria: /^(?:send|submit|ask|send message|submit prompt|发送|提交)$/i,
+    stopAria: /^(?:stop|cancel|abort|停止|取消)(?:\s+(?:generating|generation|response|streaming))?$/i,
     codeWrap: 'pre, [class*="code-block" i], [class*="codeblock" i]',
     errorSurfaces: '[role="alert"], [data-sonner-toast], [class*="toast"], [class*="error-banner"], [class*="error-message"]',
   };
@@ -336,29 +336,77 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Send & Stop Buttons ───────────────────────────────────────────────────
-  function composerButtons(): HTMLButtonElement[] {
-    const scope = composerFrame() || document;
-    return safeQueryAll<HTMLButtonElement>(scope, "button").filter((b) => !safeClosest(b, "#rs-root") && visible(b));
+  function composerButtons(): HTMLElement[] {
+    const scope = barAnchor() || composerFrame() || document;
+    return safeQueryAll<HTMLElement>(scope, "button, [role='button']").filter((b) => !safeClosest(b, "#rs-root") && visible(b));
   }
+
+  function isButtonDisabled(b: Element | null | undefined): boolean {
+    if (!b) return true;
+    if (safeRead(() => (b as HTMLButtonElement).disabled, false)) return true;
+    if (safeRead(() => b.getAttribute("aria-disabled"), null) === "true") return true;
+    if (safeRead(() => b.getAttribute("data-disabled"), null) === "true") return true;
+    const cls = String(safeRead(() => b.className, "") || "");
+    return /\b(?:disabled|is-disabled|cursor-not-allowed|pointer-events-none)\b/i.test(cls);
+  }
+
+  const NOT_SEND_RE = /\b(?:stop|cancel|abort|attach|upload|add|auto|model|voice|mic|microphone|think|deep|search|mode|menu)\b|停止|取消/i;
+  const SEND_HINT_RE = /\bsend\b|send[-_]?btn|send[-_]?button|发送|提交/i;
 
   function isStopBtn(b: Element | null): boolean {
     if (!b) return false;
     const a = ariaOf(b);
-    if (S.stopAria.test(a) || /stop/i.test(safeRead(() => b.getAttribute("data-testid"), "") || "")) return true;
-    if (S.sendAria.test(a)) return false;
-    return !!(safeQuery(b, "rect") && safeClosest(b, S.composerWrap));
+    const cls = String(safeRead(() => b.className, "") || "");
+    if (S.stopAria.test(a) || /stop/i.test(safeRead(() => b.getAttribute("data-testid"), "") || "") || /\bstop\b/i.test(cls)) return true;
+    if (S.sendAria.test(a) || /\b(?:auto|model|attach|upload|add|voice|mic)\b/i.test(a)) return false;
+    const anchor = barAnchor() || composerFrame();
+    const inCard = !!safeClosest(b, S.composerWrap) || !!(anchor && safeRead(() => anchor.contains(b), false));
+    return !!(inCard && safeQuery(b, "rect") && !safeQuery(b, "path[d*='M12']"));
   }
 
-  function sendButton(): HTMLButtonElement | null {
+  function sendCandidates(): HTMLElement[] {
     const btns = composerButtons();
-    return (
-      btns.find((b) => S.sendAria.test(ariaOf(b))) ||
-      btns.find((b) => safeRead(() => b.type, "") === "submit" && !isStopBtn(b)) ||
-      null
-    );
+    const anchor = barAnchor() || composerFrame();
+    const out: HTMLElement[] = [];
+    const add = (list: HTMLElement[]): void => {
+      for (const b of list) {
+        if (!out.includes(b)) out.push(b);
+      }
+    };
+    add(btns.filter((b) => S.sendAria.test(ariaOf(b)) && !isStopBtn(b)));
+    add(btns.filter((b) => safeRead(() => (b as HTMLButtonElement).type, "") === "submit" && !isStopBtn(b)));
+    add(btns.filter((b) => {
+      if (isStopBtn(b)) return false;
+      const meta = [ariaOf(b), String(safeRead(() => b.className, "") || ""), safeRead(() => b.textContent, "") || ""].join(" ");
+      return SEND_HINT_RE.test(meta) && !NOT_SEND_RE.test(meta);
+    }));
+    const iconBtns = btns.filter((b) => {
+      if (isStopBtn(b)) return false;
+      if (safeRead(() => b.getAttribute("aria-haspopup"), null)) return false;
+      const txt = (safeRead(() => b.textContent, "") || "").replace(/\s+/g, "").trim();
+      if (txt !== "" || !safeQuery(b, "svg")) return false;
+      const meta = [ariaOf(b), String(safeRead(() => b.className, "") || "")].join(" ");
+      if (NOT_SEND_RE.test(meta)) return false;
+      const r = safeRect(b);
+      if (r.readFailed || r.width < 22 || r.width > 56 || r.height < 22 || r.height > 56) return false;
+      return !anchor || safeRead(() => anchor.contains(b), false);
+    });
+    iconBtns.sort((a, b) => safeRect(b).right - safeRect(a).right);
+    add(iconBtns);
+    return out;
   }
 
-  function stopButton(): HTMLButtonElement | null {
+  function findSendControl(): HTMLElement | null {
+    const list = sendCandidates();
+    return list.length ? list[0] : null;
+  }
+
+  function sendButton(): HTMLElement | null {
+    const list = sendCandidates();
+    return list.find((b) => !isButtonDisabled(b)) || list[0] || null;
+  }
+
+  function stopButton(): HTMLElement | null {
     return composerButtons().find(isStopBtn) || null;
   }
 
@@ -484,28 +532,99 @@ const RSProvider: PlazCodeProvider = (() => {
     el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  function selectEditorContents(el: HTMLElement, onlyIfNonEmpty: boolean): void {
+    el.focus();
+    try {
+      const sel = window.getSelection();
+      if (!sel) return;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      if (onlyIfNonEmpty && editorText(el).trim() === "") range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch {}
+  }
+
+  function dispatchPaste(el: HTMLElement, text: string): boolean {
+    if (typeof DataTransfer === "undefined" || typeof ClipboardEvent === "undefined") return false;
+    selectEditorContents(el, true);
+    const dt = new DataTransfer();
+    try { dt.setData("text/plain", text); } catch { return false; }
+    try {
+      const ev = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt });
+      const transfer = safeRead(() => ev.clipboardData, null);
+      if (transfer && safeRead(() => transfer.getData("text/plain"), "") !== text) {
+        try { transfer.setData("text/plain", text); } catch {}
+      }
+      el.dispatchEvent(ev);
+      return ev.defaultPrevented || editorText(el).trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  function dispatchBeforeInputPaste(el: HTMLElement, text: string): boolean {
+    if (typeof InputEvent === "undefined") return false;
+    selectEditorContents(el, true);
+    let dt: DataTransfer | undefined;
+    if (typeof DataTransfer !== "undefined") {
+      try { dt = new DataTransfer(); dt.setData("text/plain", text); } catch {}
+    }
+    try {
+      const ev = new InputEvent("beforeinput", {
+        bubbles: true, cancelable: true, inputType: "insertFromPaste", data: text, dataTransfer: dt,
+      } as InputEventInit);
+      el.dispatchEvent(ev);
+      return ev.defaultPrevented || editorText(el).trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  function execInsertText(el: HTMLElement, text: string): void {
+    selectEditorContents(el, true);
+    let ok = false;
+    try { ok = document.execCommand("insertText", false, text); } catch {}
+    if (!ok || !editorText(el).includes(text.slice(-24))) {
+      if (!ok) el.textContent = text;
+      try { el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text })); }
+      catch { el.dispatchEvent(new Event("input", { bubbles: true })); }
+    }
+  }
+
   function setRichText(el: HTMLElement, text: string): void {
     const tag = safeRead(() => el.tagName, "");
     if (tag === "TEXTAREA" || tag === "INPUT") {
       setTextareaValue(el, text);
       return;
     }
-    el.focus();
+    const pasted = dispatchPaste(el, text);
+    if (!pasted || !editorText(el).includes(text.slice(-24))) {
+      execInsertText(el, text);
+    }
+  }
+
+  function clearContentEditable(ed: HTMLElement): void {
+    ed.focus();
+    try { document.execCommand("selectAll", false); document.execCommand("delete", false); } catch {}
+    if (editorText(ed).trim() !== "") {
+      ed.textContent = "";
+      try { ed.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" })); }
+      catch { ed.dispatchEvent(new Event("input", { bubbles: true })); }
+    }
+  }
+
+  function clearEditor(): void {
+    const ed = getEditor();
+    if (!ed) return;
+    const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
     try {
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    } catch {}
-    let ok = false;
-    try { ok = document.execCommand("insertText", false, text); } catch {}
-    if (!ok) {
-      el.textContent = text;
-      try { el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text })); }
-      catch { el.dispatchEvent(new Event("input", { bubbles: true })); }
+      setInputLock(false);
+      const tag = safeRead(() => ed.tagName, "");
+      if (tag === "TEXTAREA" || tag === "INPUT") setTextareaValue(ed, "");
+      else clearContentEditable(ed);
+    } finally {
+      if (relock) setInputLock(true);
     }
   }
 
@@ -517,12 +636,7 @@ const RSProvider: PlazCodeProvider = (() => {
     try {
       setInputLock(false);
       if (text === "" && safeRead(() => ed.tagName, "") !== "TEXTAREA") {
-        ed.focus();
-        try { document.execCommand("selectAll", false); document.execCommand("delete", false); } catch {}
-        if (editorText(ed).trim() !== "") {
-          ed.textContent = "";
-          try { ed.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" })); } catch { ed.dispatchEvent(new Event("input", { bubbles: true })); }
-        }
+        clearContentEditable(ed);
       } else {
         setRichText(ed, text);
       }
@@ -603,35 +717,86 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
   }
 
+  const squash = (s: unknown): string => String(s || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+
   async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const ed = getEditor();
     if (!ed) throw new Error("WorkBuddy chat box not found — open www.workbuddy.ai/app");
+    if (isHardGenerating()) await waitFor(() => !isHardGenerating(), 6000);
     const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
     text = truncateForSend(text);
+    const full = squash(text);
+    const want = full.slice(-40);
+    const hasDraft = (): boolean => {
+      const cur = squash(editorText());
+      if (!cur) return false;
+      return (want ? cur.includes(want) : true) || (cur.length >= 20 && cur.length >= full.length * 0.6);
+    };
+    const editorCleared = (): boolean => {
+      const cur = squash(editorText());
+      return cur === "" || (want.length >= 8 && !cur.includes(want));
+    };
+    const sendReady = (): boolean => {
+      const b = sendButton();
+      return !!b && !isButtonDisabled(b);
+    };
+    let writer = -1;
     try {
       if (relock) setInputLock(false);
       ed.focus();
-      if (editorText(ed).trim() !== String(text).trim()) setRichText(ed, text);
+      const tag = safeRead(() => ed.tagName, "");
+      if (tag === "TEXTAREA" || tag === "INPUT") {
+        if (!hasDraft()) setTextareaValue(ed, text);
+        writer = 0;
+      } else if (!hasDraft()) {
+        const writers: Array<(target: HTMLElement) => void> = [
+          (target) => { dispatchPaste(target, text); },
+          (target) => { dispatchBeforeInputPaste(target, text); },
+          (target) => { execInsertText(target, text); },
+        ];
+        for (let wIdx = 0; wIdx < writers.length; wIdx++) {
+          const curEd = getEditor() || ed;
+          curEd.focus();
+          try { writers[wIdx](curEd); } catch {}
+          await waitFor(() => hasDraft() || sendReady() || hasPendingAttachment(), 350);
+          const ctrl = findSendControl();
+          const acceptedText = hasDraft() && (!ctrl || sendReady());
+          const foldedPaste = !hasDraft() && sendReady();
+          if (acceptedText || foldedPaste) { writer = wIdx; break; }
+          if (hasDraft() && ctrl && !sendReady() && wIdx < writers.length - 1) {
+            clearContentEditable(curEd);
+          }
+        }
+      }
       if (images && images.length && !hasPendingAttachment()) {
         try { await attachImages(images); } catch {}
       }
-      const sendReady = () => {
-        const b = sendButton();
-        return !!b && !safeRead(() => b.disabled, false) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true";
-      };
       await waitFor(sendReady, 3000);
+      const beforeUsers = userCount();
+      const beforeReplies = assistantCount();
+      const beforeStop = isHardGenerating();
       let sent = false;
       for (let i = 0; i < 6 && !sent; i++) {
-        const b = sendButton();
-        if (b && !safeRead(() => b.disabled, false) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true") {
-          try { b.click(); } catch {}
-        } else if (!isHardGenerating()) {
-          const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
-          try { ed.dispatchEvent(new KeyboardEvent("keydown", o)); } catch {}
+        if (sendReady()) {
+          const b = sendButton();
+          if (b) { try { b.click(); } catch {} }
         }
-        sent = await waitFor(() => editorText().trim() === "" || isHardGenerating(), 900);
+        if ((!sendReady() || i >= 2) && !isHardGenerating()) {
+          const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || "");
+          const o: KeyboardEventInit = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
+          if (i >= 3) { o.ctrlKey = !isMac; o.metaKey = isMac; }
+          try { ed.dispatchEvent(new KeyboardEvent("keydown", o)); } catch {}
+          try { ed.dispatchEvent(new KeyboardEvent("keypress", o)); } catch {}
+          try { ed.dispatchEvent(new KeyboardEvent("keyup", o)); } catch {}
+        }
+        sent = await waitFor(
+          () => editorCleared() || userCount() > beforeUsers || assistantCount() > beforeReplies || (!beforeStop && isHardGenerating()),
+          900
+        );
       }
-      diag("workbuddy.send", { mode: detectMode(), sent, editorLen: editorText().length });
+      diag("workbuddy.send", {
+        mode: detectMode(), sent, writer, sendBtn: !!findSendControl(), sendReady: sendReady(), editorLen: editorText().length,
+      });
     } finally {
       if (relock) setInputLock(true);
     }
@@ -681,14 +846,14 @@ const RSProvider: PlazCodeProvider = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
-      const btn = safeRead(() => (e.target as Element).closest, null) && safeClosest<HTMLButtonElement>(e.target, "button");
+      const btn = safeRead(() => (e.target as Element).closest, null) && safeClosest<HTMLElement>(e.target, "button, [role='button']");
       if (!btn) return;
       if (isStopBtn(btn)) {
         if (e.isTrusted !== false) handlers.onNativeStop();
         return;
       }
-      const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
-      if (!isSend || safeRead(() => btn.disabled, false) || safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
+      const isSend = btn === sendButton() || S.sendAria.test(ariaOf(btn)) || safeRead(() => (btn as HTMLButtonElement).type, "") === "submit";
+      if (!isSend || isButtonDisabled(btn)) return;
       if (handlers.onCoworkSend && (handlers.onCoworkSend as (e: MouseEvent) => boolean)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
@@ -724,6 +889,7 @@ const RSProvider: PlazCodeProvider = (() => {
     chipAtItemLevel: true,
     chipAnchor: (item: Element): Element => item,
     reliableCounts: true,
+    barOutside: true,
     init({ diag: d } = {}) {
       if (d) diag = d;
       diag("workbuddy.init", { mode: detectMode(), path: location.pathname, editor: !!getEditor() });
@@ -731,7 +897,7 @@ const RSProvider: PlazCodeProvider = (() => {
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant, streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
-    setInputLock, writeDraft, typeAndSend, stopGeneration,
+    setInputLock, writeDraft, clearEditor, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer(reason?: string) {
       const mode = detectMode();
