@@ -263,5 +263,67 @@ const turnsHtml = `
     } finally { w.close(); }
   }
 
+  // 6. Live AI Studio turn-header ("Model • 12:25 PM") and footer ("1.5s") stripping
+  {
+    const wrappedTurnHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t-hdr">
+          <div class="turn-content">
+            <div class="turn-header"><span class="author-label">Model</span><span>•</span><span class="timestamp">12:25\u202fPM</span></div>
+            <ms-text-chunk><ms-cmark-node><p>PlazCode is ready.</p></ms-cmark-node></ms-text-chunk>
+            <div class="turn-footer"><button>thumb_up</button><span class="run-time">1.5s</span></div>
+          </div>
+        </ms-chat-turn>
+      </main>` + aiStudioChrome(false);
+    const { w, P } = makePage('https://aistudio.google.com/prompts/livehdr', wrappedTurnHtml);
+    try {
+      assert.equal(P.readAssistant().reply, 'PlazCode is ready.');
+      assert.equal(P.itemText(P.lastAssistant()), 'PlazCode is ready.');
+      assert.equal(P.classifyText(P.lastAssistant()), 'PlazCode is ready.');
+      assert.equal(P.snapshot().rp, 'PlazCode is ready.'.length);
+    } finally { w.close(); }
+  }
+  {
+    const unmarkedFallbackHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t-fallback">
+          <div class="turn-content">
+            <div>Model 12:25\u202fPM</div>
+            <div>PlazCode is ready.</div>
+            <div>1.5s</div>
+          </div>
+        </ms-chat-turn>
+      </main>` + aiStudioChrome(false);
+    const { w, P } = makePage('https://aistudio.google.com/prompts/fallbackhdr', unmarkedFallbackHtml);
+    try {
+      assert.equal(P.readAssistant().reply, 'PlazCode is ready.');
+    } finally { w.close(); }
+  }
+  {
+    const headerOnlyHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t-hdronly">
+          <div class="turn-content"><div>Model 12:25\u202fPM</div></div>
+        </ms-chat-turn>
+      </main>` + aiStudioChrome(true);
+    const { w, P } = makePage('https://aistudio.google.com/prompts/hdronly', headerOnlyHtml);
+    try {
+      assert.equal(P.readAssistant().reply, '');
+      assert.equal(P.snapshot().rp, 0);
+    } finally { w.close(); }
+  }
+  {
+    const singleLatencyHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t-lat">
+          <ms-cmark-node><p>1.5s</p></ms-cmark-node>
+        </ms-chat-turn>
+      </main>` + aiStudioChrome(false);
+    const { w, P } = makePage('https://aistudio.google.com/prompts/latonly', singleLatencyHtml);
+    try {
+      assert.equal(P.readAssistant().reply, '1.5s');
+    } finally { w.close(); }
+  }
+
   console.log('PASS Google AI Studio provider fixtures: Ctrl+Enter vs Enter semantics, Run/Stop buttons, ms-chat-turn/thought/code-block parsing, system-instructions isolation, media upload.');
 })().catch((e) => { console.error(e); process.exit(1); });

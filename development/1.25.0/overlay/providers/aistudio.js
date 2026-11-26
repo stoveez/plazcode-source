@@ -55,8 +55,9 @@ const RSProvider = (() => {
     turn: 'ms-chat-turn, .chat-turn-container, [data-turn-role]',
     userTurn: '[data-turn-role="User"], [data-turn-role="user"], .user-prompt-container, [class*="turn-role-user"]',
     modelTurn: '[data-turn-role="Model"], [data-turn-role="model"], [data-turn-role="assistant"], .model-prompt-container, [class*="turn-role-model"]',
-    reply: 'ms-cmark-node, ms-text-chunk, .markdown-content, .turn-content',
-    thinking: 'ms-thought-chunk, ms-thinking-chunk, .thought-container, .model-thought, [class*="thought-chunk" i], [class*="thought-panel" i], [class*="thinking-process" i], [class*="thinking-panel" i], [data-testid*="thought" i], [data-testid*="thinking" i]',
+    reply: 'ms-cmark-node, ms-text-chunk, .markdown-content',
+    replyFallback: '.turn-content',
+    thinking: 'ms-thought-chunk, ms-thinking-chunk, ms-thought-panel, mat-expansion-panel.thought-panel, .thought-container, .model-thought, [class*="thought-chunk" i], [class*="thought-panel" i], [class*="thoughts-header" i], [class*="thought-header" i], [class*="thinking-process" i], [class*="thinking-panel" i], [data-testid*="thought" i], [data-testid*="thinking" i]',
     inputWrap: 'ms-prompt-input-wrapper, .prompt-input-wrapper, ms-prompt-box, .prompt-box-container, .prompt-input-container',
     editor: [
       'ms-prompt-input-wrapper textarea',
@@ -230,7 +231,7 @@ const RSProvider = (() => {
     return !!(safeRead(() => item.textContent, "") || "").trim();
   }
 
-  const CHROME_SKIP = ".rs-chip, .cdk-visually-hidden, [class*='screen-reader'], button, [role='button'], mat-icon, .code-block-header, [class*='header-actions']";
+  const CHROME_SKIP = ".rs-chip, .cdk-visually-hidden, [class*='screen-reader'], button, [role='button'], mat-icon, .material-symbols-outlined, .material-icons, .code-block-header, [class*='header-actions'], .author-label, [class*='author-label'], [class*='turn-header'], [class*='turn-footer'], [class*='turn-meta'], [class*='timestamp'], [class*='run-time'], [class*='latency'], ms-turn-footer, [class*='feedback'], [class*='rating']";
   function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = CHROME_SKIP + (excludeSel ? ", " + excludeSel : "");
@@ -252,9 +253,33 @@ const RSProvider = (() => {
     return t;
   }
 
+  const TURN_HEADER_RE = /^(?:Model|Gemini|Assistant)(?:[\s\u00a0\u202f•·\-|]+\d{1,2}:\d{2}(?:[\s\u00a0\u202f]*(?:AM|PM))?)?$/i;
+  const TURN_TIME_RE = /^[•·\-\s\u00a0\u202f]*(?:\d{1,2}:\d{2}(?:[\s\u00a0\u202f]*(?:AM|PM))?|[•·])$/i;
+  const TURN_FOOTER_RE = /^\d+(?:\.\d+)?\s*(?:ms|s|sec|secs|seconds)$/i;
+  function cleanAssistantText(text) {
+    const lines = String(text || "").split(/\r?\n/);
+    let strippedHeader = false;
+    while (lines.length) {
+      const head = lines[0].trim();
+      if (!head) { lines.shift(); continue; }
+      if (TURN_HEADER_RE.test(head)) { lines.shift(); strippedHeader = true; continue; }
+      if (strippedHeader && TURN_TIME_RE.test(head)) { lines.shift(); continue; }
+      break;
+    }
+    while (lines.length > 1) {
+      const tail = lines[lines.length - 1].trim();
+      if (!tail || TURN_FOOTER_RE.test(tail)) { lines.pop(); continue; }
+      break;
+    }
+    return lines.join("\n").trim();
+  }
+
   function replyRoots(item) {
     if (!item) return [];
-    const nodes = safeQueryAll(item, S.reply).filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
+    const pick = (sel) =>
+      safeQueryAll(item, sel).filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
+    let nodes = pick(S.reply);
+    if (!nodes.length) nodes = pick(S.replyFallback);
     if (!nodes.length) return safeQuery(item, S.thinking) ? [] : [item];
     const set = new Set(nodes);
     return nodes.filter((n) => {
@@ -268,7 +293,7 @@ const RSProvider = (() => {
   function itemText(item) {
     if (!item) return "";
     if (isAssistantItem(item)) {
-      return replyRoots(item).map((m) => textWithout(m, S.thinking)).join("\n");
+      return cleanAssistantText(replyRoots(item).map((m) => textWithout(m, S.thinking)).join("\n"));
     }
     return textWithout(item);
   }
@@ -277,7 +302,7 @@ const RSProvider = (() => {
     if (!item) return "";
     const skip = excludeSel ? `${S.thinking}, ${excludeSel}` : S.thinking;
     if (isAssistantItem(item)) {
-      return replyRoots(item).map((m) => textWithout(m, skip)).join("\n");
+      return cleanAssistantText(replyRoots(item).map((m) => textWithout(m, skip)).join("\n"));
     }
     return textWithout(item, excludeSel);
   }
@@ -397,7 +422,7 @@ const RSProvider = (() => {
     if (!item) return "";
     const think = safeQuery(item, S.thinking);
     const thinkTxt = think ? (safeRead(() => think.textContent, "") || "") : "";
-    const replyTxt = replyRoots(item).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n");
+    const replyTxt = cleanAssistantText(replyRoots(item).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n"));
     return (thinkTxt + "\n" + replyTxt).trim();
   }
   const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
@@ -444,7 +469,7 @@ const RSProvider = (() => {
       const think = safeQuery(it, S.thinking);
       return {
         th: think ? (safeRead(() => think.textContent, "") || "").trim().length : 0,
-        rp: replyRoots(it).map((m) => textWithout(m, ".rs-chip")).join("\n").length,
+        rp: cleanAssistantText(replyRoots(it).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n")).length,
       };
     } catch { return {}; }
   }
@@ -453,7 +478,7 @@ const RSProvider = (() => {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
-    const reply = replyRoots(item).map((m) => textWithout(m, S.thinking)).join("\n").trim();
+    const reply = cleanAssistantText(replyRoots(item).map((m) => textWithout(m, S.thinking)).join("\n"));
     return {
       present: true,
       reply,
