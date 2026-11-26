@@ -43,7 +43,9 @@ assert.equal((desktopHtml.match(/class="nx-area[ "]/g) || []).length, 6, "deskto
 for (const key of [
   "Chat", "Models", "Clear status", "Add Model", "Hi, what's your plan for today?",
   "New Chat", "Manage models", "Model provider", "Retryable", "Technical Details",
-  "Model Platform", "Full URL", "Vision input", "OpenAI request API", "Discover"
+  "Full URL", "Vision input", "OpenAI request API", "Discover",
+  "PROVIDER", "MODEL IDS", "ADD MODEL ID", "ENDPOINT URL", "API KEY",
+  "TEST API CONNECTION", "Custom Endpoint", "Model & API", "TOOLS & CONTEXT"
 ]) {
   assert(Object.prototype.hasOwnProperty.call(enJson, key), "en.json includes " + key);
 }
@@ -186,7 +188,16 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   chatHost,
   modelsHost,
   api: fakeApi,
-  getState: () => ({ workspace_ready: true, workspace_root: "C:\\MyRobloxProject" }),
+  getState: () => ({
+    workspace_ready: true,
+    workspace_root: "C:\\MyRobloxProject",
+    bridge_connected: true,
+    tools: [
+      { name: "script_read", description: "Read one script source safely" },
+      { name: "luau_check", description: "Run Luau static checks" }
+    ],
+    telemetry: { commands_run: 4, commands_succeeded: 4, commands_failed: 0 }
+  }),
   getPrefs: () => ({ rsByokChatMode: "roblox", rsPermMode: "sandbox", rsPlanMode: false, rsByokEffort: "default" }),
   patchPref: async () => ({}),
   navigateToModels: () => { mockState.navigatedModels++; },
@@ -197,7 +208,10 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   await ui.refresh();
 
   // Check Empty View (RobloxScript initial mode hides workspace caption & permissions pill)
+  assert(chatHost.textContent.includes("PlazCode Direct Chat"), "welcome title rendered");
   assert(chatHost.textContent.includes("Hi, what's your plan for today?"), "empty state heading rendered");
+  assert(chatHost.querySelector(".byok-checklist-card"), "setup checklist card rendered");
+  assert.equal(chatHost.querySelectorAll(".byok-starter-card").length, 4, "4 starter cards rendered");
   assert(chatHost.textContent.includes("RobloxScript"), "RobloxScript mode pill rendered");
   assert(chatHost.textContent.includes("AgentScript"), "AgentScript mode pill rendered");
   assert(!chatHost.querySelector(".byok-ws-pill"), "inline workspace pill removed from composer toolbar");
@@ -207,6 +221,23 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   assert(chatHost.querySelector("[data-byok-effort]"), "Effort selector rendered");
   assert(chatHost.querySelector("[data-byok-effort]").textContent.includes("Effort: Default"), "Effort prefix rendered");
   assert(chatHost.querySelector("[data-byok-file]"), "+ attach file input rendered");
+  assert(chatHost.querySelector("[data-byok-find]"), "topbar FIND button rendered");
+  assert(chatHost.querySelector("[data-byok-export]"), "topbar EXPORT button rendered");
+  assert(chatHost.querySelector("[data-byok-clear]"), "topbar CLEAR button rendered");
+  assert(chatHost.querySelector("[data-byok-open-config]"), "rail footer CONFIG button rendered");
+
+  // Slash command menu opens via / Commands button
+  chatHost.querySelector("[data-byok-slash]").click();
+  assert(chatHost.querySelector("[data-byok-slash-menu]"), "slash menu opens on / Commands click");
+  chatHost.querySelector("[data-byok-slash]").click();
+
+  // Left sidebar Model & API tab switches cleanly
+  chatHost.querySelector('[data-rail-tab="config"]').click();
+  assert(chatHost.querySelector("[data-sb-preset]"), "Model & API sidebar renders PROVIDER select");
+  assert(chatHost.querySelector("[data-sb-test]"), "Model & API sidebar renders TEST API CONNECTION button");
+  assert(chatHost.textContent.includes("TOOL ENGINE"), "Model & API sidebar renders TOOL ENGINE");
+  assert(chatHost.textContent.includes("SKILLS"), "Model & API sidebar renders SKILLS");
+  chatHost.querySelector('[data-rail-tab="chats"]').click();
 
   // Switch to AgentScript -> shows permission selector and below-composer workspace caption
   chatHost.querySelector('[data-byok-mode="local"]').click();
@@ -225,7 +256,7 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   manageBtn.click();
   assert.equal(mockState.navigatedModels, 1, "Manage models triggers navigation callback");
 
-  // Open conversation with Tool Card + Retryable Error Card + Files/Changes drawer
+  // Open conversation with Tool Card + Retryable Error Card + Tools / Files / Changes drawer
   chatHost.querySelector('[data-open-chat="chat_err"]').click();
   await new Promise((r) => setTimeout(r, 20));
   assert(chatHost.textContent.includes("Rate limit demo"), "active chat title rendered");
@@ -235,10 +266,16 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   assert(chatHost.textContent.includes("Technical Details"), "error card Technical Details rendered");
   assert(chatHost.querySelector(".byok-retry-btn"), "error card Retry button rendered");
 
-  // Open Files / Changes drawer
+  // Open Tools / Files / Changes drawer & prefill tool
   chatHost.querySelector("[data-byok-toggle-drawer]").click();
   await new Promise((r) => setTimeout(r, 20));
-  assert(chatHost.textContent.includes("src/Main.luau"), "workspace files rendered in drawer");
+  assert(chatHost.textContent.includes("TOOLS & CONTEXT"), "right drawer header rendered");
+  assert(chatHost.querySelector('[data-prefill-tool="script_read"]'), "Tools tab lists live tools");
+  chatHost.querySelector('[data-prefill-tool="script_read"]').click();
+  assert(chatHost.querySelector("[data-byok-input]").value.includes("script_read"), "clicking tool prefills composer");
+  chatHost.querySelector('[data-drawer-tab="files"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(chatHost.textContent.includes("src/Main.luau"), "workspace files rendered in Files tab");
   chatHost.querySelector('[data-drawer-tab="changes"]').click();
   assert(chatHost.textContent.includes("edit"), "modified files shown in Changes tab");
 
@@ -253,15 +290,38 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   await new Promise((r) => setTimeout(r, 20));
   assert(modelsHost.querySelector(".byok-alert").textContent.includes("Connected (88ms)"), "health check alert banner updated");
 
-  // Open Add Model modal, test Discover + Save
+  // Open Add Model modal, test Custom Endpoint layout, Model IDs, key eye toggle, inline health check, Discover + Save
   modelsHost.querySelector("[data-byok-add-model]").click();
   const modalRoot = document.getElementById("byokModalRoot");
   assert(!modalRoot.hidden, "Add Model modal opened");
+  assert.equal(modalRoot.querySelector("[data-am-plat-filter]"), null, "cluttered platform search filter removed");
   const presetSel = modalRoot.querySelector("[data-am-preset]");
+  presetSel.value = "custom";
+  presetSel.dispatchEvent(new window.Event("change"));
+  assert(modalRoot.textContent.includes("Custom Endpoint"), "custom preset displays Custom Endpoint");
+  modalRoot.querySelector("[data-am-model-input]").value = "deepseek-v4.1-flash";
+  modalRoot.querySelector("[data-am-model-input]").dispatchEvent(new window.Event("input"));
+  modalRoot.querySelector("[data-am-add-model]").click();
+  assert(modalRoot.querySelector("[data-am-model-list]").textContent.includes("deepseek-v4.1-flash"), "added custom model ID row");
+  modalRoot.querySelector('[data-pick-model="qwen2.5-coder:14b"]').click();
+  assert(modalRoot.querySelector("[data-am-model-list]").textContent.includes("qwen2.5-coder:14b"), "quick-add chip adds model ID");
+  const epInput = modalRoot.querySelector("[data-am-endpoint]");
+  epInput.value = "http://127.0.0.1:4000/v1";
+  epInput.dispatchEvent(new window.Event("input"));
+  assert.equal(modalRoot.querySelector("[data-am-url-preview]").textContent, "POST → http://127.0.0.1:4000/v1/chat/completions");
+  const keyInput = modalRoot.querySelector("[data-am-keys]");
+  assert.equal(keyInput.getAttribute("type"), "password", "API Key input starts masked");
+  modalRoot.querySelector("[data-am-key-toggle]").click();
+  assert.equal(keyInput.getAttribute("type"), "text", "eye toggle reveals API Key");
+  modalRoot.querySelector("[data-am-test]").click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(modalRoot.querySelector("[data-am-test-status]").textContent.includes("Connected (88ms)"), "inline TEST API CONNECTION updates status");
+
   presetSel.value = "anthropic";
   presetSel.dispatchEvent(new window.Event("change"));
   assert.equal(modalRoot.querySelector("[data-am-endpoint]").value, "https://api.anthropic.com");
-  modalRoot.querySelector("[data-am-keys]").value = "sk-ant-key1\nsk-ant-key2";
+  modalRoot.querySelector("[data-am-keys]").value = "sk-ant-key1";
+  modalRoot.querySelector("[data-am-keys]").dispatchEvent(new window.Event("input"));
   modalRoot.querySelector("[data-am-discover]").click();
   await new Promise((r) => setTimeout(r, 20));
   assert(modalRoot.textContent.includes("claude-sonnet-4-20250514"), "discovered models displayed");
@@ -320,12 +380,11 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   assert.equal(secEl.open, false, "clicking + Add Model in summary does not toggle closed details");
   const slottedModal = ew.document.getElementById("byokModalRoot");
   assert(!slottedModal.hidden, "Add Model modal opened from summary button");
-  const filterInput = slottedModal.querySelector("[data-am-plat-filter]");
-  assert(filterInput, "platform search input exists in Add Model modal");
-  assert.equal(filterInput.getAttribute("type"), "text", "platform search input has type=text");
-  assert(!filterInput.classList.contains("search"), "platform search input avoids collapsing .search class");
+  assert(slottedModal.querySelector("[data-am-preset]"), "PROVIDER dropdown exists in slotted Add Model modal");
+  assert(slottedModal.querySelector("[data-am-add-model]"), "+ ADD MODEL ID button exists in slotted Add Model modal");
+  assert(slottedModal.querySelector("[data-am-test]"), "TEST API CONNECTION button exists in slotted Add Model modal");
 
-  console.log("PASS byok-chat: Rust wiring, AES-GCM/routes, empty & active chat, error cards, drawer, multi-key model manager & Add Model modal.");
+  console.log("PASS byok-chat: Rust wiring, AES-GCM/routes, Direct Chat workbench, error cards, Tools/Files/Changes drawer, Add Model modal & slotted layout.");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

@@ -355,6 +355,17 @@ const WorkshopUI = require("./core/workshop-ui.js");
   await new Promise((r) => setTimeout(r, 30));
   assert(wsCalls.some((c) => c.url === "/api/owner/workshop/action" && c.body.action === "approve"));
 
+  // Escape & backdrop click close Owner Panel cleanly
+  w.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" }));
+  assert.equal(wq('[data-ws="owner-panel"]').hidden, true, "Escape closes Owner Panel");
+  wq('[data-ws="open-owner"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(wq('[data-ws="owner-panel"]').hidden, false, "Owner Panel reopens after Escape");
+  wq('[data-ws="owner-panel"]').click();
+  assert.equal(wq('[data-ws="owner-panel"]').hidden, true, "clicking Owner Panel backdrop closes it");
+  wq('[data-ws="open-owner"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+
   // Lock clears Owner Panel & hides button
   wq('[data-ws="owner-lock"]').click();
   await new Promise((r) => setTimeout(r, 30));

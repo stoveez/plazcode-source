@@ -10,6 +10,7 @@ const html = fs.readFileSync(__dirname + "/agent/src/desktop.html", "utf8");
 
 // Static checks: scroll-layer promotion, scroll pointer/animation guards, no sync forced layout on page title
 assert(html.includes(".content{will-change:scroll-position;contain:style}"), "desktop.html promotes .content scroll layer without trapping fixed scroll shield");
+assert(html.includes(".page.active{contain:style}"), "desktop.html avoids contain:layout on .page.active so fixed modals stay centered in viewport");
 assert(html.includes("html[data-pz-scrolling] #pzScrollShield{display:block}"), "desktop.html freezes hover hit-testing via single-element scroll shield");
 assert(html.includes("html[data-pz-scrolling] .app::before"), "desktop.html pauses ambient ::before layers while scrolling");
 assert(html.includes("function Pzscrollperf()"), "desktop.html wires Pzscrollperf listener");
@@ -84,6 +85,10 @@ console.log("PASS desktop scroll/nav static guards");
     await cdp.send("Performance.enable");
 
     await page.route("http://127.0.0.1:3000/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
+    await page.route("http://127.0.0.1:3000/api/owner/status", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"is_owner":true,"account_owner":true,"workshop_owner":true,"unlocked":true,"registry_configured":true}' }));
+    await page.route("http://127.0.0.1:3000/api/owner/users**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"users":[],"counts":{"total":0,"online":0,"banned":0,"terminated":0}}' }));
+    await page.route("http://127.0.0.1:3000/api/owner/grants**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"primary_owners":["PC-EBPW-Q3M7"],"grants":[]}' }));
+    await page.route("http://127.0.0.1:3000/api/owner/workshop/skills**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"skills":[],"counts":{"pending":0},"banned_authors":[]}' }));
     await page.route("http://127.0.0.1:3000/api/desktop/state", (r) => r.fulfill({ status: 200, contentType: "application/json", body: stateBody }));
     await page.route("http://127.0.0.1:3000/api/mcp/desktop-apps", (r) => r.fulfill({ status: 200, contentType: "application/json", body: desktopApps }));
     await page.route("http://127.0.0.1:3000/api/mcp/catalog", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true,"servers":[]}' }));
@@ -263,7 +268,35 @@ console.log("PASS desktop scroll/nav static guards");
     }
 
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
-    console.log("PASS test-desktop-scroll-perf: smooth idle, ~60 FPS scroll under Hyper + pointer hover, fast page transitions, clean scroll-end recovery.");
+
+    // 5. Workshop Owner Panel modal stays centered in viewport (never clipped below tall page)
+    await page.evaluate(() => {
+      document.querySelector('.pz-area[data-area="workspace"]').click();
+      document.querySelector('.pz-tabs .navbtn[data-page="workshop"]').click();
+    });
+    await page.waitForTimeout(350);
+    await page.evaluate(() => {
+      document.querySelector('[data-ws="open-owner"]')?.click();
+    });
+    await page.waitForTimeout(200);
+    const ownerRect = await page.evaluate(() => {
+      const panel = document.querySelector('[data-ws="owner-panel"]');
+      const card = document.querySelector('[data-ws="owner-panel"] .ws-owner-card');
+      const r = card ? card.getBoundingClientRect() : null;
+      return {
+        hidden: panel ? panel.hidden : true,
+        top: r ? Math.round(r.top) : -1,
+        bottom: r ? Math.round(r.bottom) : -1,
+        width: r ? Math.round(r.width) : 0,
+        height: r ? Math.round(r.height) : 0,
+        vh: window.innerHeight
+      };
+    });
+    assert.equal(ownerRect.hidden, false, "Owner Panel opened in Workshop");
+    assert(ownerRect.width >= 300 && ownerRect.height >= 200, `Owner Panel card has valid size: ${JSON.stringify(ownerRect)}`);
+    assert(ownerRect.top >= 0 && ownerRect.top < ownerRect.vh && ownerRect.bottom <= ownerRect.vh, `Owner Panel card must sit visibly inside viewport: ${JSON.stringify(ownerRect)}`);
+
+    console.log("PASS test-desktop-scroll-perf: smooth idle, ~60 FPS scroll under Hyper + pointer hover, fast page transitions, clean scroll-end recovery, centered Owner Panel.");
   } finally {
     await browser.close();
   }

@@ -180,7 +180,7 @@ html[data-theme-tone=light] .ws-star-btn.on .ws-star-svg,html[data-theme-tone=li
 .ws-installed-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:var(--canvas,#0a111d);color:var(--ink-soft,#9aa8be);font-size:11.5px;font-weight:600;white-space:nowrap}
 .ws-report-btn{padding:6px 8px;border-radius:8px;border:1px solid var(--pz-line,#2b3952);background:transparent;color:var(--ink-soft,#94a3b8);font-size:11.5px;cursor:pointer}
 .ws-report-btn:hover{color:var(--red,#ff696c);border-color:var(--red,#ff696c)}
-.ws-modal{position:fixed;inset:0;z-index:130;display:grid;place-items:center;background:rgb(4 8 15/.76);backdrop-filter:blur(8px);padding:20px}
+.ws-modal{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:160;display:grid;place-items:center;background:rgb(4 8 15/.76);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:20px}
 .ws-modal[hidden]{display:none}
 .ws-modal-card{width:min(620px,95vw);max-height:88vh;overflow-y:auto;display:grid;gap:12px;padding:22px;border-radius:18px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:var(--canvas,#0d1522);box-shadow:0 32px 90px rgb(0 0 0/.65)}
 .ws-modal-card label{display:grid;gap:5px;font-size:12.5px}
@@ -1682,7 +1682,23 @@ html[data-theme-tone=light] .ws-star-btn.on .ws-star-svg,html[data-theme-tone=li
     });
     find('owner-ws-search').addEventListener('input', () => { void loadOwnerWorkshop(); });
 
+    host.querySelectorAll('.ws-modal').forEach(modal => {
+      modal.addEventListener('click', (ev) => {
+        if (ev.target === modal) modal.hidden = true;
+      });
+    });
+
     const onKey = (ev) => {
+      if (ev.key === 'Escape') {
+        if (!host.isConnected || host.hidden) return;
+        let closed = false;
+        host.querySelectorAll('.ws-modal:not([hidden])').forEach(modal => {
+          modal.hidden = true;
+          closed = true;
+        });
+        if (closed) ev.preventDefault();
+        return;
+      }
       if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (ev.key === 'O' || ev.key === 'o')) {
         if (!host.isConnected || host.hidden) return;
         ev.preventDefault();

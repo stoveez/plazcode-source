@@ -1,8 +1,11 @@
 ---
 title: Test builds and the public-then-private plan
 
-updated: 2026-11-11
+updated: 2026-11-26
 ---
+
+## 2026-11-26 — 1.25.0 test build ALL GREEN
+**1.25.0 dev test build (2026-11-26, CI run 45870136079 on `fc8a4d9f`, ALL GREEN incl. release check; NOT published):** Windows (`plazcode-1.25.0-Windows-test-lean`, 45,285,657 bytes as GitHub's download), macOS (`plazcode-1.25.0-macOS-test-lean`, 48,815,128 bytes), Linux (`plazcode-1.25.0-Linux-test-lean`, 87,806,941 bytes), browsers, and `release-check` on https://github.com/stoveez/plazcode-source/actions/runs/45870136079 (`bootstrap-integrity` skipped cleanly). Includes the Wave 4 integrated baseline through Google AI Studio bar-anchoring/Rerun-turn fix, Mistral Work-only mode (Code removed), and WorkBuddy startup send fix. **Does NOT include** the subsequent Owner ID `PC-EBPW-Q3M7` hardening, Workshop Owner Panel blurry-screen modal fix, simpler Add Model popup, or redesigned PlazCode Direct Chat workbench (those are committed locally on `wave4/integrated` and need a fresh desktop build). **Visibility reminder:** `stoveez/plazcode-source` was Public for this run — owner must set it back to Private at https://github.com/stoveez/plazcode-source/settings (Danger Zone → Change visibility → Private).
 
 ## 2026-11-11 — 1.24.33 test build ALL GREEN
 **1.24.34 dev test build (2026-11-19, CI run 44571317070 on `d8bbf9a7`, ALL GREEN incl. release check; NOT published):** Windows (53,602,168 bytes as GitHub's download), macOS (56,049,593) and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44571317070 (the artifact host is blocked from the cloud workspace, so the zips were handed over as the run page link). Contains the Catalina layout fix, Playtest & Fix, UI check / ui_audit and PlazLib. Needs the new app.

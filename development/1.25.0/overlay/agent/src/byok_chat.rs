@@ -2248,6 +2248,8 @@ pub struct PlatformUpsertReq {
     pub active_model_id: Option<String>,
     #[serde(default)]
     pub model: Option<ModelInput>,
+    #[serde(default)]
+    pub models: Option<Vec<ModelInput>>,
 }
 
 #[derive(Deserialize)]
@@ -2333,7 +2335,59 @@ pub async fn platforms_get() -> impl IntoResponse {
     Json(build_platforms_response(&root, &store))
 }
 
-pub async fn platforms_post(Json(req): Json<PlatformUpsertReq>) -> impl IntoResponse {
+fn collect_incoming_models(
+    models: Option<Vec<ModelInput>>,
+    single: Option<ModelInput>,
+) -> Result<Vec<ModelInput>, (StatusCode, Json<Value>)> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut push_one = |mut m: ModelInput| -> Result<(), (StatusCode, Json<Value>)> {
+        let trimmed = m.name.trim().to_string();
+        if trimmed.is_empty() {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": "Model Name is required."})),
+            ));
+        }
+        if seen.insert(trimmed.clone()) {
+            m.name = trimmed;
+            out.push(m);
+        }
+        Ok(())
+    };
+    if let Some(list) = models {
+        for m in list {
+            push_one(m)?;
+        }
+    }
+    if let Some(m) = single {
+        push_one(m)?;
+    }
+    Ok(out)
+}
+
+fn build_model_config(m: ModelInput) -> (String, ByokModelConfig) {
+    let model_id = m.id.unwrap_or_else(|| new_id("mdl"));
+    let cfg = ByokModelConfig {
+        id: model_id.clone(),
+        name: m.name,
+        display_name: m.display_name,
+        enabled: m.enabled.unwrap_or(true),
+        vision_mode: m.vision_mode.unwrap_or(VisionMode::Auto),
+        request_api: m.request_api.unwrap_or(RequestApi::Auto),
+        endpoint_url: m.endpoint_url.filter(|s| !s.trim().is_empty()),
+        full_url: m.full_url,
+        health_status: HealthStatus::default(),
+    };
+    (model_id, cfg)
+}
+
+pub async fn platforms_post(Json(mut req): Json<PlatformUpsertReq>) -> impl IntoResponse {
+    let incoming_models = match collect_incoming_models(req.models.take(), req.model.take()) {
+        Ok(list) => list,
+        Err(resp) => return resp.into_response(),
+    };
+
     let root = profile_paths::data_root();
     let _guard = STORE_LOCK.lock().await;
     let mut store = load_platforms_store(&root);
@@ -2393,27 +2447,19 @@ pub async fn platforms_post(Json(req): Json<PlatformUpsertReq>) -> impl IntoResp
                 Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"ok": false, "error": e.to_string()}))).into_response(),
             }
         }
-        if let Some(m) = req.model {
-            let mname = m.name.trim().to_string();
-            if mname.is_empty() {
-                return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Model Name is required."}))).into_response();
+        let mut first_added_id: Option<String> = None;
+        for m in incoming_models {
+            if existing.models.iter().any(|em| em.name == m.name) {
+                continue;
             }
-            let model_id = m.id.unwrap_or_else(|| new_id("mdl"));
-            let model_cfg = ByokModelConfig {
-                id: model_id.clone(),
-                name: mname,
-                display_name: m.display_name,
-                enabled: m.enabled.unwrap_or(true),
-                vision_mode: m.vision_mode.unwrap_or(VisionMode::Auto),
-                request_api: m.request_api.unwrap_or(RequestApi::Auto),
-                endpoint_url: m.endpoint_url.filter(|s| !s.trim().is_empty()),
-                full_url: m.full_url,
-                health_status: HealthStatus::default(),
-            };
+            let (model_id, model_cfg) = build_model_config(m);
+            if first_added_id.is_none() {
+                first_added_id = Some(model_id.clone());
+            }
             existing.models.push(model_cfg);
-            if store.active_model_id.is_none() {
-                store.active_model_id = Some(model_id);
-            }
+        }
+        if store.active_model_id.is_none() {
+            store.active_model_id = first_added_id;
         }
     } else {
         let name = req
@@ -2437,24 +2483,12 @@ pub async fn platforms_post(Json(req): Json<PlatformUpsertReq>) -> impl IntoResp
         let plat_id = req.id.unwrap_or_else(|| new_id("plat"));
         let mut models = Vec::new();
         let mut added_model_id = None;
-        if let Some(m) = req.model {
-            let mname = m.name.trim().to_string();
-            if mname.is_empty() {
-                return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Model Name is required."}))).into_response();
+        for m in incoming_models {
+            let (mid, model_cfg) = build_model_config(m);
+            if added_model_id.is_none() {
+                added_model_id = Some(mid);
             }
-            let mid = m.id.unwrap_or_else(|| new_id("mdl"));
-            added_model_id = Some(mid.clone());
-            models.push(ByokModelConfig {
-                id: mid,
-                name: mname,
-                display_name: m.display_name,
-                enabled: m.enabled.unwrap_or(true),
-                vision_mode: m.vision_mode.unwrap_or(VisionMode::Auto),
-                request_api: m.request_api.unwrap_or(RequestApi::Auto),
-                endpoint_url: m.endpoint_url.filter(|s| !s.trim().is_empty()),
-                full_url: m.full_url,
-                health_status: HealthStatus::default(),
-            });
+            models.push(model_cfg);
         }
         store.platforms.push(ByokPlatformConfig {
             id: plat_id,
@@ -2834,54 +2868,46 @@ pub async fn models_discover(Json(req): Json<DiscoverReq>) -> impl IntoResponse 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HealthCheckReq {
-    pub platform_id: String,
-    pub model_id: String,
+    #[serde(default)]
+    pub platform_id: Option<String>,
+    #[serde(default)]
+    pub model_id: Option<String>,
+    #[serde(default)]
+    pub preset_id: Option<String>,
+    #[serde(default)]
+    pub endpoint_url: Option<String>,
+    #[serde(default)]
+    pub full_url: Option<bool>,
+    #[serde(default)]
+    pub api_keys: Option<Vec<String>>,
+    #[serde(default)]
+    pub model_name: Option<String>,
+    #[serde(default)]
+    pub request_api: Option<RequestApi>,
+    #[serde(default)]
+    pub vision_mode: Option<VisionMode>,
 }
 
-pub async fn models_health(Json(req): Json<HealthCheckReq>) -> impl IntoResponse {
-    let root = profile_paths::data_root();
-    let (plat, model, cursor) = {
-        let _guard = STORE_LOCK.lock().await;
-        let store = load_platforms_store(&root);
-        let Some(p) = store.platforms.iter().find(|p| p.id == req.platform_id).cloned() else {
-            return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "error": "Platform not found."}))).into_response();
-        };
-        let Some(m) = p.models.iter().find(|m| m.id == req.model_id).cloned() else {
-            return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "error": "Model not found."}))).into_response();
-        };
-        let cursor = store.rotation_cursor.get(&p.id).copied().unwrap_or(0);
-        (p, m, cursor)
-    };
-
-    let keys = decrypt_platform_keys(&root, &plat);
-    let endpoint = model
-        .endpoint_url
-        .as_deref()
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or(&plat.endpoint_url);
-    let full_url = model.full_url.unwrap_or(plat.full_url);
-    let api = resolve_request_api(&model.request_api, &plat.preset_id, endpoint);
-    let url = format_endpoint_url(endpoint, full_url, &api, &model.name);
-    let requires_key = find_preset(&plat.preset_id).map_or(true, |p| p.requires_key);
-
+fn build_health_ping_body(api: &RequestApi, model_name: &str, vision_mode: &VisionMode) -> Value {
     let ping_msg = vec![InternalMsg::User {
         text: "Reply with OK.".into(),
         attachments: Vec::new(),
     }];
-    let body = match api {
-        RequestApi::Anthropic => build_anthropic_body(&model.name, &ping_msg, &[], &model.vision_mode, false),
-        RequestApi::Gemini => build_gemini_body(&ping_msg, &[], &model.vision_mode),
-        RequestApi::Responses => build_openai_responses_body(&model.name, &ping_msg, &[], &model.vision_mode, false),
+    match api {
+        RequestApi::Anthropic => build_anthropic_body(model_name, &ping_msg, &[], vision_mode, false),
+        RequestApi::Gemini => build_gemini_body(&ping_msg, &[], vision_mode),
+        RequestApi::Responses => build_openai_responses_body(model_name, &ping_msg, &[], vision_mode, false),
         RequestApi::ChatCompletions | RequestApi::Auto => {
-            build_openai_chat_body(&model.name, &ping_msg, &[], &model.vision_mode, "default", false)
+            build_openai_chat_body(model_name, &ping_msg, &[], vision_mode, "default", false)
         }
-    };
+    }
+}
 
-    let started = Instant::now();
-    let result = post_with_key_rotation(&HTTP_CLIENT, &url, &api, &keys, cursor, &body, requires_key).await;
-    let latency = started.elapsed().as_millis() as u64;
-
-    let (health, err_payload, next_cursor) = match result {
+fn map_health_outcome(
+    result: Result<ProviderRequestOutcome, ByokErrorPayload>,
+    latency: u64,
+) -> (HealthStatus, Option<ByokErrorPayload>, Option<usize>) {
+    match result {
         Ok(outcome) => (
             HealthStatus {
                 status: HealthState::Ok,
@@ -2906,21 +2932,171 @@ pub async fn models_health(Json(req): Json<HealthCheckReq>) -> impl IntoResponse
             Some(err),
             None,
         ),
-    };
+    }
+}
 
-    {
+pub async fn models_health(Json(req): Json<HealthCheckReq>) -> impl IntoResponse {
+    let root = profile_paths::data_root();
+    let has_platform_id = req.platform_id.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+    let has_model_id = req.model_id.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+    let is_saved_check = has_platform_id && has_model_id && req.endpoint_url.is_none() && req.model_name.is_none();
+
+    if is_saved_check {
+        let req_platform_id = req.platform_id.clone().unwrap_or_default();
+        let req_model_id = req.model_id.clone().unwrap_or_default();
+        let (plat, model, cursor) = {
+            let _guard = STORE_LOCK.lock().await;
+            let store = load_platforms_store(&root);
+            let Some(p) = store.platforms.iter().find(|p| p.id == req_platform_id).cloned() else {
+                return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "error": "Platform not found."}))).into_response();
+            };
+            let Some(m) = p.models.iter().find(|m| m.id == req_model_id).cloned() else {
+                return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "error": "Model not found."}))).into_response();
+            };
+            let cursor = store.rotation_cursor.get(&p.id).copied().unwrap_or(0);
+            (p, m, cursor)
+        };
+
+        let keys = decrypt_platform_keys(&root, &plat);
+        let endpoint = model
+            .endpoint_url
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(&plat.endpoint_url);
+        let full_url = model.full_url.unwrap_or(plat.full_url);
+        let api = resolve_request_api(&model.request_api, &plat.preset_id, endpoint);
+        let url = format_endpoint_url(endpoint, full_url, &api, &model.name);
+        let requires_key = find_preset(&plat.preset_id).map_or(true, |p| p.requires_key);
+        let body = build_health_ping_body(&api, &model.name, &model.vision_mode);
+
+        let started = Instant::now();
+        let result = post_with_key_rotation(&HTTP_CLIENT, &url, &api, &keys, cursor, &body, requires_key).await;
+        let latency = started.elapsed().as_millis() as u64;
+        let (health, err_payload, next_cursor) = map_health_outcome(result, latency);
+
+        {
+            let _guard = STORE_LOCK.lock().await;
+            let mut store = load_platforms_store(&root);
+            if let Some(p) = store.platforms.iter_mut().find(|p| p.id == req_platform_id) {
+                if let Some(m) = p.models.iter_mut().find(|m| m.id == req_model_id) {
+                    m.health_status = health.clone();
+                }
+            }
+            if let Some(nc) = next_cursor {
+                store.rotation_cursor.insert(req_platform_id, nc);
+            }
+            let _ = save_platforms_store(&root, &store);
+        }
+
+        return Json(json!({
+            "ok": err_payload.is_none(),
+            "health": health,
+            "error": err_payload,
+        }))
+        .into_response();
+    }
+
+    let (preset_id, endpoint, full_url, model_name, keys, req_api, vision_mode, requires_key) = {
         let _guard = STORE_LOCK.lock().await;
-        let mut store = load_platforms_store(&root);
-        if let Some(p) = store.platforms.iter_mut().find(|p| p.id == req.platform_id) {
-            if let Some(m) = p.models.iter_mut().find(|m| m.id == req.model_id) {
-                m.health_status = health.clone();
+        let store = load_platforms_store(&root);
+        let plat = req
+            .platform_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .and_then(|id| store.platforms.iter().find(|p| p.id == id));
+        let preset_id = req
+            .preset_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .or_else(|| plat.map(|p| p.preset_id.clone()))
+            .unwrap_or_else(|| "custom".into());
+        let endpoint = req
+            .endpoint_url
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .or_else(|| plat.map(|p| p.endpoint_url.clone()))
+            .or_else(|| find_preset(&preset_id).map(|p| p.default_endpoint.to_string()))
+            .unwrap_or_default();
+        let full_url = req
+            .full_url
+            .or_else(|| plat.map(|p| p.full_url))
+            .unwrap_or(false);
+        let saved_model = plat.and_then(|p| {
+            req.model_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .and_then(|mid| p.models.iter().find(|m| m.id == mid))
+        });
+        let model_name = req
+            .model_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .or_else(|| saved_model.map(|m| m.name.clone()))
+            .unwrap_or_default();
+        let mut keys: Vec<String> = req
+            .api_keys
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|k| k.trim().to_string())
+            .filter(|k| !k.is_empty() && !is_masked_placeholder(k))
+            .collect();
+        if keys.is_empty() {
+            if let Some(p) = plat {
+                keys = decrypt_platform_keys(&root, p);
             }
         }
-        if let Some(nc) = next_cursor {
-            store.rotation_cursor.insert(req.platform_id.clone(), nc);
-        }
-        let _ = save_platforms_store(&root, &store);
+        let req_api = req
+            .request_api
+            .clone()
+            .or_else(|| saved_model.map(|m| m.request_api.clone()))
+            .unwrap_or(RequestApi::Auto);
+        let vision_mode = req
+            .vision_mode
+            .clone()
+            .or_else(|| saved_model.map(|m| m.vision_mode.clone()))
+            .unwrap_or(VisionMode::Auto);
+        let requires_key = find_preset(&preset_id).map_or(true, |p| p.requires_key);
+        (preset_id, endpoint, full_url, model_name, keys, req_api, vision_mode, requires_key)
+    };
+
+    if endpoint.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "error": normalize_provider_error(Some(400), "Endpoint URL is required.", None, &[])
+            })),
+        )
+            .into_response();
     }
+    if model_name.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "error": normalize_provider_error(Some(400), "Model ID is required.", None, &[])
+            })),
+        )
+            .into_response();
+    }
+
+    let api = resolve_request_api(&req_api, &preset_id, &endpoint);
+    let url = format_endpoint_url(&endpoint, full_url, &api, &model_name);
+    let body = build_health_ping_body(&api, &model_name, &vision_mode);
+
+    let started = Instant::now();
+    let result = post_with_key_rotation(&HTTP_CLIENT, &url, &api, &keys, 0, &body, requires_key).await;
+    let latency = started.elapsed().as_millis() as u64;
+    let (health, err_payload, _next_cursor) = map_health_outcome(result, latency);
 
     Json(json!({
         "ok": err_payload.is_none(),
@@ -4111,5 +4287,40 @@ mod tests {
         assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "can you add sound effects?")]));
         assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "Build the leaderboard")]));
         assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "Build a leaderboard instead")]));
+    }
+
+    #[test]
+    fn platform_upsert_accepts_multiple_models_and_deduplicates_names() {
+        let req: PlatformUpsertReq = serde_json::from_value(json!({
+            "presetId": "custom",
+            "endpointUrl": "http://127.0.0.1:4000/v1",
+            "apiKeys": ["sk-test-123"],
+            "models": [
+                { "name": " deepseek-v4.1-flash " },
+                { "name": "qwen2.5-coder:14b" },
+                { "name": "deepseek-v4.1-flash" }
+            ],
+            "model": { "name": "deepseek-v4.1-flash" }
+        })).expect("valid multi-model payload");
+        let list = collect_incoming_models(req.models, req.model).expect("non-empty unique models");
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].name, "deepseek-v4.1-flash");
+        assert_eq!(list[1].name, "qwen2.5-coder:14b");
+    }
+
+    #[test]
+    fn health_check_req_supports_inline_unsaved_fields() {
+        let req: HealthCheckReq = serde_json::from_value(json!({
+            "presetId": "custom",
+            "endpointUrl": "http://127.0.0.1:4000/v1",
+            "apiKeys": ["sk-test"],
+            "modelName": "deepseek-v4.1-flash",
+            "requestApi": "chat_completions"
+        })).expect("valid inline health check req");
+        assert_eq!(req.preset_id.as_deref(), Some("custom"));
+        assert_eq!(req.endpoint_url.as_deref(), Some("http://127.0.0.1:4000/v1"));
+        assert_eq!(req.model_name.as_deref(), Some("deepseek-v4.1-flash"));
+        assert!(req.platform_id.is_none());
+        assert!(req.model_id.is_none());
     }
 }

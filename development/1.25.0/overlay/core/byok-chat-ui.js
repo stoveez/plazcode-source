@@ -60,23 +60,8 @@ const PlazCodeByokChatUI = (() => {
 
 
 
-  ;
-
-
-
-
-
 
   ;
-
-
-
-
-
-
-
-  ;
-
 
 
 
@@ -91,11 +76,62 @@ const PlazCodeByokChatUI = (() => {
 
 
 
+  ;
+
+
+
 
 
 
 
   ;
+
+
+
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -156,11 +192,19 @@ const PlazCodeByokChatUI = (() => {
     }
   };
 
+  const presetLabel = (p) =>
+    p.id === 'custom' ? t('Custom Endpoint') : p.name;
+
   const parseMultiKeys = (raw) =>
     String(raw || '')
       .split(/[\r\n,]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
+
+  const eyeSvg = (revealed) =>
+    revealed
+      ? '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.77 21.77 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19M1 1l22 22"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 
   const previewTargetUrl = (endpoint, fullUrl, api, presetId, model) => {
     const raw = String(endpoint || '').trim();
@@ -184,6 +228,34 @@ const PlazCodeByokChatUI = (() => {
     return base.toLowerCase().endsWith('/chat/completions') ? base : base + (ver ? '/chat/completions' : '/v1/chat/completions');
   };
 
+  const readStorageSet = (key) => {
+    try {
+      const raw = globalThis.localStorage?.getItem(key);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
+  const writeStorageSet = (key, set) => {
+    try {
+      globalThis.localStorage?.setItem(key, JSON.stringify(Array.from(set)));
+    } catch {}
+  };
+
+  const formatShortDate = (ms) => {
+    if (!ms || !Number.isFinite(ms) || ms <= 0) return '';
+    try {
+      return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  };
+
+  const CUSTOM_STARTERS = ['qwen2.5-coder:14b', 'llama3.1:8b'];
+
   function mount(opts) {
     let presets = [];
     let platforms = [];
@@ -191,6 +263,11 @@ const PlazCodeByokChatUI = (() => {
     let chats = [];
     let activeChat = null;
     let chatSearch = '';
+    let railTab = 'chats';
+    let railFilter = 'active';
+    let railCollapsed = false;
+    let pinnedChatIds = readStorageSet('pc_byok_pinned_chats');
+    let archivedChatIds = readStorageSet('pc_byok_archived_chats');
     let chatMode = 'roblox';
     let planMode = false;
     let effort = 'default';
@@ -198,9 +275,14 @@ const PlazCodeByokChatUI = (() => {
     let attachments = [];
     let stagedSkillFolders = [];
     let drawerOpen = false;
-    let drawerTab = 'files';
+    let drawerTab = 'tools';
+    let toolQuery = '';
     let fileQuery = '';
     let workspaceFiles = [];
+    let skillsList = [];
+    let findOpen = false;
+    let findQuery = '';
+    let slashOpen = false;
     let activeRunId = null;
     let streamText = '';
     let streamReasoning = '';
@@ -215,8 +297,61 @@ const PlazCodeByokChatUI = (() => {
     let clearFlashTimer = null;
     let clearFlashed = false;
     let modalRoot = null;
+    let modalKeyHandler = null;
     let dropdownOpen = false;
     let initialized = false;
+    let sbForm = null;
+
+    const fallbackPreset = (id = 'openai') =>
+      presets.find((p) => p.id === id) ||
+      presets[0] || {
+        id: 'openai',
+        name: 'OpenAI',
+        defaultEndpoint: 'https://api.openai.com',
+        defaultRequestApi: 'chat_completions',
+        requiresKey: true,
+        defaultModels: ['gpt-4o'],
+      };
+
+    const makeFormState = (plat, defaultPresetId = 'openai') => {
+      const preset = fallbackPreset(plat?.presetId || defaultPresetId);
+      const initialModels = plat?.models?.length
+        ? plat.models.map((m) => m.name).filter(Boolean)
+        : (preset.defaultModels?.length ? [preset.defaultModels[0]] : []);
+      const activePlatModel = plat?.models?.find((m) => m.id === activeModelId)?.name || '';
+      const firstModel = plat?.models?.[0];
+      return {
+        platformId: plat?.id,
+        presetId: preset.id,
+        endpointUrl: plat ? plat.endpointUrl : preset.defaultEndpoint,
+        fullUrl: plat ? plat.fullUrl : false,
+        apiKeyDraft: '',
+        keyRevealed: false,
+        modelInputDraft: '',
+        addedModels: initialModels,
+        selectedModel: activePlatModel || initialModels[0] || '',
+        discoveredModels: [],
+        visionMode: firstModel?.visionMode || 'auto',
+        requestApi: firstModel?.requestApi || (preset.defaultRequestApi) || 'auto',
+        savedKeyCount: plat?.apiKeyCount || 0,
+        testKind: 'idle',
+        testText: t('Not tested'),
+        errorText: '',
+        discovering: false,
+        saving: false,
+      };
+    };
+
+    const ensureSidebarForm = (forceSync = false) => {
+      const active = resolveActiveModel();
+      const targetPlat = active?.platform || platforms[0];
+      if (!sbForm || forceSync) {
+        sbForm = makeFormState(targetPlat, targetPlat?.presetId || 'custom');
+      } else if (!sbForm.platformId && targetPlat) {
+        sbForm = makeFormState(targetPlat, targetPlat.presetId);
+      }
+      return sbForm;
+    };
 
     const ensureModalRoot = () => {
       if (modalRoot && modalRoot.isConnected) return modalRoot;
@@ -270,6 +405,7 @@ const PlazCodeByokChatUI = (() => {
         if (res && Array.isArray(res.platforms)) platforms = res.platforms;
         if (res && typeof res.activeModelId === 'string') activeModelId = res.activeModelId;
       } catch (_e) {}
+      ensureSidebarForm(true);
       renderModelsPanel();
       renderChatPage();
     };
@@ -280,6 +416,19 @@ const PlazCodeByokChatUI = (() => {
         if (res && Array.isArray(res.chats)) chats = res.chats;
       } catch (_e) {}
       renderChatRail();
+    };
+
+    const loadSkills = async () => {
+      try {
+        const res = await opts.api('/api/skills', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'list' }),
+        });
+        if (res && Array.isArray(res.skills)) skillsList = res.skills;
+      } catch (_e) {
+        skillsList = [];
+      }
+      if (railTab === 'config') renderChatPage();
     };
 
     const loadChatById = async (id) => {
@@ -372,13 +521,633 @@ const PlazCodeByokChatUI = (() => {
     };
 
     // =========================================================================
+    // Shared Model & API Form (used by Add Model Modal AND Sidebar Model & API tab)
+    // =========================================================================
+    const suggestedModelsFor = (state) => {
+      const preset = fallbackPreset(state.presetId);
+      const base = state.discoveredModels.length
+        ? state.discoveredModels
+        : (state.presetId === 'custom'
+            ? CUSTOM_STARTERS
+            : (preset.defaultModels || []));
+      return base.filter((m) => !state.addedModels.includes(m)).slice(0, 10);
+    };
+
+    const renderModelListInnerHtml = (state, prefix) => {
+      if (!state.addedModels.length) {
+        return '<div class="byok-hint" data-pc-i18n>' + esc(t('Add at least one Model ID above or pick a quick suggestion.')) + '</div>';
+      }
+      return state.addedModels.map((m) => {
+        const isSel = (state.selectedModel || state.addedModels[0]) === m;
+        return (
+          '<div class="byok-id-row' + (isSel ? ' active' : '') + '" data-select-added-model="' + esc(m) + '" tabindex="0">' +
+          '<span class="byok-id-name" data-i18n-user-content dir="ltr">' + esc(m) + '</span>' +
+          '<button type="button" class="byok-id-rm" data-' + prefix + '-rm-model="' + esc(m) + '" aria-label="' + esc(t('Delete')) + '">×</button>' +
+          '</div>'
+        );
+      }).join('');
+    };
+
+    const renderQuickChipsInnerHtml = (state) =>
+      suggestedModelsFor(state)
+        .map((m) => '<button type="button" class="softbtn byok-chip byok-suggest-chip" data-pick-model="' + esc(m) + '" data-i18n-user-content dir="ltr">+ ' + esc(m) + '</button>')
+        .join('');
+
+    const renderModelFormFieldsHtml = (
+      state,
+      prefix,
+      options = {}
+    ) => {
+      const epPlaceholder = state.presetId === 'custom' ? 'http://127.0.0.1:4000/v1' : (fallbackPreset(state.presetId).defaultEndpoint || 'https://api.openai.com');
+      const activePreviewModel = state.modelInputDraft.trim() || state.selectedModel || state.addedModels[0] || '';
+      const previewUrl = previewTargetUrl(state.endpointUrl, state.fullUrl, state.requestApi, state.presetId, activePreviewModel);
+      const savedNote = state.savedKeyCount > 0
+        ? '<span class="byok-saved-keys-badge">' + esc(t('{count} saved', { count: state.savedKeyCount })) + '</span>'
+        : '';
+      const chipsHtml = renderQuickChipsInnerHtml(state);
+      return (
+        '<div class="byok-form-grid' + (options.compact ? ' is-compact' : '') + '">' +
+        '<div class="byok-field">' +
+        '<label class="byok-eyebrow-label" for="byok-' + prefix + '-preset" data-pc-i18n>' + esc(t('PROVIDER')) + '</label>' +
+        '<select id="byok-' + prefix + '-preset" data-' + prefix + '-preset' + (options.lockPreset ? ' disabled' : '') + '>' +
+        presets.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === state.presetId ? ' selected' : '') + '>' + esc(presetLabel(p)) + '</option>').join('') +
+        '</select></div>' +
+
+        '<div class="byok-field">' +
+        '<div class="byok-field-row">' +
+        '<label class="byok-eyebrow-label" for="byok-' + prefix + '-model-input" data-pc-i18n>' + esc(t('MODEL IDS')) + '</label>' +
+        '<button type="button" class="softbtn byok-discover-btn" data-' + prefix + '-discover data-pc-i18n>' + esc(t('Discover')) + '</button>' +
+        '</div>' +
+        '<input id="byok-' + prefix + '-model-input" type="text" data-' + prefix + '-model-input dir="ltr" value="' + esc(state.modelInputDraft) + '" placeholder="' + esc(t('Add Model ID (e.g. gpt-4o, gemini-2.5-flash)')) + '">' +
+        '<button type="button" class="softbtn byok-add-id-btn" data-' + prefix + '-add-model data-pc-i18n>+ ' + esc(t('ADD MODEL ID')) + '</button>' +
+        '<div class="byok-discover-chips" data-' + prefix + '-chips' + (chipsHtml ? '' : ' hidden') + '>' + chipsHtml + '</div>' +
+        '<div class="byok-id-list" data-' + prefix + '-model-list>' + renderModelListInnerHtml(state, prefix) + '</div>' +
+        '</div>' +
+
+        '<div class="byok-field">' +
+        '<label class="byok-eyebrow-label" for="byok-' + prefix + '-endpoint" data-pc-i18n>' + esc(t('ENDPOINT URL')) + '</label>' +
+        '<input id="byok-' + prefix + '-endpoint" type="text" data-' + prefix + '-endpoint dir="ltr" value="' + esc(state.endpointUrl) + '" placeholder="' + esc(epPlaceholder) + '">' +
+        '<small class="byok-url-preview" data-' + prefix + '-url-preview dir="ltr" title="' + esc(previewUrl) + '">' + (previewUrl ? 'POST → ' + esc(previewUrl) : '') + '</small>' +
+        '</div>' +
+
+        '<div class="byok-field">' +
+        '<div class="byok-field-row">' +
+        '<label class="byok-eyebrow-label" for="byok-' + prefix + '-keys" data-pc-i18n>' + esc(t('API KEY')) + '</label>' +
+        savedNote +
+        '</div>' +
+        '<div class="byok-key-wrap">' +
+        '<input id="byok-' + prefix + '-keys" type="' + (state.keyRevealed ? 'text' : 'password') + '" autocomplete="off" data-' + prefix + '-keys dir="ltr" value="' + esc(state.apiKeyDraft) + '" placeholder="' + esc(state.savedKeyCount > 0 ? t('Enter new key to add or leave blank') : 'sk-...') + '">' +
+        '<button type="button" class="byok-key-toggle" data-' + prefix + '-key-toggle aria-label="' + esc(t('Toggle API key visibility')) + '" aria-pressed="' + (state.keyRevealed ? 'true' : 'false') + '">' + eyeSvg(state.keyRevealed) + '</button>' +
+        '</div></div>' +
+
+        '<div class="byok-test-row">' +
+        '<button type="button" class="softbtn byok-test-btn" data-' + prefix + '-test data-pc-i18n>' + esc(t('TEST API CONNECTION')) + '</button>' +
+        '<span class="byok-test-status" data-' + prefix + '-test-status data-state="' + esc(state.testKind) + '" data-i18n-user-content>' + esc(state.testText) + '</span>' +
+        '</div>' +
+
+        '<details class="byok-advanced">' +
+        '<summary data-pc-i18n>' + esc(t('Advanced')) + '</summary>' +
+        '<div class="byok-advanced-body">' +
+        '<label class="byok-inline-toggle"><input type="checkbox" data-' + prefix + '-fullurl' + (state.fullUrl ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label>' +
+        '<div class="byok-two-col">' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Vision input')) + '</span><select data-' + prefix + '-vision>' +
+        '<option value="auto"' + (state.visionMode === 'auto' ? ' selected' : '') + '>Auto</option>' +
+        '<option value="enabled"' + (state.visionMode === 'enabled' ? ' selected' : '') + '>Enabled</option>' +
+        '<option value="disabled"' + (state.visionMode === 'disabled' ? ' selected' : '') + '>Disabled</option>' +
+        '</select></label>' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('OpenAI request API')) + '</span><select data-' + prefix + '-api>' +
+        '<option value="auto"' + (state.requestApi === 'auto' ? ' selected' : '') + '>Auto</option>' +
+        '<option value="chat_completions"' + (state.requestApi === 'chat_completions' ? ' selected' : '') + '>Chat Completions (/chat/completions)</option>' +
+        '<option value="responses"' + (state.requestApi === 'responses' ? ' selected' : '') + '>Responses (/responses)</option>' +
+        '<option value="anthropic"' + (state.requestApi === 'anthropic' ? ' selected' : '') + '>Anthropic (/messages)</option>' +
+        '<option value="gemini"' + (state.requestApi === 'gemini' ? ' selected' : '') + '>Gemini (:generateContent)</option>' +
+        '</select></label>' +
+        '</div></div></details>' +
+        '</div>'
+      );
+    };
+
+    const bindModelFormControls = (
+      container,
+      state,
+      prefix,
+      onSaved
+    ) => {
+      const q = (attr) =>
+        container.querySelector(`[data-${prefix}-${attr}]`);
+
+      const presetSel = q('preset');
+      const modelInput = q('model-input');
+      const addBtn = q('add-model');
+      const chipsEl = q('chips');
+      const listEl = q('model-list');
+      const epInput = q('endpoint');
+      const fuCheck = q('fullurl');
+      const keysInput = q('keys');
+      const keyToggle = q('key-toggle');
+      const previewEl = q('url-preview');
+      const testBtn = q('test');
+      const testStatusEl = q('test-status');
+      const discBtn = q('discover');
+      const visionSel = q('vision');
+      const apiSel = q('api');
+      const errEl = q('err');
+      const saveBtn = q('save');
+
+      const showErr = (msg) => {
+        state.errorText = msg;
+        if (errEl) {
+          errEl.hidden = !msg;
+          errEl.textContent = msg;
+        }
+      };
+
+      const setTestStatus = (kind, text) => {
+        state.testKind = kind;
+        state.testText = text;
+        if (testStatusEl) {
+          testStatusEl.setAttribute('data-state', kind);
+          testStatusEl.textContent = text;
+          testStatusEl.title = text;
+        }
+      };
+
+      const updateUrlPreview = () => {
+        const activeModel = (modelInput?.value || '').trim() || state.selectedModel || state.addedModels[0] || '';
+        const u = previewTargetUrl(state.endpointUrl, state.fullUrl, state.requestApi, state.presetId, activeModel);
+        if (previewEl) {
+          previewEl.textContent = u ? 'POST → ' + u : '';
+          previewEl.title = u || '';
+        }
+      };
+
+      const refreshChipsAndList = () => {
+        if (listEl) {
+          listEl.innerHTML = renderModelListInnerHtml(state, prefix);
+          bindListAndChips();
+        }
+        if (chipsEl) {
+          const chHtml = renderQuickChipsInnerHtml(state);
+          chipsEl.innerHTML = chHtml;
+          chipsEl.hidden = !chHtml;
+          bindListAndChips();
+        }
+        updateUrlPreview();
+      };
+
+      const addModelId = (rawId) => {
+        const id = String(rawId || '').trim();
+        if (!id) return false;
+        if (!state.addedModels.includes(id)) {
+          state.addedModels.push(id);
+        }
+        state.selectedModel = id;
+        showErr('');
+        return true;
+      };
+
+      const bindListAndChips = () => {
+        chipsEl?.querySelectorAll('[data-pick-model]').forEach((b) => {
+          (b).onclick = () => {
+            const pick = b.getAttribute('data-pick-model') || '';
+            if (addModelId(pick)) {
+              if (modelInput && modelInput.value.trim() === pick) {
+                modelInput.value = '';
+                state.modelInputDraft = '';
+              }
+              refreshChipsAndList();
+            }
+          };
+        });
+        listEl?.querySelectorAll('[data-select-added-model]').forEach((row) => {
+          (row).onclick = (ev) => {
+            if ((ev.target)?.closest(`[data-${prefix}-rm-model]`)) return;
+            state.selectedModel = row.getAttribute('data-select-added-model') || '';
+            refreshChipsAndList();
+          };
+        });
+        listEl?.querySelectorAll(`[data-${prefix}-rm-model]`).forEach((btn) => {
+          (btn).onclick = (ev) => {
+            ev.stopPropagation();
+            const rm = btn.getAttribute(`data-${prefix}-rm-model`) || '';
+            state.addedModels = state.addedModels.filter((m) => m !== rm);
+            if (state.selectedModel === rm) {
+              state.selectedModel = state.addedModels[0] || '';
+            }
+            refreshChipsAndList();
+          };
+        });
+      };
+      bindListAndChips();
+      updateUrlPreview();
+
+      if (presetSel) {
+        presetSel.onchange = () => {
+          state.presetId = presetSel.value;
+          const p = fallbackPreset(state.presetId);
+          state.endpointUrl = p.defaultEndpoint || '';
+          state.fullUrl = false;
+          state.discoveredModels = [];
+          state.requestApi = (p.defaultRequestApi) || 'auto';
+          state.addedModels = p.defaultModels?.length ? [p.defaultModels[0]] : [];
+          state.selectedModel = state.addedModels[0] || '';
+          if (epInput) {
+            epInput.value = state.endpointUrl;
+            epInput.placeholder = state.presetId === 'custom' ? 'http://127.0.0.1:4000/v1' : (p.defaultEndpoint || 'https://api.openai.com');
+          }
+          if (fuCheck) fuCheck.checked = false;
+          if (apiSel) apiSel.value = state.requestApi;
+          setTestStatus('idle', t('Not tested'));
+          showErr('');
+          refreshChipsAndList();
+        };
+      }
+
+      if (modelInput) {
+        modelInput.oninput = () => {
+          state.modelInputDraft = modelInput.value;
+          updateUrlPreview();
+        };
+        modelInput.onkeydown = (ev) => {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            if (addModelId(modelInput.value)) {
+              modelInput.value = '';
+              state.modelInputDraft = '';
+              refreshChipsAndList();
+            }
+          }
+        };
+      }
+
+      if (addBtn) {
+        addBtn.onclick = () => {
+          const val = modelInput?.value || state.modelInputDraft;
+          if (addModelId(val)) {
+            if (modelInput) modelInput.value = '';
+            state.modelInputDraft = '';
+            refreshChipsAndList();
+            modelInput?.focus();
+          } else {
+            showErr(t('Enter a Model ID first.'));
+          }
+        };
+      }
+
+      if (epInput) {
+        epInput.oninput = () => {
+          state.endpointUrl = epInput.value;
+          updateUrlPreview();
+        };
+      }
+
+      if (keysInput) {
+        keysInput.oninput = () => {
+          state.apiKeyDraft = keysInput.value;
+        };
+      }
+
+      if (keyToggle && keysInput) {
+        keyToggle.onclick = () => {
+          state.keyRevealed = !state.keyRevealed;
+          keysInput.type = state.keyRevealed ? 'text' : 'password';
+          keyToggle.setAttribute('aria-pressed', state.keyRevealed ? 'true' : 'false');
+          keyToggle.innerHTML = eyeSvg(state.keyRevealed);
+        };
+      }
+
+      if (fuCheck) {
+        fuCheck.onchange = () => {
+          state.fullUrl = fuCheck.checked;
+          updateUrlPreview();
+        };
+      }
+      if (visionSel) {
+        visionSel.onchange = () => {
+          state.visionMode = (visionSel.value) || 'auto';
+        };
+      }
+      if (apiSel) {
+        apiSel.onchange = () => {
+          state.requestApi = (apiSel.value) || 'auto';
+          updateUrlPreview();
+        };
+      }
+
+      if (discBtn) {
+        discBtn.onclick = async () => {
+          discBtn.disabled = true;
+          state.discovering = true;
+          showErr('');
+          try {
+            const res = await opts.api('/api/byok/models/discover', {
+              method: 'POST',
+              body: JSON.stringify({
+                platformId: state.platformId,
+                presetId: state.presetId,
+                endpointUrl: state.endpointUrl.trim(),
+                fullUrl: state.fullUrl,
+                apiKeys: parseMultiKeys(state.apiKeyDraft),
+                requestApi: state.requestApi,
+              }),
+            });
+            if (res && res.ok && Array.isArray(res.models)) {
+              state.discoveredModels = res.models;
+              if (!state.addedModels.length && !state.modelInputDraft.trim() && res.models[0]) {
+                addModelId(res.models[0]);
+              }
+              refreshChipsAndList();
+            } else {
+              showErr(res?.error?.message || t('Could not discover models.'));
+            }
+          } catch (e) {
+            showErr(e?.message || t('Discovery failed.'));
+          } finally {
+            state.discovering = false;
+            discBtn.disabled = false;
+          }
+        };
+      }
+
+      if (testBtn) {
+        testBtn.onclick = async () => {
+          const testModel = (modelInput?.value || state.modelInputDraft).trim() || state.selectedModel || state.addedModels[0] || '';
+          if (!testModel) {
+            setTestStatus('err', t('Add a Model ID first'));
+            return;
+          }
+          if (!state.endpointUrl.trim()) {
+            setTestStatus('err', t('Enter an Endpoint URL first'));
+            return;
+          }
+          testBtn.disabled = true;
+          showErr('');
+          setTestStatus('testing', t('Testing…'));
+          try {
+            const res = await opts.api('/api/byok/models/health', {
+              method: 'POST',
+              body: JSON.stringify({
+                platformId: state.platformId,
+                presetId: state.presetId,
+                endpointUrl: state.endpointUrl.trim(),
+                fullUrl: state.fullUrl,
+                apiKeys: parseMultiKeys(state.apiKeyDraft),
+                modelName: testModel,
+                requestApi: state.requestApi,
+                visionMode: state.visionMode,
+              }),
+            });
+            if (res && res.ok) {
+              setTestStatus('ok', res.health?.message || t('Connected'));
+            } else {
+              setTestStatus('err', res?.error?.message || res?.health?.message || t('Connection failed'));
+            }
+          } catch (e) {
+            setTestStatus('err', e?.message || t('Connection failed'));
+          } finally {
+            testBtn.disabled = false;
+          }
+        };
+      }
+
+      if (saveBtn) {
+        saveBtn.onclick = async () => {
+          const uncommitted = (modelInput?.value || state.modelInputDraft).trim();
+          if (uncommitted) {
+            addModelId(uncommitted);
+            if (modelInput) modelInput.value = '';
+            state.modelInputDraft = '';
+            refreshChipsAndList();
+          }
+          if (!state.addedModels.length) {
+            showErr(t('Add at least one Model ID.'));
+            return;
+          }
+          saveBtn.disabled = true;
+          state.saving = true;
+          showErr('');
+          try {
+            const modelPayloads = state.addedModels.map((name) => ({
+              name,
+              visionMode: state.visionMode,
+              requestApi: state.requestApi,
+              enabled: true,
+            }));
+            await opts.api('/api/byok/platforms', {
+              method: 'POST',
+              body: JSON.stringify({
+                id: state.platformId,
+                presetId: state.presetId,
+                endpointUrl: state.endpointUrl.trim(),
+                fullUrl: state.fullUrl,
+                apiKeys: parseMultiKeys(state.apiKeyDraft),
+                models: modelPayloads,
+                model: modelPayloads[0],
+              }),
+            });
+            state.apiKeyDraft = '';
+            await onSaved();
+          } catch (e) {
+            showErr(e?.message || t('Save failed.'));
+          } finally {
+            state.saving = false;
+            saveBtn.disabled = false;
+          }
+        };
+      }
+    };
+
+    // =========================================================================
+    // Modals (#byokModalRoot)
+    // =========================================================================
+    const closeModal = () => {
+      if (modalKeyHandler && typeof document !== 'undefined') {
+        document.removeEventListener('keydown', modalKeyHandler);
+        modalKeyHandler = null;
+      }
+      if (!modalRoot) return;
+      modalRoot.hidden = true;
+      modalRoot.innerHTML = '';
+    };
+
+    const openModal = (innerHtml, onBind, cardClass = '') => {
+      const root = ensureModalRoot();
+      if (!root) return;
+      if (modalKeyHandler && typeof document !== 'undefined') {
+        document.removeEventListener('keydown', modalKeyHandler);
+        modalKeyHandler = null;
+      }
+      root.innerHTML =
+        '<div class="byok-modal-backdrop">' +
+        '<div class="byok-modal settingcard' + (cardClass ? ' ' + cardClass : '') + '" role="dialog" aria-modal="true">' +
+        innerHtml +
+        '</div></div>';
+      root.hidden = false;
+      const backdrop = root.querySelector('.byok-modal-backdrop');
+      if (backdrop) {
+        backdrop.addEventListener('click', (ev) => {
+          if (ev.target === backdrop) closeModal();
+        });
+      }
+      if (typeof document !== 'undefined') {
+        modalKeyHandler = (ev) => {
+          if (ev.key === 'Escape' && modalRoot && !modalRoot.hidden) {
+            ev.preventDefault();
+            closeModal();
+          }
+        };
+        document.addEventListener('keydown', modalKeyHandler);
+      }
+      localizeNode(root);
+      onBind(root);
+    };
+
+    const openAddModelModal = (preselectPlatform) => {
+      const state = makeFormState(preselectPlatform, preselectPlatform?.presetId || 'openai');
+      openModal(
+        '<div class="byok-modal-head">' +
+        '<h3 data-pc-i18n>' + esc(t('Add Model')) + '</h3>' +
+        '<button type="button" class="softbtn byok-modal-close" data-modal-close>×</button>' +
+        '</div>' +
+        renderModelFormFieldsHtml(state, 'am', { lockPreset: !!preselectPlatform }) +
+        '<div class="byok-modal-err" data-am-err hidden></div>' +
+        '<div class="byok-modal-foot">' +
+        '<button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
+        '<button type="button" class="accentbtn" data-am-save data-pc-i18n>' + esc(t('Save')) + '</button>' +
+        '</div>',
+        (root) => {
+          root.querySelectorAll('[data-modal-close]').forEach((b) => {
+            (b).onclick = closeModal;
+          });
+          bindModelFormControls(root, state, 'am', async () => {
+            closeModal();
+            await loadPlatforms();
+            const sec = opts.modelsHost?.closest('details.settings-section');
+            if (sec && !sec.open) sec.open = true;
+          });
+        },
+        'byok-modal-add'
+      );
+    };
+
+    const openEditPlatformModal = (plat) => {
+      openModal(
+        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Edit Platform & API Keys')) + '</h3><button type="button" class="softbtn byok-modal-close" data-modal-close>×</button></div>' +
+        '<div class="byok-form-grid">' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Platform Name')) + '</span><input type="text" data-ep-name value="' + esc(plat.name) + '"></label>' +
+        '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('API Endpoint')) + '</span>' +
+        '<label class="byok-inline-toggle"><input type="checkbox" data-ep-fullurl' + (plat.fullUrl ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label></div>' +
+        '<input type="text" data-ep-url dir="ltr" value="' + esc(plat.endpointUrl) + '"></label>' +
+        '<div class="byok-field"><span data-pc-i18n>' + esc(t('API Keys (Auto-rotates on 429)')) + '</span>' +
+        '<div class="byok-key-list">' +
+        (plat.apiKeyPreviews.length
+          ? plat.apiKeyPreviews.map((pv, i) =>
+              '<div class="byok-key-row"><span>#' + (i + 1) + '</span><code dir="ltr">' + esc(pv) + '</code>' +
+              '<button type="button" class="dangerbtn byok-rm-key" data-rm-key="' + i + '">×</button></div>'
+            ).join('')
+          : '<div class="byok-hint">' + esc(t('No API keys saved yet.')) + '</div>') +
+        '</div>' +
+        '<textarea rows="2" data-ep-add-keys dir="ltr" placeholder="' + esc(t('Add new key(s), one per line or comma-separated')) + '"></textarea></div>' +
+        '</div>' +
+        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
+        '<button type="button" class="accentbtn" data-ep-save data-pc-i18n>' + esc(t('Save')) + '</button></div>',
+        (root) => {
+          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
+          root.querySelectorAll('[data-rm-key]').forEach((b) => {
+            (b).onclick = async () => {
+              const idx = Number(b.getAttribute('data-rm-key'));
+              await opts.api('/api/byok/platforms', {
+                method: 'PUT',
+                body: JSON.stringify({ id: plat.id, removeKeyIndex: idx }),
+              });
+              await loadPlatforms();
+              const updated = platforms.find((p) => p.id === plat.id);
+              if (updated) openEditPlatformModal(updated);
+              else closeModal();
+            };
+          });
+          const saveBtn = root.querySelector('[data-ep-save]');
+          if (saveBtn) {
+            saveBtn.onclick = async () => {
+              const name = (root.querySelector('[data-ep-name]'))?.value.trim();
+              const endpointUrl = (root.querySelector('[data-ep-url]'))?.value.trim();
+              const fullUrl = (root.querySelector('[data-ep-fullurl]'))?.checked || false;
+              const addKeys = parseMultiKeys((root.querySelector('[data-ep-add-keys]'))?.value || '');
+              await opts.api('/api/byok/platforms', {
+                method: 'PUT',
+                body: JSON.stringify({ id: plat.id, name, endpointUrl, fullUrl, addKeys }),
+              });
+              closeModal();
+              await loadPlatforms();
+            };
+          }
+        }
+      );
+    };
+
+    const openConfigModelModal = (plat, m) => {
+      openModal(
+        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Configure Model')) + '</h3><button type="button" class="softbtn byok-modal-close" data-modal-close>×</button></div>' +
+        '<div class="byok-form-grid">' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Model Name')) + '</span><input type="text" data-cm-name dir="ltr" value="' + esc(m.name) + '"></label>' +
+        '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('API Endpoint Override (optional)')) + '</span>' +
+        '<label class="byok-inline-toggle"><input type="checkbox" data-cm-fullurl' + ((m.fullUrl ?? plat.fullUrl) ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label></div>' +
+        '<input type="text" data-cm-ep dir="ltr" value="' + esc(m.endpointUrl || '') + '" placeholder="' + esc(plat.endpointUrl) + '"></label>' +
+        '<div class="byok-two-col">' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Vision input')) + '</span><select data-cm-vision>' +
+        ['auto', 'enabled', 'disabled'].map((v) => '<option value="' + v + '"' + (m.visionMode === v ? ' selected' : '') + '>' + v + '</option>').join('') +
+        '</select></label>' +
+        '<label class="byok-field"><span data-pc-i18n>' + esc(t('OpenAI request API')) + '</span><select data-cm-api>' +
+        ['auto', 'chat_completions', 'responses', 'anthropic', 'gemini'].map((v) => '<option value="' + v + '"' + (m.requestApi === v ? ' selected' : '') + '>' + v + '</option>').join('') +
+        '</select></label>' +
+        '</div></div>' +
+        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
+        '<button type="button" class="accentbtn" data-cm-save data-pc-i18n>' + esc(t('Save')) + '</button></div>',
+        (root) => {
+          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
+          const saveBtn = root.querySelector('[data-cm-save]');
+          if (saveBtn) {
+            saveBtn.onclick = async () => {
+              const name = (root.querySelector('[data-cm-name]'))?.value.trim() || m.name;
+              const ep = (root.querySelector('[data-cm-ep]'))?.value.trim() || '';
+              const fu = (root.querySelector('[data-cm-fullurl]'))?.checked || false;
+              const visionMode = (root.querySelector('[data-cm-vision]'))?.value || 'auto';
+              const requestApi = (root.querySelector('[data-cm-api]'))?.value || 'auto';
+              await opts.api('/api/byok/platforms', {
+                method: 'PUT',
+                body: JSON.stringify({
+                  id: plat.id,
+                  model: { id: m.id, name, endpointUrl: ep, fullUrl: fu, visionMode, requestApi, enabled: m.enabled },
+                }),
+              });
+              closeModal();
+              await loadPlatforms();
+            };
+          }
+        }
+      );
+    };
+
+    const openDeleteConfirm = (title, onConfirm) => {
+      openModal(
+        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Confirm Delete')) + '</h3><button type="button" class="softbtn byok-modal-close" data-modal-close>×</button></div>' +
+        '<p class="byok-confirm-text" data-i18n-user-content>' + esc(title) + '</p>' +
+        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
+        '<button type="button" class="dangerbtn" data-del-ok data-pc-i18n>' + esc(t('Delete')) + '</button></div>',
+        (root) => {
+          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
+          const ok = root.querySelector('[data-del-ok]');
+          if (ok) ok.onclick = async () => { ok.disabled = true; await onConfirm(); closeModal(); };
+        }
+      );
+    };
+
+    // =========================================================================
     // Chat Page Rendering (#page-chat)
     // =========================================================================
-    const renderModelSelectorHtml = () => {
+    const renderModelSelectorHtml = (compact = true) => {
       const active = resolveActiveModel();
-      const label = active
-        ? (active.model.displayName || active.model.name)
-        : t('Select a model');
+      const label = active ? (active.model.displayName || active.model.name) : t('Select a model');
       const platTag = active ? active.platform.name : '';
       const all = enabledModels();
       let itemsHtml = '';
@@ -398,7 +1167,7 @@ const PlazCodeByokChatUI = (() => {
         }).join('');
       }
       return (
-        '<div class="byok-model-dd">' +
+        '<div class="byok-model-dd' + (compact ? ' is-topbar' : '') + '">' +
         '<button type="button" class="softbtn byok-model-trigger" aria-expanded="' + (dropdownOpen ? 'true' : 'false') + '">' +
         '<span class="byok-health-dot" data-health="' + esc(active?.model.healthStatus?.status || 'unknown') + '"></span>' +
         '<span class="byok-model-trigger-name" data-i18n-user-content>' + esc(label) + '</span>' +
@@ -406,8 +1175,9 @@ const PlazCodeByokChatUI = (() => {
         '<span class="byok-caret">▾</span></button>' +
         '<div class="byok-dd-menu"' + (dropdownOpen ? '' : ' hidden') + '>' +
         '<div class="byok-dd-list">' + itemsHtml + '</div>' +
-        '<div class="byok-dd-foot"><button type="button" class="softbtn byok-manage-models" data-pc-i18n>' + esc(t('Manage models')) + '</button></div>' +
-        '</div></div>'
+        '<div class="byok-dd-foot">' +
+        '<button type="button" class="softbtn byok-manage-models" data-pc-i18n>' + esc(t('Manage models')) + '</button>' +
+        '</div></div></div>'
       );
     };
 
@@ -429,17 +1199,42 @@ const PlazCodeByokChatUI = (() => {
       return '<div class="byok-att-row">' + chips.join('') + '</div>';
     };
 
+    const SLASH_COMMANDS = [
+      { cmd: '/tools', desc: t('Toggle live Tools & Context drawer') },
+      { cmd: '/model', desc: t('Open Add Model & API Key panel') },
+      { cmd: '/plan', desc: t('Toggle Plan mode before editing') },
+      { cmd: '/roblox', desc: t('Switch engine to RobloxScript') },
+      { cmd: '/agent', desc: t('Switch engine to AgentScript') },
+      { cmd: '/export', desc: t('Export this conversation to Markdown') },
+      { cmd: '/clear', desc: t('Start a fresh conversation') },
+    ];
+
     const renderComposerHtml = (sticky) => {
       const sending = !!activeRunId;
       const isLocal = chatMode === 'local';
+      const st = opts.getState ? opts.getState() || {} : {};
+      const readyLabel = sending
+        ? t('Streaming…')
+        : isLocal
+          ? (st.workspace_ready ? t('Ready · Workspace') : t('Ready · Local'))
+          : (st.bridge_connected ? t('Ready · Bridge On') : t('Ready · Waiting Studio'));
+      const slashHtml = slashOpen
+        ? '<div class="byok-slash-menu" data-byok-slash-menu>' +
+          SLASH_COMMANDS.map((c) =>
+            '<button type="button" class="byok-slash-item" data-slash-cmd="' + esc(c.cmd) + '">' +
+            '<code>' + esc(c.cmd) + '</code><span>' + esc(c.desc) + '</span></button>'
+          ).join('') +
+          '</div>'
+        : '';
       return (
         '<div class="byok-composer' + (sticky ? ' is-sticky' : '') + '">' +
+        slashHtml +
         renderAttachmentsHtml() +
-        '<textarea class="byok-input" data-byok-input data-i18n-user-content dir="auto" rows="' + (sticky ? '2' : '3') + '" placeholder="' + esc(t('Ask PlazCode to inspect, script, or build…')) + '"></textarea>' +
+        '<textarea class="byok-input" data-byok-input data-i18n-user-content dir="auto" rows="' + (sticky ? '2' : '3') + '" placeholder="' + esc(t('Ask anything, attach files, or type / for quick commands…')) + '"></textarea>' +
         '<div class="byok-composer-bar">' +
         '<div class="byok-composer-left">' +
+        '<button type="button" class="byok-pill-btn byok-slash-btn' + (slashOpen ? ' active' : '') + '" data-byok-slash>/ ' + esc(t('Commands')) + '</button>' +
         '<label class="softbtn byok-attach-btn" title="' + esc(t('Attach files or images')) + '">+<input type="file" multiple hidden data-byok-file></label>' +
-        renderModelSelectorHtml() +
         (isLocal
           ? '<select class="byok-pill-sel" data-byok-perm aria-label="Permissions">' +
             '<option value="sandbox"' + (permMode === 'sandbox' ? ' selected' : '') + '>' + esc(t('Access: Sandbox')) + '</option>' +
@@ -457,6 +1252,7 @@ const PlazCodeByokChatUI = (() => {
         '</select>' +
         '</div>' +
         '<div class="byok-composer-right">' +
+        '<span class="byok-composer-status" data-i18n-user-content>' + esc(readyLabel) + '</span>' +
         (sending
           ? '<button type="button" class="dangerbtn byok-stop-btn" data-byok-stop data-pc-i18n>' + esc(t('Stop')) + '</button>'
           : '<button type="button" class="accentbtn byok-send-btn" data-byok-send data-pc-i18n>' + esc(t('Send')) + '</button>') +
@@ -466,23 +1262,44 @@ const PlazCodeByokChatUI = (() => {
 
     const renderChatRail = () => {
       const host = opts.chatHost;
-      if (!host) return;
+      if (!host || railTab !== 'chats') return;
       const listEl = host.querySelector('[data-byok-rail-list]');
       if (!listEl) return;
       const q = chatSearch.trim().toLowerCase();
-      const filtered = chats.filter((c) => !q || c.title.toLowerCase().includes(q));
+      const filtered = chats
+        .filter((c) => {
+          const isArch = archivedChatIds.has(c.id);
+          if (railFilter === 'archived' ? !isArch : isArch) return false;
+          return !q || c.title.toLowerCase().includes(q);
+        })
+        .sort((a, b) => {
+          const pa = pinnedChatIds.has(a.id) ? 1 : 0;
+          const pb = pinnedChatIds.has(b.id) ? 1 : 0;
+          if (pa !== pb) return pb - pa;
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
       if (!filtered.length) {
-        listEl.innerHTML = '<div class="byok-rail-empty" data-pc-i18n>' + esc(t('No conversations yet')) + '</div>';
+        listEl.innerHTML = '<div class="byok-rail-empty" data-pc-i18n>' + esc(t(railFilter === 'archived' ? 'No archived chats' : 'No conversations yet')) + '</div>';
         return;
       }
       listEl.innerHTML = filtered.map((c) => {
         const isAct = activeChat && activeChat.id === c.id;
+        const isPinned = pinnedChatIds.has(c.id);
+        const isArchived = archivedChatIds.has(c.id);
+        const dStr = formatShortDate(c.updatedAt);
+        const msgCount = Number(c.messageCount || 0);
         return (
           '<div class="byok-rail-item' + (isAct ? ' active' : '') + '" data-open-chat="' + esc(c.id) + '" role="button" tabindex="0">' +
+          '<div class="byok-rail-item-top">' +
           '<div class="byok-rail-title" data-i18n-user-content dir="auto">' + esc(c.title || 'New Chat') + '</div>' +
-          '<div class="byok-rail-meta"><span>' + esc(c.mode === 'local' ? 'AgentScript' : 'RobloxScript') + '</span>' +
-          '<button type="button" class="byok-rail-del" data-del-chat="' + esc(c.id) + '" aria-label="' + esc(t('Delete')) + '">×</button></div>' +
-          '</div>'
+          '<div class="byok-rail-actions">' +
+          '<button type="button" class="byok-rail-act' + (isPinned ? ' on' : '') + '" data-pin-chat="' + esc(c.id) + '" title="' + esc(t('Pin chat')) + '" aria-label="' + esc(t('Pin chat')) + '">★</button>' +
+          '<button type="button" class="byok-rail-act' + (isArchived ? ' on' : '') + '" data-archive-chat="' + esc(c.id) + '" title="' + esc(t(isArchived ? 'Unarchive chat' : 'Archive chat')) + '" aria-label="' + esc(t(isArchived ? 'Unarchive chat' : 'Archive chat')) + '">▣</button>' +
+          '<button type="button" class="byok-rail-del" data-del-chat="' + esc(c.id) + '" aria-label="' + esc(t('Delete')) + '">×</button>' +
+          '</div></div>' +
+          '<div class="byok-rail-meta"><span>' + esc(msgCount) + ' ' + esc(t('msgs')) + ' · ' + esc(c.mode === 'local' ? 'AgentScript' : 'RobloxScript') + '</span>' +
+          (dStr ? '<span>' + esc(dStr) + '</span>' : '') +
+          '</div></div>'
         );
       }).join('');
     };
@@ -499,8 +1316,38 @@ const PlazCodeByokChatUI = (() => {
       drawer.querySelectorAll('[data-drawer-tab]').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-drawer-tab') === drawerTab);
       });
-      if (drawerTab === 'files') {
-        const st = opts.getState ? opts.getState() || {} : {};
+      const st = opts.getState ? opts.getState() || {} : {};
+      const tel = st.telemetry || {};
+      const okCmds = Number(tel.commands_succeeded || 0);
+      const errCmds = Number(tel.commands_failed || 0);
+      const totCmds = Number(tel.commands_run ?? (okCmds + errCmds));
+      const bridgeText = st.bridge_connected ? t('Bridge online') : t('Bridge offline');
+      const statsEl = drawer.querySelector('[data-byok-drawer-stats]');
+      if (statsEl) {
+        statsEl.textContent = `${totCmds} cmds (${okCmds} ok · ${errCmds} err) · ${bridgeText}`;
+      }
+
+      if (drawerTab === 'tools') {
+        const allTools = Array.isArray(st.tools) ? st.tools : [];
+        const q = toolQuery.trim().toLowerCase();
+        const filtered = allTools.filter((tool) =>
+          !q ||
+          String(tool.name || '').toLowerCase().includes(q) ||
+          String(tool.description || '').toLowerCase().includes(q)
+        );
+        const listHtml = filtered.length
+          ? '<div class="byok-tool-catalog">' + filtered.map((tool) =>
+              '<button type="button" class="byok-tool-catalog-card" data-prefill-tool="' + esc(tool.name) + '">' +
+              '<div class="byok-tool-catalog-name" data-i18n-user-content dir="ltr">' + esc(tool.name) + '</div>' +
+              (tool.description ? '<div class="byok-tool-catalog-desc" data-i18n-user-content dir="auto">' + esc(tool.description) + '</div>' : '') +
+              '</button>'
+            ).join('') + '</div>'
+          : '<div class="byok-drawer-empty" data-pc-i18n>' + esc(t('No matching tools found')) + '</div>';
+        body.innerHTML =
+          '<input type="text" class="byok-file-search" data-byok-tool-search value="' + esc(toolQuery) + '" placeholder="' + esc(t('Search tools (e.g. script, luau, read)…')) + '">' +
+          '<div class="byok-hint" data-pc-i18n>' + esc(t('Click any tool to prefill a ready command prompt in chat.')) + '</div>' +
+          listHtml;
+      } else if (drawerTab === 'files') {
         const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
         const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
         const list = workspaceFiles.length
@@ -508,7 +1355,7 @@ const PlazCodeByokChatUI = (() => {
           : '<div class="byok-drawer-empty" data-pc-i18n>' + esc(t('No workspace files found')) + '</div>';
         body.innerHTML =
           '<div class="byok-ws-sub" style="text-align:left;margin:0 0 6px" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <strong data-i18n-user-content>' + esc(wsShort) + '</strong></div>' +
-          '<input class="search byok-file-search" data-byok-file-search value="' + esc(fileQuery) + '" placeholder="' + esc(t('Search workspace files…')) + '">' +
+          '<input type="text" class="byok-file-search" data-byok-file-search value="' + esc(fileQuery) + '" placeholder="' + esc(t('Search workspace files…')) + '">' +
           '<div class="byok-file-list">' + list + '</div>';
       } else {
         const changes = activeChat?.modifiedFiles || [];
@@ -518,6 +1365,43 @@ const PlazCodeByokChatUI = (() => {
             ).join('') + '</div>'
           : '<div class="byok-drawer-empty" data-pc-i18n>' + esc(t('No files modified in this chat yet.')) + '</div>';
       }
+      localizeNode(drawer);
+    };
+
+    const renderSidebarTabHtml = () => {
+      const activeCount = chats.filter((c) => !archivedChatIds.has(c.id)).length;
+      const archivedCount = chats.filter((c) => archivedChatIds.has(c.id)).length;
+      if (railTab === 'chats') {
+        return (
+          '<input type="text" class="byok-rail-search" data-byok-rail-search value="' + esc(chatSearch) + '" placeholder="' + esc(t('Filter chats…')) + '">' +
+          '<div class="byok-rail-subtabs">' +
+          '<button type="button" class="byok-subtab' + (railFilter === 'active' ? ' active' : '') + '" data-rail-filter="active">' + esc(t('Active')) + ' (' + activeCount + ')</button>' +
+          '<button type="button" class="byok-subtab' + (railFilter === 'archived' ? ' active' : '') + '" data-rail-filter="archived">' + esc(t('Archived')) + ' (' + archivedCount + ')</button>' +
+          '</div>' +
+          '<div class="byok-rail-list" data-byok-rail-list></div>'
+        );
+      }
+      const formState = ensureSidebarForm();
+      const enabledSkills = skillsList.filter((s) => s && s.enabled !== false).slice(0, 10);
+      const skillsHtml = enabledSkills.length
+        ? enabledSkills.map((s) => '<span class="byok-skill-chip" data-i18n-user-content>' + esc(s.title || s.name || 'Skill') + '</span>').join('')
+        : '<span class="byok-hint" data-pc-i18n>' + esc(t('No enabled skills')) + '</span>';
+      return (
+        '<div class="byok-rail-config" data-byok-sb-config>' +
+        renderModelFormFieldsHtml(formState, 'sb', { compact: true }) +
+        '<div class="byok-modal-err" data-sb-err hidden></div>' +
+        '<button type="button" class="accentbtn byok-sb-save-btn" data-sb-save data-pc-i18n>' + esc(t('Save Model & API')) + '</button>' +
+        '<div class="byok-field">' +
+        '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('TOOL ENGINE')) + '</span>' +
+        '<div class="byok-engine-seg" role="group">' +
+        '<button type="button" class="byok-engine-btn' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
+        '<button type="button" class="byok-engine-btn' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        '</div></div>' +
+        '<div class="byok-field">' +
+        '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('SKILLS')) + '</span>' +
+        '<div class="byok-skill-chips">' + skillsHtml + '</div>' +
+        '</div></div>'
+      );
     };
 
     const renderChatPage = () => {
@@ -526,49 +1410,95 @@ const PlazCodeByokChatUI = (() => {
       const existingInput = host.querySelector('[data-byok-input]');
       const draftVal = existingInput ? existingInput.value : '';
 
+      const st = opts.getState ? opts.getState() || {} : {};
+      const allTools = Array.isArray(st.tools) ? st.tools : [];
+      const toolCount = allTools.length;
+      const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
+      const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
+      const active = resolveActiveModel();
+      const activeChatCount = chats.filter((c) => !archivedChatIds.has(c.id)).length;
       const hasMsgs = !!(activeChat && activeChat.messages && activeChat.messages.length > 0) || !!activeRunId;
-      const starters = chatMode === 'local'
+      const fq = findQuery.trim().toLowerCase();
+
+      const starterCards = chatMode === 'local'
         ? [
-            t('Audit the project structure and summarize key entry points'),
-            t('Find and fix type or lint issues in the workspace'),
-            t('Draft a refactor plan before editing any files'),
+            { title: t('Map Workspace Structure'), desc: t('Summarize key entry points, config files, and architecture.'), prompt: t('Audit the project structure and summarize key entry points') },
+            { title: t('Fix Type & Lint Issues'), desc: t('Find broken imports, type mismatches, and failing checks.'), prompt: t('Find and fix type or lint issues in the workspace') },
+            { title: t('Draft a Refactor Plan'), desc: t('Propose safe incremental improvements before editing code.'), prompt: t('Draft a refactor plan before editing any files') },
+            { title: t('Review Recent Changes'), desc: t('Inspect git status and diff for potential edge cases.'), prompt: t('Review recent changes in git status and summarize any risks') },
           ]
         : [
-            t('Inspect ServerScriptService and check for Luau errors'),
-            t('Create a round-based obby checkpoint system in Studio'),
-            t('Audit the UI layout for responsiveness and scale'),
+            { title: t('Inspect Studio Hierarchy'), desc: t('Search game.Workspace and list major models, services, and scripts.'), prompt: t('Inspect ServerScriptService and check for Luau errors') },
+            { title: t('Luau Script Health Check'), desc: t('Run static checks and find broken references across scripts.'), prompt: t('Scan scripts for Luau warnings, missing requires, or errors') },
+            { title: t('Build a Gameplay System'), desc: t('Create modular server & client scripts synced into Studio.'), prompt: t('Create a round-based obby checkpoint system in Studio') },
+            { title: t('Audit UI Responsiveness'), desc: t('Review StarterGui layouts, constraints, and text scaling.'), prompt: t('Audit the UI layout for responsiveness and scale') },
           ];
 
-      let mainHtml = '';
+      const quickChips = chatMode === 'local'
+        ? [
+            { label: t('Project Overview'), prompt: t('Audit the project structure and summarize key entry points') },
+            { label: t('Run Tests'), prompt: t('Run the project tests and report any failures') },
+            { label: t('Git Status'), prompt: t('Check git status and summarize uncommitted changes') },
+            { label: t('Find Bugs'), prompt: t('Inspect the main entry files for bugs or edge cases') },
+          ]
+        : [
+            { label: t('Inspect Workspace'), prompt: t('Inspect game.Workspace and list top-level models') },
+            { label: t('Luau Check'), prompt: t('Check all scripts for Luau syntax or runtime issues') },
+            { label: t('Audit UI'), prompt: t('Audit StarterGui responsiveness and layout scale') },
+            { label: t('List Tools'), prompt: t('Summarize which Studio tools are ready right now') },
+          ];
+
+      let centerBodyHtml = '';
       if (!hasMsgs) {
-        const st = opts.getState ? opts.getState() || {} : {};
-        const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
-        const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
-        const wsNote = chatMode === 'local'
-          ? '<div class="byok-ws-sub" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <span data-i18n-user-content>' + esc(wsShort) + '</span></div>'
-          : '';
-        mainHtml =
-          '<div class="byok-empty-view">' +
-          '<div class="byok-mode-switch" role="group">' +
-          '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
-          '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        const platReady = !!(platforms.some((p) => p.enabled && (p.apiKeyCount > 0 || presets.find((pr) => pr.id === p.presetId)?.requiresKey === false)));
+        const modelReady = !!active;
+        const envReady = chatMode === 'local' ? !!wsRoot : !!st.bridge_connected;
+        const envText = chatMode === 'local'
+          ? (wsRoot ? t('Workspace ready ({folder} · {count} tools live)', { folder: wsShort, count: toolCount }) : t('No workspace folder selected'))
+          : (st.bridge_connected ? t('Roblox Bridge connected ({count} tools live)', { count: toolCount }) : t('Waiting for Roblox Studio ({count} tools available)', { count: toolCount }));
+
+        centerBodyHtml =
+          '<div class="byok-welcome-scroll">' +
+          '<div class="byok-welcome-card">' +
+          '<div class="byok-welcome-head">' +
+          '<h1 class="byok-hero-title">PlazCode Direct Chat</h1>' +
+          '<p class="byok-hero-sub">' + esc(t("Hi, what's your plan for today?")) + ' ' + esc(t('Run Roblox Studio commands, AgentScript workspace tools, and your saved skills straight from your own API key. Type / for quick commands.')) + '</p>' +
           '</div>' +
-          '<h1 class="byok-hero-title" data-pc-i18n>' + esc(t("Hi, what's your plan for today?")) + '</h1>' +
-          renderComposerHtml(false) +
-          wsNote +
-          '<div class="byok-starters">' +
-          starters.map((s) => '<button type="button" class="softbtn byok-starter-chip" data-byok-starter="' + esc(s) + '">' + esc(s) + '</button>').join('') +
-          '</div></div>';
+          '<div class="byok-checklist-card">' +
+          '<div class="byok-checklist-title" data-pc-i18n>' + esc(t('Quick Setup Checklist')) + '</div>' +
+          '<button type="button" class="byok-check-row" data-byok-open-config>' +
+          '<span class="byok-status-dot ' + (platReady ? 'ok' : 'warn') + '"></span>' +
+          '<span>' + esc(platReady ? t('Provider key ready ({name})', { name: active?.platform.name || platforms[0]?.name || 'API' }) : t('No provider key configured yet — click to add')) + '</span>' +
+          '</button>' +
+          '<button type="button" class="byok-check-row" data-byok-open-config>' +
+          '<span class="byok-status-dot ' + (modelReady ? 'ok' : 'warn') + '"></span>' +
+          '<span>' + esc(modelReady ? t('Model selected ({name})', { name: active?.model.name || '' }) : t('Select or add a model to start chatting')) + '</span>' +
+          '</button>' +
+          '<div class="byok-check-row">' +
+          '<span class="byok-status-dot ' + (envReady ? 'ok' : 'warn') + '"></span>' +
+          '<span>' + esc(envText) + '</span>' +
+          '</div>' +
+          '</div>' +
+          '<div class="byok-starter-grid">' +
+          starterCards.map((c) =>
+            '<button type="button" class="byok-starter-card" data-byok-starter="' + esc(c.prompt) + '">' +
+            '<strong data-i18n-user-content>' + esc(c.title) + '</strong>' +
+            '<small data-i18n-user-content>' + esc(c.desc) + '</small>' +
+            '</button>'
+          ).join('') +
+          '</div></div></div>';
       } else {
         const msgsHtml = (activeChat?.messages || []).map((m) => {
+          const isMatch = fq && String(m.content || '').toLowerCase().includes(fq);
+          const matchCls = isMatch ? ' is-find-match' : '';
           if (m.role === 'user') {
             const atts = (m.attachments || []).map((a) => '<span class="byok-msg-att" data-i18n-user-content>' + esc(a.name) + '</span>').join('');
-            return '<div class="byok-msg byok-msg-user"><div class="byok-bubble">' + (atts ? '<div class="byok-msg-atts">' + atts + '</div>' : '') + renderRichContent(m.content) + '</div></div>';
+            return '<div class="byok-msg byok-msg-user' + matchCls + '"><div class="byok-bubble">' + (atts ? '<div class="byok-msg-atts">' + atts + '</div>' : '') + renderRichContent(m.content) + '</div></div>';
           }
           const tools = (m.toolCalls || []).map(renderToolCard).join('');
           const errHtml = m.error ? renderErrorCard(m.error) : '';
           return (
-            '<div class="byok-msg byok-msg-assistant">' +
+            '<div class="byok-msg byok-msg-assistant' + matchCls + '">' +
             (m.modelLabel ? '<div class="byok-msg-model" data-i18n-user-content>' + esc(m.modelLabel) + '</div>' : '') +
             (m.reasoning ? '<details class="byok-reasoning"><summary data-pc-i18n>' + esc(t('Reasoning')) + '</summary><pre data-i18n-user-content>' + esc(m.reasoning) + '</pre></details>' : '') +
             tools +
@@ -589,35 +1519,93 @@ const PlazCodeByokChatUI = (() => {
             (streamError ? renderErrorCard(streamError) : '') +
             '</div>';
         }
-
-        mainHtml =
-          '<div class="byok-active-view">' +
-          '<header class="byok-chat-topbar">' +
-          '<div class="byok-chat-title" data-i18n-user-content dir="auto">' + esc(activeChat?.title || 'Chat') + '</div>' +
-          '<div class="byok-topbar-actions">' +
-          '<div class="byok-mode-switch compact" role="group">' +
-          '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
-          '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
-          '</div>' +
-          renderModelSelectorHtml() +
-          '<button type="button" class="softbtn byok-drawer-toggle' + (drawerOpen ? ' active' : '') + '" data-byok-toggle-drawer>' + esc(t('Files')) + ' / ' + esc(t('Changes')) + '</button>' +
-          '</div></header>' +
-          '<div class="byok-messages" data-byok-messages>' + msgsHtml + streamingHtml + '</div>' +
-          renderComposerHtml(true) +
-          '</div>';
+        centerBodyHtml = '<div class="byok-messages" data-byok-messages>' + msgsHtml + streamingHtml + '</div>';
       }
 
+      const matchCount = fq
+        ? (activeChat?.messages || []).filter((m) => String(m.content || '').toLowerCase().includes(fq)).length
+        : 0;
+      const findBarHtml = findOpen
+        ? '<div class="byok-find-bar" data-byok-find-bar>' +
+          '<input type="text" class="byok-find-input" data-byok-find-input value="' + esc(findQuery) + '" placeholder="' + esc(t('Find in conversation…')) + '">' +
+          '<span class="byok-find-count">' + esc(fq ? `${matchCount}` : '') + '</span>' +
+          '<button type="button" class="softbtn byok-tb-btn" data-byok-find-close>×</button>' +
+          '</div>'
+        : '';
+
+      const quickStripHtml = !hasMsgs
+        ? '<div class="byok-quick-chips">' +
+          quickChips.map((q) => '<button type="button" class="softbtn byok-quick-chip" data-byok-starter="' + esc(q.prompt) + '">' + esc(q.label) + '</button>').join('') +
+          '</div>'
+        : '';
+
+      const wsNote = chatMode === 'local'
+        ? '<div class="byok-ws-sub" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <span data-i18n-user-content>' + esc(wsShort) + '</span></div>'
+        : '';
+
+      const footerSummary = active
+        ? `${active.platform.name} · ${active.model.displayName || active.model.name}`
+        : t('No model configured');
+
       host.innerHTML =
-        '<div class="byok-chat-shell">' +
-        '<aside class="byok-chat-rail">' +
-        '<button type="button" class="accentbtn byok-new-chat" data-byok-new-chat data-pc-i18n>+ ' + esc(t('New Chat')) + '</button>' +
-        '<input type="search" class="search byok-rail-search" data-byok-rail-search value="' + esc(chatSearch) + '" placeholder="' + esc(t('Search conversations')) + '">' +
-        '<div class="byok-rail-list" data-byok-rail-list></div>' +
+        '<div class="byok-chat-shell' + (railCollapsed ? ' is-rail-collapsed' : '') + '">' +
+        '<aside class="byok-chat-rail"' + (railCollapsed ? ' hidden' : '') + '>' +
+        '<div class="byok-rail-head">' +
+        '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('WORKSPACE')) + '</span>' +
+        '<button type="button" class="accentbtn byok-new-chat" data-byok-new-chat data-pc-i18n>+ ' + esc(t('NEW CHAT')) + '</button>' +
+        '</div>' +
+        '<div class="byok-rail-tabs" role="tablist">' +
+        '<button type="button" role="tab" class="byok-rail-tab' + (railTab === 'chats' ? ' active' : '') + '" data-rail-tab="chats" aria-selected="' + (railTab === 'chats' ? 'true' : 'false') + '">' + esc(t('Chats')) + ' <span class="byok-tab-count">' + activeChatCount + '</span></button>' +
+        '<button type="button" role="tab" class="byok-rail-tab' + (railTab === 'config' ? ' active' : '') + '" data-rail-tab="config" aria-selected="' + (railTab === 'config' ? 'true' : 'false') + '">' + esc(t('Model & API')) + '</button>' +
+        '</div>' +
+        '<div class="byok-rail-body">' + renderSidebarTabHtml() + '</div>' +
+        '<div class="byok-rail-footer">' +
+        '<span class="byok-health-dot" data-health="' + esc(active?.model.healthStatus?.status || 'unknown') + '"></span>' +
+        '<span class="byok-rail-footer-name" data-i18n-user-content title="' + esc(footerSummary) + '">' + esc(footerSummary) + '</span>' +
+        '<button type="button" class="softbtn byok-config-btn" data-byok-open-config>CONFIG</button>' +
+        '</div>' +
         '</aside>' +
-        '<div class="byok-chat-stage">' + mainHtml + '</div>' +
+
+        '<div class="byok-chat-stage">' +
+        '<header class="byok-stage-topbar">' +
+        '<div class="byok-stage-top-left">' +
+        '<button type="button" class="softbtn byok-tb-btn byok-rail-toggle-btn" data-byok-toggle-rail title="' + esc(t('Toggle sidebar')) + '" aria-label="' + esc(t('Toggle sidebar')) + '">☰</button>' +
+        '<div class="byok-chat-title" data-i18n-user-content dir="auto">' + esc(activeChat?.title || t('New Chat')) + '</div>' +
+        '<div class="byok-mode-switch compact" role="group">' +
+        '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
+        '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        '</div>' +
+        renderModelSelectorHtml(true) +
+        '<button type="button" class="byok-tools-pill" data-byok-toggle-drawer title="' + esc(t('Toggle Tools & Context')) + '">' +
+        '<span class="byok-status-dot ' + (st.bridge_connected ? 'ok' : 'warn') + '"></span>' +
+        '<span>' + toolCount + ' ' + esc(t('tools')) + '</span>' +
+        '</button>' +
+        '</div>' +
+        '<div class="byok-topbar-actions">' +
+        '<button type="button" class="softbtn byok-tb-btn' + (findOpen ? ' active' : '') + '" data-byok-find>' + esc(t('FIND')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn' + (drawerOpen ? ' active' : '') + '" data-byok-toggle-drawer>' + esc(t('TOOLS')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn" data-byok-export>' + esc(t('EXPORT')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn" data-byok-clear>' + esc(t('CLEAR')) + '</button>' +
+        '</div></header>' +
+        findBarHtml +
+        centerBodyHtml +
+        '<div class="byok-stage-foot">' +
+        quickStripHtml +
+        renderComposerHtml(hasMsgs) +
+        wsNote +
+        '</div></div>' +
+
         '<aside class="byok-drawer" data-byok-drawer' + (drawerOpen ? '' : ' hidden') + '>' +
-        '<div class="byok-drawer-tabs"><button type="button" class="softbtn" data-drawer-tab="files" data-pc-i18n>' + esc(t('Files')) + '</button>' +
-        '<button type="button" class="softbtn" data-drawer-tab="changes" data-pc-i18n>' + esc(t('Changes')) + '</button></div>' +
+        '<div class="byok-drawer-head">' +
+        '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('TOOLS & CONTEXT')) + '</span>' +
+        '<button type="button" class="softbtn byok-tb-btn" data-byok-toggle-drawer aria-label="' + esc(t('Close')) + '">×</button>' +
+        '</div>' +
+        '<div class="byok-drawer-stats" data-byok-drawer-stats data-i18n-user-content></div>' +
+        '<div class="byok-drawer-tabs">' +
+        '<button type="button" class="softbtn" data-drawer-tab="tools" data-pc-i18n>' + esc(t('Tools')) + '</button>' +
+        '<button type="button" class="softbtn" data-drawer-tab="files" data-pc-i18n>' + esc(t('Files')) + '</button>' +
+        '<button type="button" class="softbtn" data-drawer-tab="changes" data-pc-i18n>' + esc(t('Changes')) + '</button>' +
+        '</div>' +
         '<div class="byok-drawer-body" data-byok-drawer-body></div>' +
         '</aside></div>';
 
@@ -625,11 +1613,74 @@ const PlazCodeByokChatUI = (() => {
         const nextInput = host.querySelector('[data-byok-input]');
         if (nextInput) nextInput.value = draftVal;
       }
-      renderChatRail();
+      if (railTab === 'config') {
+        const sbWrap = host.querySelector('[data-byok-sb-config]');
+        if (sbWrap && sbForm) {
+          bindModelFormControls(sbWrap, sbForm, 'sb', async () => {
+            await loadPlatforms();
+          });
+        }
+      } else {
+        renderChatRail();
+      }
       renderDrawer();
       const msgBox = host.querySelector('[data-byok-messages]');
-      if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+      if (msgBox) {
+        const firstMatch = fq ? msgBox.querySelector('.is-find-match') : null;
+        if (firstMatch) firstMatch.scrollIntoView({ block: 'center' });
+        else msgBox.scrollTop = msgBox.scrollHeight;
+      }
       localizeNode(host);
+    };
+
+    const runSlashAction = (cmd) => {
+      slashOpen = false;
+      const c = cmd.trim().toLowerCase();
+      if (c === '/clear') {
+        activeChat = null;
+        attachments = [];
+        stagedSkillFolders = [];
+        activeRunId = null;
+        renderChatPage();
+      } else if (c === '/tools') {
+        drawerOpen = !drawerOpen;
+        if (drawerOpen) drawerTab = 'tools';
+        renderChatPage();
+      } else if (c === '/model') {
+        renderChatPage();
+        openAddModelModal();
+      } else if (c === '/plan') {
+        planMode = !planMode;
+        opts.patchPref('rsPlanMode', planMode);
+        renderChatPage();
+      } else if (c === '/roblox') {
+        chatMode = 'roblox';
+        opts.patchPref('rsByokChatMode', 'roblox');
+        renderChatPage();
+      } else if (c === '/agent') {
+        chatMode = 'local';
+        opts.patchPref('rsByokChatMode', 'local');
+        renderChatPage();
+      } else if (c === '/export') {
+        exportActiveChat();
+        renderChatPage();
+      }
+    };
+
+    const exportActiveChat = () => {
+      const msgs = activeChat?.messages || [];
+      const title = activeChat?.title || 'PlazCode Direct Chat';
+      const md = ['# ' + title, ''].concat(
+        msgs.map((m) => `## ${m.role === 'user' ? 'User' : (m.modelLabel || 'Assistant')}\n\n${m.content || ''}\n`)
+      ).join('\n');
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          navigator.clipboard.writeText(md).catch(() => {});
+        }
+      } catch {}
+      streamInfo = msgs.length
+        ? t('Copied conversation Markdown ({count} messages) to clipboard.', { count: msgs.length })
+        : t('No messages to export yet.');
     };
 
     const sendChatMessage = async (textOverride) => {
@@ -637,6 +1688,11 @@ const PlazCodeByokChatUI = (() => {
       const input = host?.querySelector('[data-byok-input]');
       const text = (textOverride !== undefined ? textOverride : input?.value || '').trim();
       if (!text && !attachments.length && !stagedSkillFolders.length) return;
+      if (text.startsWith('/') && SLASH_COMMANDS.some((s) => s.cmd === text.toLowerCase())) {
+        if (input) input.value = '';
+        runSlashAction(text);
+        return;
+      }
       if (activeRunId) return;
 
       lastUserPrompt = text;
@@ -662,6 +1718,7 @@ const PlazCodeByokChatUI = (() => {
         });
       }
       if (input) input.value = '';
+      slashOpen = false;
       attachments = [];
       stagedSkillFolders = [];
       streamText = '';
@@ -786,330 +1843,8 @@ const PlazCodeByokChatUI = (() => {
     };
 
     // =========================================================================
-    // Model & API Key Manager (#byokModelsPanel) + Modals
+    // Model & API Key Manager (#byokModelsPanel)
     // =========================================================================
-    const openModal = (innerHtml, onBind) => {
-      const root = ensureModalRoot();
-      if (!root) return;
-      root.innerHTML = '<div class="byok-modal-backdrop"><div class="byok-modal settingcard" role="dialog" aria-modal="true">' + innerHtml + '</div></div>';
-      root.hidden = false;
-      localizeNode(root);
-      onBind(root);
-    };
-
-    const closeModal = () => {
-      if (!modalRoot) return;
-      modalRoot.hidden = true;
-      modalRoot.innerHTML = '';
-    };
-
-    const openAddModelModal = (preselectPlatform) => {
-      let selectedPresetId = preselectPlatform?.presetId || 'openai';
-      let discoveredList = [];
-
-      const render = () => {
-        const preset = presets.find((p) => p.id === selectedPresetId) || presets[0] || {
-          id: 'openai',
-          name: 'OpenAI',
-          defaultEndpoint: 'https://api.openai.com',
-          defaultRequestApi: 'chat_completions',
-          requiresKey: true,
-          defaultModels: ['gpt-4o'],
-        };
-        const epDefault = preselectPlatform ? preselectPlatform.endpointUrl : preset.defaultEndpoint;
-        const fuDefault = preselectPlatform ? preselectPlatform.fullUrl : false;
-        const suggestModels = discoveredList.length ? discoveredList : (preset.defaultModels || []);
-
-        openModal(
-          '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Add Model')) + '</h3><button type="button" class="softbtn" data-modal-close>×</button></div>' +
-          '<div class="byok-form-grid">' +
-          '<label class="byok-field"><span data-pc-i18n>' + esc(t('Model Platform')) + '</span>' +
-          '<input type="text" class="byok-plat-search" data-am-plat-filter placeholder="' + esc(t('Search platform…')) + '"' + (preselectPlatform ? ' disabled' : '') + '>' +
-          '<select data-am-preset' + (preselectPlatform ? ' disabled' : '') + '>' +
-          presets.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === selectedPresetId ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') +
-          '</select></label>' +
-          '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('API Endpoint')) + '</span>' +
-          '<label class="byok-inline-toggle"><input type="checkbox" data-am-fullurl' + (fuDefault ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label></div>' +
-          '<input type="text" data-am-endpoint dir="ltr" value="' + esc(epDefault) + '" placeholder="https://api.openai.com">' +
-          '<small class="byok-url-preview" data-am-url-preview dir="ltr"></small></label>' +
-          '<label class="byok-field"><span data-pc-i18n>' + esc(t('API Key')) + '</span>' +
-          '<textarea rows="2" data-am-keys dir="ltr" placeholder="' + esc(preselectPlatform ? t('Leave empty to keep existing keys, or paste additional keys') : t('sk-... (one per line or comma-separated)')) + '"></textarea>' +
-          '<small class="byok-hint" data-pc-i18n>' + esc(t('Supports multiple API keys (one per line or comma-separated) with automatic rotation on rate limits.')) + '</small></label>' +
-          '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('Model Name')) + '</span>' +
-          '<button type="button" class="softbtn" data-am-discover data-pc-i18n>' + esc(t('Discover')) + '</button></div>' +
-          '<input type="text" data-am-model dir="ltr" value="' + esc(suggestModels[0] || '') + '" placeholder="gpt-4o">' +
-          '<div class="byok-discover-chips" data-am-chips>' + suggestModels.slice(0, 8).map((m) => '<button type="button" class="softbtn byok-chip" data-pick-model="' + esc(m) + '">' + esc(m) + '</button>').join('') + '</div></label>' +
-          '<div class="byok-two-col">' +
-          '<label class="byok-field"><span data-pc-i18n>' + esc(t('Vision input')) + '</span><select data-am-vision><option value="auto">Auto</option><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select></label>' +
-          '<label class="byok-field"><span data-pc-i18n>' + esc(t('OpenAI request API')) + '</span><select data-am-api><option value="auto">Auto</option><option value="chat_completions">Chat Completions (/chat/completions)</option><option value="responses">Responses (/responses)</option><option value="anthropic">Anthropic (/messages)</option><option value="gemini">Gemini (:generateContent)</option></select></label>' +
-          '</div>' +
-          '<div class="byok-modal-err" data-am-err hidden></div>' +
-          '</div>' +
-          '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
-          '<button type="button" class="accentbtn" data-am-save data-pc-i18n>' + esc(t('Save')) + '</button></div>',
-          (root) => {
-            const filterEl = root.querySelector('[data-am-plat-filter]');
-            const presetSel = root.querySelector('[data-am-preset]');
-            const epInput = root.querySelector('[data-am-endpoint]');
-            const fuCheck = root.querySelector('[data-am-fullurl]');
-            const keysInput = root.querySelector('[data-am-keys]');
-            const modelInput = root.querySelector('[data-am-model]');
-            const visionSel = root.querySelector('[data-am-vision]');
-            const apiSel = root.querySelector('[data-am-api]');
-            const previewEl = root.querySelector('[data-am-url-preview]');
-            const chipsEl = root.querySelector('[data-am-chips]');
-            const errEl = root.querySelector('[data-am-err]');
-
-            const updateUrlPreview = () => {
-              if (!previewEl || !epInput || !fuCheck || !apiSel || !modelInput) return;
-              const u = previewTargetUrl(epInput.value, fuCheck.checked, apiSel.value, selectedPresetId, modelInput.value);
-              previewEl.textContent = u ? '→ ' + u : '';
-            };
-
-            const bindChips = () => {
-              chipsEl?.querySelectorAll('[data-pick-model]').forEach((b) => {
-                (b).onclick = () => {
-                  if (modelInput) modelInput.value = b.getAttribute('data-pick-model') || '';
-                  updateUrlPreview();
-                };
-              });
-            };
-            bindChips();
-            updateUrlPreview();
-
-            if (filterEl && presetSel) {
-              filterEl.oninput = () => {
-                const q = filterEl.value.trim().toLowerCase();
-                const matches = presets.filter((p) => !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
-                presetSel.innerHTML = matches.map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>').join('');
-                if (matches.length && !matches.some((p) => p.id === selectedPresetId)) {
-                  selectedPresetId = matches[0].id;
-                  presetSel.value = selectedPresetId;
-                  presetSel.dispatchEvent(new Event('change'));
-                }
-              };
-            }
-
-            if (presetSel) {
-              presetSel.onchange = () => {
-                selectedPresetId = presetSel.value;
-                const p = presets.find((x) => x.id === selectedPresetId);
-                if (p && epInput) epInput.value = p.defaultEndpoint;
-                if (p && modelInput && p.defaultModels.length) modelInput.value = p.defaultModels[0];
-                if (p && chipsEl) {
-                  chipsEl.innerHTML = (p.defaultModels || []).map((m) => '<button type="button" class="softbtn byok-chip" data-pick-model="' + esc(m) + '">' + esc(m) + '</button>').join('');
-                  bindChips();
-                }
-                updateUrlPreview();
-              };
-            }
-
-            epInput?.addEventListener('input', updateUrlPreview);
-            fuCheck?.addEventListener('change', updateUrlPreview);
-            apiSel?.addEventListener('change', updateUrlPreview);
-            modelInput?.addEventListener('input', updateUrlPreview);
-
-            root.querySelectorAll('[data-modal-close]').forEach((b) => {
-              (b).onclick = closeModal;
-            });
-
-            const discBtn = root.querySelector('[data-am-discover]');
-            if (discBtn) {
-              discBtn.onclick = async () => {
-                discBtn.disabled = true;
-                if (errEl) errEl.hidden = true;
-                try {
-                  const res = await opts.api('/api/byok/models/discover', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      platformId: preselectPlatform?.id,
-                      presetId: selectedPresetId,
-                      endpointUrl: epInput?.value || '',
-                      fullUrl: fuCheck?.checked || false,
-                      apiKeys: parseMultiKeys(keysInput?.value || ''),
-                      requestApi: apiSel?.value || 'auto',
-                    }),
-                  });
-                  if (res && res.ok && Array.isArray(res.models)) {
-                    discoveredList = res.models;
-                    if (chipsEl) {
-                      chipsEl.innerHTML = discoveredList.slice(0, 12).map((m) => '<button type="button" class="softbtn byok-chip" data-pick-model="' + esc(m) + '">' + esc(m) + '</button>').join('');
-                      bindChips();
-                    }
-                    if (modelInput && !modelInput.value && discoveredList[0]) {
-                      modelInput.value = discoveredList[0];
-                      updateUrlPreview();
-                    }
-                  } else if (errEl) {
-                    errEl.hidden = false;
-                    errEl.textContent = res?.error?.message || 'Could not discover models.';
-                  }
-                } catch (e) {
-                  if (errEl) {
-                    errEl.hidden = false;
-                    errEl.textContent = e?.message || 'Discovery failed.';
-                  }
-                } finally {
-                  discBtn.disabled = false;
-                }
-              };
-            }
-
-            const saveBtn = root.querySelector('[data-am-save]');
-            if (saveBtn) {
-              saveBtn.onclick = async () => {
-                const modelName = modelInput?.value.trim() || '';
-                if (!modelName) {
-                  if (errEl) { errEl.hidden = false; errEl.textContent = t('Model Name is required.'); }
-                  return;
-                }
-                saveBtn.disabled = true;
-                try {
-                  await opts.api('/api/byok/platforms', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      id: preselectPlatform?.id,
-                      presetId: selectedPresetId,
-                      endpointUrl: epInput?.value.trim() || '',
-                      fullUrl: fuCheck?.checked || false,
-                      apiKeys: parseMultiKeys(keysInput?.value || ''),
-                      model: {
-                        name: modelName,
-                        visionMode: visionSel?.value || 'auto',
-                        requestApi: apiSel?.value || 'auto',
-                        enabled: true,
-                      },
-                    }),
-                  });
-                  closeModal();
-                  await loadPlatforms();
-                  const sec = opts.modelsHost?.closest('details.settings-section');
-                  if (sec && !sec.open) sec.open = true;
-                } catch (e) {
-                  if (errEl) { errEl.hidden = false; errEl.textContent = e?.message || 'Save failed.'; }
-                } finally {
-                  saveBtn.disabled = false;
-                }
-              };
-            }
-          }
-        );
-      };
-      render();
-    };
-
-    const openEditPlatformModal = (plat) => {
-      openModal(
-        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Edit Platform & API Keys')) + '</h3><button type="button" class="softbtn" data-modal-close>×</button></div>' +
-        '<div class="byok-form-grid">' +
-        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Platform Name')) + '</span><input type="text" data-ep-name value="' + esc(plat.name) + '"></label>' +
-        '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('API Endpoint')) + '</span>' +
-        '<label class="byok-inline-toggle"><input type="checkbox" data-ep-fullurl' + (plat.fullUrl ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label></div>' +
-        '<input type="text" data-ep-url dir="ltr" value="' + esc(plat.endpointUrl) + '"></label>' +
-        '<div class="byok-field"><span data-pc-i18n>' + esc(t('API Keys (Auto-rotates on 429)')) + '</span>' +
-        '<div class="byok-key-list">' +
-        (plat.apiKeyPreviews.length
-          ? plat.apiKeyPreviews.map((pv, i) =>
-              '<div class="byok-key-row"><span>#' + (i + 1) + '</span><code dir="ltr">' + esc(pv) + '</code>' +
-              '<button type="button" class="dangerbtn byok-rm-key" data-rm-key="' + i + '">×</button></div>'
-            ).join('')
-          : '<div class="byok-hint">' + esc(t('No API keys saved yet.')) + '</div>') +
-        '</div>' +
-        '<textarea rows="2" data-ep-add-keys dir="ltr" placeholder="' + esc(t('Add new key(s), one per line or comma-separated')) + '"></textarea></div>' +
-        '</div>' +
-        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
-        '<button type="button" class="accentbtn" data-ep-save data-pc-i18n>' + esc(t('Save')) + '</button></div>',
-        (root) => {
-          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
-          root.querySelectorAll('[data-rm-key]').forEach((b) => {
-            (b).onclick = async () => {
-              const idx = Number(b.getAttribute('data-rm-key'));
-              await opts.api('/api/byok/platforms', {
-                method: 'PUT',
-                body: JSON.stringify({ id: plat.id, removeKeyIndex: idx }),
-              });
-              await loadPlatforms();
-              const updated = platforms.find((p) => p.id === plat.id);
-              if (updated) openEditPlatformModal(updated);
-              else closeModal();
-            };
-          });
-          const saveBtn = root.querySelector('[data-ep-save]');
-          if (saveBtn) {
-            saveBtn.onclick = async () => {
-              const name = (root.querySelector('[data-ep-name]'))?.value.trim();
-              const endpointUrl = (root.querySelector('[data-ep-url]'))?.value.trim();
-              const fullUrl = (root.querySelector('[data-ep-fullurl]'))?.checked || false;
-              const addKeys = parseMultiKeys((root.querySelector('[data-ep-add-keys]'))?.value || '');
-              await opts.api('/api/byok/platforms', {
-                method: 'PUT',
-                body: JSON.stringify({ id: plat.id, name, endpointUrl, fullUrl, addKeys }),
-              });
-              closeModal();
-              await loadPlatforms();
-            };
-          }
-        }
-      );
-    };
-
-    const openConfigModelModal = (plat, m) => {
-      openModal(
-        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Configure Model')) + '</h3><button type="button" class="softbtn" data-modal-close>×</button></div>' +
-        '<div class="byok-form-grid">' +
-        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Model Name')) + '</span><input type="text" data-cm-name dir="ltr" value="' + esc(m.name) + '"></label>' +
-        '<label class="byok-field"><div class="byok-field-row"><span data-pc-i18n>' + esc(t('API Endpoint Override (optional)')) + '</span>' +
-        '<label class="byok-inline-toggle"><input type="checkbox" data-cm-fullurl' + ((m.fullUrl ?? plat.fullUrl) ? ' checked' : '') + '> <span data-pc-i18n>' + esc(t('Full URL')) + '</span></label></div>' +
-        '<input type="text" data-cm-ep dir="ltr" value="' + esc(m.endpointUrl || '') + '" placeholder="' + esc(plat.endpointUrl) + '"></label>' +
-        '<div class="byok-two-col">' +
-        '<label class="byok-field"><span data-pc-i18n>' + esc(t('Vision input')) + '</span><select data-cm-vision>' +
-        ['auto', 'enabled', 'disabled'].map((v) => '<option value="' + v + '"' + (m.visionMode === v ? ' selected' : '') + '>' + v + '</option>').join('') +
-        '</select></label>' +
-        '<label class="byok-field"><span data-pc-i18n>' + esc(t('OpenAI request API')) + '</span><select data-cm-api>' +
-        ['auto', 'chat_completions', 'responses', 'anthropic', 'gemini'].map((v) => '<option value="' + v + '"' + (m.requestApi === v ? ' selected' : '') + '>' + v + '</option>').join('') +
-        '</select></label>' +
-        '</div></div>' +
-        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
-        '<button type="button" class="accentbtn" data-cm-save data-pc-i18n>' + esc(t('Save')) + '</button></div>',
-        (root) => {
-          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
-          const saveBtn = root.querySelector('[data-cm-save]');
-          if (saveBtn) {
-            saveBtn.onclick = async () => {
-              const name = (root.querySelector('[data-cm-name]'))?.value.trim() || m.name;
-              const ep = (root.querySelector('[data-cm-ep]'))?.value.trim() || '';
-              const fu = (root.querySelector('[data-cm-fullurl]'))?.checked || false;
-              const visionMode = (root.querySelector('[data-cm-vision]'))?.value || 'auto';
-              const requestApi = (root.querySelector('[data-cm-api]'))?.value || 'auto';
-              await opts.api('/api/byok/platforms', {
-                method: 'PUT',
-                body: JSON.stringify({
-                  id: plat.id,
-                  model: { id: m.id, name, endpointUrl: ep, fullUrl: fu, visionMode, requestApi, enabled: m.enabled },
-                }),
-              });
-              closeModal();
-              await loadPlatforms();
-            };
-          }
-        }
-      );
-    };
-
-    const openDeleteConfirm = (title, onConfirm) => {
-      openModal(
-        '<div class="byok-modal-head"><h3 data-pc-i18n>' + esc(t('Confirm Delete')) + '</h3><button type="button" class="softbtn" data-modal-close>×</button></div>' +
-        '<p class="byok-confirm-text" data-i18n-user-content>' + esc(title) + '</p>' +
-        '<div class="byok-modal-foot"><button type="button" class="softbtn" data-modal-close data-pc-i18n>' + esc(t('Cancel')) + '</button>' +
-        '<button type="button" class="dangerbtn" data-del-ok data-pc-i18n>' + esc(t('Delete')) + '</button></div>',
-        (root) => {
-          root.querySelectorAll('[data-modal-close]').forEach((b) => { (b).onclick = closeModal; });
-          const ok = root.querySelector('[data-del-ok]');
-          if (ok) ok.onclick = async () => { ok.disabled = true; await onConfirm(); closeModal(); };
-        }
-      );
-    };
-
     const renderModelsPanel = () => {
       const host = opts.modelsHost;
       if (!host) return;
@@ -1201,6 +1936,7 @@ const PlazCodeByokChatUI = (() => {
             dropdownOpen = false;
             opts.patchPref('rsByokActiveModel', mid);
             opts.api('/api/byok/platforms', { method: 'PUT', body: JSON.stringify({ activeModelId: mid }) }).catch(() => {});
+            ensureSidebarForm(true);
             renderChatPage();
             return;
           }
@@ -1209,12 +1945,82 @@ const PlazCodeByokChatUI = (() => {
             opts.navigateToModels();
             return;
           }
-          if (target.closest('[data-byok-new-chat]')) {
+          if (target.closest('[data-byok-open-config]')) {
+            dropdownOpen = false;
+            const active = resolveActiveModel();
+            openAddModelModal(active?.platform);
+            return;
+          }
+          if (target.closest('[data-byok-toggle-rail]')) {
+            railCollapsed = !railCollapsed;
+            renderChatPage();
+            return;
+          }
+          const rTabBtn = target.closest('[data-rail-tab]');
+          if (rTabBtn) {
+            railTab = rTabBtn.getAttribute('data-rail-tab') === 'config' ? 'config' : 'chats';
+            if (railTab === 'config') ensureSidebarForm();
+            renderChatPage();
+            return;
+          }
+          const rFilterBtn = target.closest('[data-rail-filter]');
+          if (rFilterBtn) {
+            railFilter = rFilterBtn.getAttribute('data-rail-filter') === 'archived' ? 'archived' : 'active';
+            renderChatPage();
+            return;
+          }
+          const pinBtn = target.closest('[data-pin-chat]');
+          if (pinBtn) {
+            ev.stopPropagation();
+            const cid = pinBtn.getAttribute('data-pin-chat') || '';
+            if (pinnedChatIds.has(cid)) pinnedChatIds.delete(cid);
+            else pinnedChatIds.add(cid);
+            writeStorageSet('pc_byok_pinned_chats', pinnedChatIds);
+            renderChatRail();
+            return;
+          }
+          const archBtn = target.closest('[data-archive-chat]');
+          if (archBtn) {
+            ev.stopPropagation();
+            const cid = archBtn.getAttribute('data-archive-chat') || '';
+            if (archivedChatIds.has(cid)) archivedChatIds.delete(cid);
+            else archivedChatIds.add(cid);
+            writeStorageSet('pc_byok_archived_chats', archivedChatIds);
+            renderChatPage();
+            return;
+          }
+          if (target.closest('[data-byok-new-chat]') || target.closest('[data-byok-clear]')) {
             activeChat = null;
             attachments = [];
             stagedSkillFolders = [];
             activeRunId = null;
+            slashOpen = false;
             renderChatPage();
+            return;
+          }
+          if (target.closest('[data-byok-find]') || target.closest('[data-byok-find-close]')) {
+            findOpen = target.closest('[data-byok-find-close]') ? false : !findOpen;
+            if (!findOpen) findQuery = '';
+            renderChatPage();
+            if (findOpen) (chatHost.querySelector('[data-byok-find-input]'))?.focus();
+            return;
+          }
+          if (target.closest('[data-byok-export]')) {
+            exportActiveChat();
+            if (!activeChat && streamInfo) {
+              activeChat = { id: 'pending_' + Date.now(), title: 'New Chat', mode: chatMode, modelId: null, messages: [], modifiedFiles: [] };
+            }
+            renderChatPage();
+            return;
+          }
+          if (target.closest('[data-byok-slash]')) {
+            slashOpen = !slashOpen;
+            renderChatPage();
+            return;
+          }
+          const slashCmdBtn = target.closest('[data-slash-cmd]');
+          if (slashCmdBtn) {
+            runSlashAction(slashCmdBtn.getAttribute('data-slash-cmd') || '');
             return;
           }
           const delChatBtn = target.closest('[data-del-chat]');
@@ -1250,6 +2056,17 @@ const PlazCodeByokChatUI = (() => {
           const starter = target.closest('[data-byok-starter]');
           if (starter) {
             sendChatMessage(starter.getAttribute('data-byok-starter') || '');
+            return;
+          }
+          const prefillTool = target.closest('[data-prefill-tool]');
+          if (prefillTool) {
+            const name = prefillTool.getAttribute('data-prefill-tool') || '';
+            const inp = chatHost.querySelector('[data-byok-input]');
+            if (inp && name) {
+              const prefixText = `Use \`${name}\` to `;
+              inp.value = inp.value ? inp.value.trimEnd() + '\n' + prefixText : prefixText;
+              inp.focus();
+            }
             return;
           }
           const addSkillBtn = target.closest('[data-add-skill-folder]');
@@ -1308,7 +2125,8 @@ const PlazCodeByokChatUI = (() => {
           }
           const dTab = target.closest('[data-drawer-tab]');
           if (dTab) {
-            drawerTab = dTab.getAttribute('data-drawer-tab') === 'changes' ? 'changes' : 'files';
+            const nextTab = dTab.getAttribute('data-drawer-tab');
+            drawerTab = nextTab === 'changes' ? 'changes' : nextTab === 'files' ? 'files' : 'tools';
             if (drawerTab === 'files') loadFiles();
             else renderDrawer();
             return;
@@ -1380,14 +2198,53 @@ const PlazCodeByokChatUI = (() => {
           if (target.matches('[data-byok-rail-search]')) {
             chatSearch = target.value;
             renderChatRail();
+          } else if (target.matches('[data-byok-tool-search]')) {
+            toolQuery = target.value;
+            const pos = target.selectionStart;
+            renderDrawer();
+            const again = chatHost.querySelector('[data-byok-tool-search]');
+            if (again) {
+              again.focus();
+              if (pos !== null) try { again.setSelectionRange(pos, pos); } catch {}
+            }
           } else if (target.matches('[data-byok-file-search]')) {
             fileQuery = target.value;
             loadFiles();
+          } else if (target.matches('[data-byok-find-input]')) {
+            findQuery = target.value;
+            const pos = target.selectionStart;
+            renderChatPage();
+            const again = chatHost.querySelector('[data-byok-find-input]');
+            if (again) {
+              again.focus();
+              if (pos !== null) try { again.setSelectionRange(pos, pos); } catch {}
+            }
+          } else if (target.matches('[data-byok-input]')) {
+            const shouldSlash = target.value === '/';
+            if (shouldSlash !== slashOpen) {
+              slashOpen = shouldSlash;
+              const v = target.value;
+              const pos = target.selectionStart;
+              renderChatPage();
+              const again = chatHost.querySelector('[data-byok-input]');
+              if (again) {
+                again.value = v;
+                again.focus();
+                if (pos !== null) try { again.setSelectionRange(pos, pos); } catch {}
+              }
+            }
           }
         });
 
         chatHost.addEventListener('keydown', (ev) => {
           const target = ev.target;
+          if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'f' || ev.key === 'F')) {
+            ev.preventDefault();
+            findOpen = true;
+            renderChatPage();
+            (chatHost.querySelector('[data-byok-find-input]'))?.focus();
+            return;
+          }
           if (ev.key === 'Enter' && !ev.shiftKey && target?.matches('[data-byok-input]')) {
             ev.preventDefault();
             sendChatMessage();
@@ -1658,7 +2515,7 @@ const PlazCodeByokChatUI = (() => {
     const refresh = async () => {
       syncFromState();
       bindHostEvents();
-      await Promise.all([loadPlatforms(), loadChats()]);
+      await Promise.all([loadPlatforms(), loadChats(), loadSkills()]);
     };
 
     if (!initialized) {
@@ -1690,3 +2547,4 @@ const PlazCodeByokChatUI = (() => {
 
   return { mount };
 })();
+if (typeof module !== 'undefined') module.exports = PlazCodeByokChatUI;
