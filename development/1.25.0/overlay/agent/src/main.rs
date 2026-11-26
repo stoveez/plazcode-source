@@ -2081,17 +2081,17 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
     }
     (Err(anyhow::anyhow!("Immediate Stop interrupted the tool. Its result may be partial; inspect before retrying.")), None)
 }
-async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> (anyhow::Result<McpOutput>, Option<bool>) {
-    let inner = checkpoint_tool_inner_res(state, engine, id, name, &mut args).await;
+async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value) -> (anyhow::Result<McpOutput>, Option<bool>) {
+    let inner = checkpoint_tool_inner_res(state, engine, id, name, args).await;
     match inner {
         Ok((out, obs)) => (Ok(out), obs),
         Err(err) => (Err(err), None),
     }
 }
-async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, name: &str, args: &mut serde_json::Value) -> anyhow::Result<(McpOutput, Option<bool>)> {
+async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> anyhow::Result<(McpOutput, Option<bool>)> {
     if engine=="roblox" && name==luau_check::TOOL { return analyze_luau_tool(state,args.clone()).await.map(|out| (out, None)); }
     if engine=="roblox" && name==luau_service::LOOKUP_TOOL {
-        let result=tokio::time::timeout(std::time::Duration::from_secs(90),luau_service::lookup(state,args)).await.map_err(|_|anyhow::anyhow!("luau_lookup ran out of time while reading the place"))??;
+        let result=tokio::time::timeout(std::time::Duration::from_secs(90),luau_service::lookup(state,&args)).await.map_err(|_|anyhow::anyhow!("luau_lookup ran out of time while reading the place"))??;
         return Ok((McpOutput{text:result.to_string(),images:Vec::new()}, None));
     }
     if engine=="local" && name.contains("__") {
@@ -2111,7 +2111,7 @@ async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, nam
     }
     if id.is_empty() {
         return match engine {
-            "local" if name == "run_command" => match workspace::tool_run_command_observed(&state.workspace, args).await {
+            "local" if name == "run_command" => match workspace::tool_run_command_observed(&state.workspace, &args).await {
                 Ok((text, success)) => Ok((McpOutput { text, images: Vec::new() }, Some(success))),
                 Err(error) => Err(anyhow::Error::msg(error)),
             },
@@ -2122,7 +2122,7 @@ async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, nam
             _ => Err(anyhow::anyhow!("unknown engine")),
         };
     }
-    if safety::file_preview(engine, name, args) {
+    if safety::file_preview(engine, name, &args) {
         {
             let journal = checkpoints::STORE.lock().await;
             anyhow::ensure!(
@@ -2138,10 +2138,10 @@ async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, nam
         if name == "run_command" { args["_plazcode_checkpoint"] = serde_json::json!(id); }
         let paths = {
             let mut journal = checkpoints::STORE.lock().await;
-            journal.begin_local_tool(&state.workspace, id, name, args)?
+            journal.begin_local_tool(&state.workspace, id, name, &args)?
         };
         let (result, success) = if name == "run_command" {
-            match workspace::tool_run_command_observed(&state.workspace, args).await {
+            match workspace::tool_run_command_observed(&state.workspace, &args).await {
                 Ok((text, success)) => (Ok(McpOutput { text, images: Vec::new() }), success),
                 Err(error) => (Err(anyhow::Error::msg(error)), false),
             }
@@ -2154,7 +2154,7 @@ async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, nam
         };
         {
             let mut journal = checkpoints::STORE.lock().await;
-            if let Err(error) = journal.finish_local_tool(&state.workspace, id, name, args, &paths, success) {
+            if let Err(error) = journal.finish_local_tool(&state.workspace, id, name, &args, &paths, success) {
                 tracing::warn!("Could not finish local checkpoint for {id}: {error}");
             }
         }
@@ -2170,7 +2170,7 @@ async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, nam
     }
     let plan = {
         let mut journal = checkpoints::STORE.lock().await;
-        journal.begin_roblox_tool(&state.workspace, id, name, args)?
+        journal.begin_roblox_tool(&state.workspace, id, name, &args)?
     };
     if plan.read_only || plan.uncheckpointed_mutation {
         return roblox_tool(state, name, args.clone()).await.map(|out| (out, None));

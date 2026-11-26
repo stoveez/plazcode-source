@@ -173,7 +173,7 @@ html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(#page-hom
 html[data-desktop-thinking=ultracode]:not([data-theme-tone=light]) :is(.pz-brand-logo,.pz-glide){border-color:rgba(255,255,255,.78)!important}
 html[data-desktop-thinking=ultracode][data-look-rainbow] .pz-glide{animation:none!important}
 html[data-desktop-thinking=ultracode] #page-home.active #homeStartAgent{color:#181b22!important;border-color:rgba(255,255,255,.88)!important;box-shadow:0 0 calc(22px * var(--pz-g,1)) rgba(255,255,255,.24),0 0 calc(12px * var(--pz-g,1)) rgba(210,246,255,.18)}
-html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home.active .hero-agent::before{opacity:.94}
+html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home.active .hero-agent::before{opacity:1}
 html[data-desktop-thinking=ultracode]:not([data-desktop-gradients=off]) #page-home.active #homeStartAgent::before{opacity:.96}
 html[data-desktop-thinking=ultracode][data-desktop-glow=off] :is(.hero-agent,.pc-effort-trigger,select[data-pref=rsThinkingLevel],#homeStartAgent,.explorer-layout,.pz-brand-logo,.pz-glide){animation:none!important;box-shadow:none!important}
 html[data-desktop-thinking=ultracode][data-desktop-gradients=off] :is(.hero-agent,#homeStartAgent)::before{animation:none!important}
@@ -4191,7 +4191,7 @@ __PLAZCODE_BACKDROP_FX__
     }
     function View(Name){Mode=Name;Byid('profileGuest').hidden=Boolean(ActiveDeviceBan)||Name==='remove';Host.querySelectorAll('[data-profile-view]').forEach(function(Node){Node.hidden=Node.dataset.profileView!==Name;});Feedback.textContent='';}
     function Say(Error){Feedback.textContent=Error&&Error.message||String(Error||'');Status.textContent='';}
-    function Lock(Value){Busy=Value;Host.setAttribute('aria-busy',String(Value));Host.querySelectorAll('button:not([data-ipc]),input').forEach(function(Node){Node.disabled=Value;});if(!Value&&!Host.hidden&&!Host.contains(document.activeElement)){var Target=Mode==='credentials'?Password:Mode==='remove'?Byid('profileRemoveCancel'):Byid(Selected?'profileLogin':'profileCreate');if(Target)Target.focus();}}
+    function Lock(Value){Busy=Value;Host.setAttribute('aria-busy',String(Value));Host.querySelectorAll('button:not([data-ipc]),input').forEach(function(Node){Node.disabled=Value;});if(!Value&&!Host.hidden&&(!Host.contains(document.activeElement)||document.activeElement===Byid('profileSubmit'))){var Target=Mode==='credentials'?Password:Mode==='remove'?Byid('profileRemoveCancel'):Byid(Selected?'profileLogin':'profileCreate');if(Target)Target.focus();}}
     function Render(){
       List.textContent='';Actions.hidden=!Selected;Heading.textContent=T(Profiles.length?'Welcome back':'Welcome to PlazCode');Subtitle.textContent=T('Choose your profile to continue.');
       if(!Profiles.length){var Empty=document.createElement('div');Empty.className='pc-signin-empty';Empty.textContent=T('Create your first profile to get started.');List.appendChild(Empty);}

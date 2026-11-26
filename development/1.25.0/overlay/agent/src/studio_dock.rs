@@ -2652,7 +2652,7 @@ mod tests {
         assert_eq!(val["dock_pos"]["dx"], 85);
         assert_eq!(val["dock_hotkey"], "Alt+Space");
         assert!(val["hotkeyError"].is_null());
-        assert_eq!(val["providers"].as_array().unwrap().len(), 19);
+        assert_eq!(val["providers"].as_array().unwrap().len(), 18);
 
         let reset = position_handler(
             State(state.clone()),

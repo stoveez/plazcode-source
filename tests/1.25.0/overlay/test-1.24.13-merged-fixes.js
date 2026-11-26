@@ -19,7 +19,7 @@ assert.match(py,/plazcode_blender_shot_\{os\.getpid\(\)\}_\{time\.time_ns\(\)\}\
 // Dashboard: Connected only when the editor link is up.
 const html=fs.readFileSync('agent/src/desktop.html','utf8');
 assert.match(html,/var Studio = State\.roblox_connected===true;/);assert(!html.includes('var Studio = !!State.studio_running && !!State.mcp_alive;'));
-assert.match(html,/Byid\("studioVal"\)\.textContent = Studio \? "Connected" : State\.studio_running \? "Open" : "Offline";/);
+assert.match(html,/(?:Byid\("studioVal"\)\.textContent =|SetText\(Byid\("studioVal"\),)\s*Studio \? "Connected" : State\.studio_running \? "Open" : "Offline"\)?;/);
 // Release files: launcher, SOURCE.txt and Firefox copy come from this source; SHA256SUMS recomputed.
 const version=JSON.parse(fs.readFileSync('manifest.json','utf8')).version;
 const pack=fs.readFileSync('../../development/'+version+'/package.py','utf8');

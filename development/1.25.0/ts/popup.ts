@@ -19,7 +19,7 @@ function applyPopupAppearance(value: PopupAppearance | null | undefined): void {
  root.dataset.studio='';root.dataset.motion=value?.motion&&['full','reduced','off'].includes(value.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
  const isLight=!cm&&popupAppearance.theme==='paper-light';
  root.dataset.themeTone=isLight?'light':'dark';
- root.toggleAttribute('data-custom',!!cm);
+ if(cm)root.setAttribute('data-custom','');else if(typeof root.removeAttribute==='function')root.removeAttribute('data-custom');
  const vars: Record<string, string>={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':isLight?'#171a20':'#eef4ff','--text-dim':light,'--text-faint':isLight?'#4a505c':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
  for(const [key,val]of Object.entries(vars))root.style.setProperty(key,val);
  try{if(typeof PlazCodeVersion!=='undefined'&&document.getElementById('ver'))renderPopupVersion(popupReleaseStatus);}catch{}

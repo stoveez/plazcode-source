@@ -3456,9 +3456,9 @@ return result`;
   async function runTool(call: any): Promise<any> {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
-    if(stalled){reportCommandTelemetry(call&&call.tool,false,String(stalled).length);return stalled;}
+    if(stalled){if(typeof reportCommandTelemetry==="function")reportCommandTelemetry(call&&call.tool,false,String(stalled).length);return stalled;}
     if(A.helper&&A.helper.sent)helperBeat(call&&call.tool);
-    if(call&&typeof call==="object"&&!TOOL_TELEMETRY.has(call))TOOL_TELEMETRY.set(call,{});
+    if(typeof TOOL_TELEMETRY!=="undefined"&&call&&typeof call==="object"&&!TOOL_TELEMETRY.has(call))TOOL_TELEMETRY.set(call,{});
     let timer: any,drainTimer: any,settled=false,draining=false,drainReleased=false;
     const operation: Promise<any>=runToolImpl(call).finally(()=>{if(drainTimer!==undefined)clearTimeout(drainTimer);settled=true;if(draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);}});
     const stop=new Promise<string>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;drainTimer=setTimeout(()=>{if(!settled&&draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);if(typeof diag==="function")diag("hang.toolSettleTimeout",{via:"runTool"});}},15000);}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
@@ -3470,10 +3470,10 @@ return result`;
       if(typeof out==="string"&&typeof accessBanner==="function"&&/^ERROR|TIMED OUT/.test(out))accessBanner(call&&call.tool,out); // tell the user why the PC refused
       if(A.stallGuard&&typeof out==="string"){if(!/stopped by the user|waiting for cancellation|Immediate Stop|offline|not connected/i.test(out.slice(0,200)))A.stallGuard.after(call,!/^ERROR/.test(out));}
       const userStopped=!!A.stop||(typeof out==="string"&&(/^\(stopped by user\)/i.test(out)||/stopped by the user|waiting for cancellation|Immediate Stop requested/i.test(out.slice(0,200))));
-      if(!userStopped){
-        const meta=call&&typeof call==="object"?TOOL_TELEMETRY.get(call):null;
+      if(!userStopped&&typeof reportCommandTelemetry==="function"){
+        const meta=typeof TOOL_TELEMETRY!=="undefined"&&call&&typeof call==="object"?TOOL_TELEMETRY.get(call):null;
         if(!meta||(!meta.bridgeRecorded&&!meta.delegated)){
-          const failed=typeof out==="string"?feedbackIsError(out):false;
+          const failed=typeof out==="string"&&typeof feedbackIsError==="function"?feedbackIsError(out):false;
           if(!(meta?.silent&&!failed)){
             let argBytes=0;
             try{argBytes=JSON.stringify(call&&call.arguments!=null?call.arguments:{}).length;}catch{}
@@ -3507,7 +3507,7 @@ return result`;
       return PlazCodeToolGuard.check(call,A.toolList).map((e: string)=>'E_ARGUMENT calls['+i+']: '+e+' Put argument fields in this entry\'s params object.');
     });
     if(errors.length)return "ERROR: no batch command ran. "+errors.join("; ");
-    if(batchCall)markToolTelemetry(batchCall,{delegated:true});
+    if(batchCall && typeof markToolTelemetry === "function")markToolTelemetry(batchCall,{delegated:true});
     const owner={chat:P.conversationKey(),session:A.sessionGen,engine:activeEngine()},results: Array<Record<string, any>>=[];
     const live=()=>!A.stop && owner.chat===P.conversationKey() && owner.session===A.sessionGen && owner.engine===activeEngine();
     const images: any[]=[];
@@ -3652,11 +3652,13 @@ return result`;
   async function captureShots(target: string,options: Record<string, any>={}) {
     const shots: any[] = [];
     const notes: string[] = [];
+    let bridgeRecorded = false;
     const tryMcp = async (toolName: string, label: string) => {
       try {
         const r = await bg({ type: "call_tool", name: toolName, arguments: label === "studio" && options.studio_id != null ? {studio_id:options.studio_id} : {}, engine: label === "studio" ? "roblox" : undefined, timeout: options.timeout || 45000, checkpoint_id: label === "studio" && activeEngine() !== "roblox" ? undefined : options.checkpointId || undefined });
-        if (r && r.telemetry_recorded === true && typeof options.onBridgeRecorded === "function") {
-          options.onBridgeRecorded();
+        if (r && r.telemetry_recorded === true) {
+          bridgeRecorded = true;
+          if (typeof options.onBridgeRecorded === "function") options.onBridgeRecorded();
         }
         if (r && r.ok && r.images && r.images.length) {
           shots.push(...r.images);
@@ -3688,7 +3690,7 @@ return result`;
         notes.push("tab: " + String((e && (e as Error).message) || e).slice(0, 160));
       }
     }
-    return { shots, notes };
+    return { shots, notes, bridgeRecorded };
   }
 
   async function runToolImpl(call: any): Promise<any> {
@@ -3941,7 +3943,7 @@ return result`;
       return `ERROR in ${name}: ${(r && r.error) || "fetch failed"}\nTry a different URL/query.`;
     }
     if (bareName === "developer_product_create" || bareName === "devproduct_create") {
-      return await createDeveloperProduct(args, () => markToolTelemetry(call, { delegated: true }));
+      return await createDeveloperProduct(args, () => { if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true }); });
     }
     if (bareName === "developer_product_list" || bareName === "devproduct_list") {
       return await listDeveloperProducts(args);
@@ -3978,7 +3980,8 @@ return result`;
       // nothing (a typo used to read as "Studio MCP + tab capture both failed").
       const rawTarget = String(args.target || args.source || "auto").toLowerCase();
       const target = /^(auto|studio|roblox|viewport|blender|tab|chat|page|self)$/.test(rawTarget) ? rawTarget : "auto";
-      const { shots, notes } = await captureShots(target, { studio_id: args.studio_id, onBridgeRecorded: () => markToolTelemetry(call, { bridgeRecorded: true }) });
+      const { shots, notes, bridgeRecorded } = await captureShots(target, {studio_id: args.studio_id});
+      if (bridgeRecorded && typeof markToolTelemetry === "function") markToolTelemetry(call, { bridgeRecorded: true });
       if (!shots.length) {
         return "ERROR: plazcode_screenshot captured nothing. " + (notes.join(" | ") || "Studio MCP screen_capture and tab capture both failed.") + " Connect Studio MCP or pass {\"target\":\"tab\"}.";
       }
@@ -4091,7 +4094,8 @@ return result`;
       } else {
         const source = String(args.source || args.target || "recent").toLowerCase();
         if (source && source !== "recent" && source !== "last") {
-          const { shots, notes } = await captureShots(source, { onBridgeRecorded: () => markToolTelemetry(call, { bridgeRecorded: true }) });
+          const { shots, notes, bridgeRecorded } = await captureShots(source);
+          if (bridgeRecorded && typeof markToolTelemetry === "function") markToolTelemetry(call, { bridgeRecorded: true });
           if (shots.length) { rememberImages(shots, "attach_feedback:" + source); where = "fresh " + source + " capture"; }
           else if (!A.recentImages.length) {
             return "ERROR: nothing to attach — the fresh capture failed (" + (notes.join(" | ") || "no image") + ") and no earlier capture is remembered.";
@@ -4371,7 +4375,6 @@ return result`;
   }
 
   let chatCreatorInserter: any;
-  let activeCreateDelegate: (() => void) | null = null;
   async function insertChatCreation(args: any, onDelegate?: () => void) {
     if (activeEngine() !== "roblox") return {ok:false,error:"Creator insertion requires the active RobloxScript engine."};
     if (PlazCodeChatCreators.previewOnly(A.taskRequest)) return {ok:false,error:"This request is preview-only. The saved draft was not inserted into Studio."};
@@ -4379,12 +4382,12 @@ return result`;
       context: () => JSON.stringify([P.id,P.conversationKey(),activeEngine(),A.sessionGen]),
       allowed: () => A.started && activeEngine() === "roblox" && !A.stop && !A.stopping && !A.pendingToolSettles,
       read: (build_id: unknown) => bg({type:"creations",request:{action:"read",build_id}}),
-      execute: (compiled: any) => runImportedStudioProgram(compiled.code, activeCreateDelegate || undefined)
+      execute: (compiled: any) => runImportedStudioProgram(compiled.code, (insertChatCreation as any)._delegate || undefined)
     });
-    const prev = activeCreateDelegate;
-    activeCreateDelegate = onDelegate || null;
+    const prev = (insertChatCreation as any)._delegate || null;
+    (insertChatCreation as any)._delegate = onDelegate || null;
     try { return await chatCreatorInserter.insert(args); }
-    finally { activeCreateDelegate = prev; }
+    finally { (insertChatCreation as any)._delegate = prev; }
   }
 
   // Add-on tools (server__tool) can run for minutes, e.g. robloxstudio-mcp
@@ -4458,7 +4461,7 @@ return result`;
   }
 
   const importedNames = new Set(importedRobloxTools().map((tool) => tool.name));
-  if (importedNames.has(name)) return runImportedRobloxTool(name, args, () => markToolTelemetry(call, { delegated: true }));
+  if (importedNames.has(name)) return runImportedRobloxTool(name, args, () => { if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true }); });
 
   // ── Virtual animation tools ──────────────────────────────────────────
     // Create/edit Roblox animation KEYFRAME DATA (KeyframeSequence/Keyframe/
@@ -4473,17 +4476,17 @@ return result`;
       }
       const built = RSAnim.buildLuau(op, args);
       if (built.err) return built.err;
-      markToolTelemetry(call, { delegated: true });
+      if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true });
       return await runTool({ tool: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" } });
     }
     // ── Blender FBX → Studio (real import, not the watch-folder stub) ──
     if (name === "asset_bridge_import" || bareName === "asset_bridge_import") {
-      return await runAssetBridgeImport(args, () => markToolTelemetry(call, { delegated: true }));
+      return await runAssetBridgeImport(args, () => { if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true }); });
     }
     // ── Virtual Studio Skills (Lighting, UI, FX, Audio, Terrain, Camera, Diagnostics) ──
     if (typeof AgentScriptSkills !== "undefined" && AgentScriptSkills.SKILL_OPS.includes(name)) {
       return await AgentScriptSkills.run(name, args, (inner: any) => {
-        markToolTelemetry(call, { delegated: true });
+        if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true });
         return runTool(inner);
       });
     }
@@ -4502,7 +4505,7 @@ return result`;
       const readOnlySkill = !PlazCodeSafety.isChange(name, "studio");
       const inner = { tool: "execute_luau", arguments: Object.assign({ code: built.code, datamodel_type: "Edit" }, readOnlySkill ? { _orNoTxn: true } : {}) };
       if (readOnlySkill) TRUSTED_READS.add(inner);
-      markToolTelemetry(call, { delegated: true });
+      if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true });
       const res = await runTool(inner);
       const ok = !String(res||"").startsWith("ERROR") && !String(res||"").includes("ERROR in execute_luau");
       try { persistSession(name, args, ok); if(ok){ bumpPerf(name); showSuggestion(name); // update perf from audit if available
@@ -4526,7 +4529,7 @@ return result`;
         return "ERROR calling '" + name + "': Blender is not connected. Tell the user to open PlazCode, go to Apps & servers and connect Blender (it takes one click and works in RobloxScript and AgentScript).";
       }
       if (bareName === "blender_send_to_studio") {
-        return await runAssetBridgeImport(args, () => markToolTelemetry(call, { delegated: true }));
+        return await runAssetBridgeImport(args, () => { if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true }); });
       }
       const timeout = /^(?:get_scene_info|blender_get_scene_info)$/.test(bareName) ? 8000 : 120000;
       let capTimer;
@@ -4541,7 +4544,7 @@ return result`;
       if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
       try { r = await Promise.race([bg({ type: "call_tool", name: bareName, arguments: sendArgs, timeout, checkpoint_id:A.checkpointId }), hardCap, stopWatch]); }
       finally { clearInterval(stopTimer); clearTimeout(capTimer); }
-      if (r && r.telemetry_recorded === true) markToolTelemetry(call, { bridgeRecorded: true });
+      if (r && r.telemetry_recorded === true && typeof markToolTelemetry === "function") markToolTelemetry(call, { bridgeRecorded: true });
       if (r && !r.ok && /not listening|actively refused|connection refused|connection (?:closed|failed)|closed (?:the )?(?:socket|connection)|Blender is not connected/i.test(r.error || "")) {
         A.bridge = A.bridge || {}; A.bridge.blender = false;
       }
@@ -4596,7 +4599,7 @@ return result`;
         let last="";
         const token=window.crypto.randomUUID(),owner={chat:P.conversationKey(),engine:activeEngine(),generation:A.sessionGen};
         const current=()=>!A.stop&&owner.chat===P.conversationKey()&&owner.engine===activeEngine()&&owner.generation===A.sessionGen;
-        markToolTelemetry(call, { delegated: true });
+        if (typeof markToolTelemetry === "function") markToolTelemetry(call, { delegated: true });
         for(let i=0;i<pieces.length;i++){
           if(!current())return "(stopped by user)";
           const wrapped=wrapLuauChunk(pieces[i],i,pieces.length,token);
@@ -4644,7 +4647,7 @@ return result`;
     let r;
     try { r = await Promise.race(waits); }
     finally { clearInterval(stopTimer); clearTimeout(capTimer); }
-    if (r && r.telemetry_recorded === true) markToolTelemetry(call, { bridgeRecorded: true });
+    if (r && r.telemetry_recorded === true && typeof markToolTelemetry === "function") markToolTelemetry(call, { bridgeRecorded: true });
     if (r && r.kind === "stopped") return "(stopped by user)";
     if (!r) return RS.FEEDBACK.bridgeOffline;
     // The MCP server answers SUCCESSFULLY (ok:true) when no Studio is attached
@@ -5262,6 +5265,7 @@ return result`;
     const chatKey = P.conversationKey();
     const prevPlanText = previousAssistantBefore(user);
     const chatApprovedPlan = !!(
+      typeof planOnNow === "function" &&
       planOnNow() &&
       !A.planApproved &&
       typeof PlazCodePlanMode !== "undefined" &&
@@ -5664,12 +5668,12 @@ return result`;
           }
         }
         if(res.kind==='protocol_error'){
-          reportCommandTelemetry("command", false, String(res.raw || res.text || "").length);
+          if (typeof reportCommandTelemetry === "function") reportCommandTelemetry("command", false, String(res.raw || res.text || "").length);
           ui.banner('warn','AI tool format stopped responding','E_PROTOCOL: DeepSeek repeated closing tags and did not confirm Stop. PlazCode paused without sending another message or running a command. Stop the native reply before resuming.');break;
         }
         if (res.kind === "parse_error") {
           const failName = RSParse.toolNameFromText(res.raw || "") || "command";
-          reportCommandTelemetry(failName, false, String(res.raw || "").length);
+          if (typeof reportCommandTelemetry === "function") reportCommandTelemetry(failName, false, String(res.raw || "").length);
           if(res.reason==='dsml_orphan'&&dsmlRepairs++>=1){ui.banner('warn','AI repeated an unusable tool format','E_PROTOCOL: the AI returned malformed DSML again after one correction. PlazCode paused; no command ran from those replies. Earlier completed commands were not repeated.');break;}
           if (++invalidToolAttempts >= MAX_INVALID_TOOL_ATTEMPTS) { ui.banner("warn", "Repeated incomplete commands", "No malformed command ran. The agent paused after " + MAX_INVALID_TOOL_ATTEMPTS + " cut-off commands in a row; ask for a smaller edit and continue when ready."); break; }
           // The command turn ended in a parse error - it NEVER ran. Paint its chip
@@ -5769,7 +5773,7 @@ return result`;
             }
             diag("loop.planNotApproved", { decision: String(decision) });
           }
-          if (planOnNow() && !A.planApproved && !A.stop && (looksLikePlanOnly(body) || (typeof PlazCodePlanMode !== "undefined" && typeof PlazCodePlanMode.assistantHasPendingPlan === "function" && PlazCodePlanMode.assistantHasPendingPlan(body)))) {
+          if (typeof planOnNow === "function" && planOnNow() && !A.planApproved && !A.stop && (looksLikePlanOnly(body) || (typeof PlazCodePlanMode !== "undefined" && typeof PlazCodePlanMode.assistantHasPendingPlan === "function" && PlazCodePlanMode.assistantHasPendingPlan(body)))) {
             A.pendingPlanChat = P.conversationKey();
           }
           if (planContinues < 2 && toolsThisLoop === 0 && !A.stop && (!planOnNow() || A.planApproved) && planWantsImplementation() && looksLikePlanOnly(body)) {
@@ -5841,7 +5845,7 @@ return result`;
               (call.argumentError ? 'E_SHAPE: ' : 'E_ARGUMENT: ') + error);
           });
           if (preflight.length) {
-            reportCommandTelemetry((calls[0] && calls[0].tool) || "command", false, preflight.join("\n").length);
+            if (typeof reportCommandTelemetry === "function") reportCommandTelemetry((calls[0] && calls[0].tool) || "command", false, preflight.join("\n").length);
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }
             base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + '\nUse {"command":"name","params":{"exact_schema_key":"value"}}; arguments.key names a field inside params, not another wrapper. Get the exact fields with list_commands {"command":"name"}. Send ONE complete command.'); continue;
           }
@@ -5851,7 +5855,7 @@ return result`;
             && calls.length <= PlazCodeParallelTools.MAX_PARALLEL_READS
             && calls.every((c: any) => PlazCodeParallelTools.isParallelRead(c.tool, activeEngine(), typeof PlazCodeSafety !== "undefined" ? PlazCodeSafety : null));
           if (calls.length > MAX_COMMANDS_PER_REPLY && !canParallelReads) {
-            reportCommandTelemetry((calls[0] && calls[0].tool) || "command", false, JSON.stringify(calls).length);
+            if (typeof reportCommandTelemetry === "function") reportCommandTelemetry((calls[0] && calls[0].tool) || "command", false, JSON.stringify(calls).length);
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Too many commands", "Nothing ran. The AI may send at most 2 commands per reply."); break; }
             base = await submitAndGetBase("ERROR: nothing ran. Your reply had " + calls.length + " commands; the limit is AT MOST TWO (2) commands per reply. Send the first 2 now, the rest after their results.");continue;
           }
@@ -5863,6 +5867,7 @@ return result`;
           // skills, thinking) and read-only Plan Mode research tools are not project work:
           // a plan written after them still triggers plan approval / continuation.
           const isPlanResearchRead = !!(
+            typeof planOnNow === "function" &&
             planOnNow() &&
             !A.planApproved &&
             typeof PlazCodePlanMode !== "undefined" &&

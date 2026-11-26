@@ -1511,9 +1511,9 @@ async function refreshProcStatus() {
     if (changed) broadcastStatus();
     // Settings are optional background work, not a health-check dependency.
     const prefSyncPromise = syncDesktopPreferencesAfterHealth();
-    if (!wasUsable || (!connected && !connectInFlight)) {
+    if (!connected && !(typeof connectInFlight !== "undefined" && connectInFlight)) {
       reconnectAttempts = 0;
-      reconnectDelay = RECONNECT_MIN;
+      if (typeof RECONNECT_MIN !== "undefined") reconnectDelay = RECONNECT_MIN;
       clearTimeout(reconnectTimer ?? undefined);
       reconnectTimer = null;
       connect();
@@ -3442,9 +3442,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         sendResponse(r);
         break;
       }
-      case "reconnect": {
+      case "reconnect":
         reconnectDelay = RECONNECT_MIN;
-        reconnectAttempts = 0;
+        reconnectAttempts = 0; {
         clearTimeout(reconnectTimer ?? undefined);
         reconnectTimer = null;
         bridgeError = "";
