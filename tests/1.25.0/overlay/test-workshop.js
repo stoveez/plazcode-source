@@ -154,7 +154,7 @@ const WorkshopUI = require("./core/workshop-ui.js");
       return { ok: true, unlocked: false };
     }
     if (url === "/api/owner/grants" && (!opts?.method || opts.method === "GET")) {
-      return { ok: true, primary_owners: ["stoveez"], grants: ownerGrantsState };
+      return { ok: true, primary_owners: ["PC-EBPW-Q3M7"], grants: ownerGrantsState };
     }
     if (url === "/api/owner/grants" && opts?.method === "POST") {
       const t = String(body.target || "").trim();

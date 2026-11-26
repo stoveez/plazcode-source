@@ -10,14 +10,20 @@ async function budget(db,id,max,expires){const row=await first(db,'INSERT INTO b
 // Dispatch may proxy every caller through one IP. Quotas bind to verified proof/account, never a proxy IP.
 async function clientBudget(request,db,kind,now,max){if(kind==='registration')await budget(db,'registration-day:'+Math.floor(now/86400000),2000,now+86400000);}
 async function proof(db,value,now){strict(value,['id','nonce']);if(!/^[a-f0-9]{48}$/.test(value.id)||!Number.isSafeInteger(value.nonce)||value.nonce<0||value.nonce>0xffffffff)throw new ApiError(400,'Invalid sign-in challenge.');const digest=await sha(value.id+':'+value.nonce);if(!digest.startsWith('0'.repeat(PROOF_BITS/4)))throw new ApiError(400,'Invalid sign-in challenge.');const ticket=await first(db,'DELETE FROM challenges WHERE id=? AND expires_at>? RETURNING id',value.id,now);if(!ticket)throw new ApiError(401,'Sign-in challenge expired. Please try again.');}
-function ownerSet(env){return new Set(String(env?.OWNER_USERNAMES||'').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean));}
-function isOwnerUsername(usernameKey,env){return ownerSet(env).has(String(usernameKey||'').toLowerCase());}
+function primaryOwnerUserIds(env){
+ const out=new Set();
+ for(const raw of String(env?.OWNER_USER_IDS||'').split(',')){
+  const uid=normalizeUserId(raw);
+  if(uid)out.add(uid);
+ }
+ return out;
+}
+function isPrimaryOwnerUserId(userId,env){const uid=normalizeUserId(userId||'');return Boolean(uid&&primaryOwnerUserIds(env).has(uid));}
 async function isOwnerAccount(db,account,env){
- const key=String(account?.username_key||account?.username||'').toLowerCase();
- if(isOwnerUsername(key,env))return true;
  const uid=normalizeUserId(account?.user_id||'');
- if(uid&&(await first(db,'SELECT target_key FROM owner_grants WHERE target_key=?',`uid:${uid}`)))return true;
- if(key&&(await first(db,'SELECT target_key FROM owner_grants WHERE target_key=?',`user:${key}`)))return true;
+ if(!uid)return false;
+ if(isPrimaryOwnerUserId(uid,env))return true;
+ if(await first(db,'SELECT target_key FROM owner_grants WHERE target_key=?',`uid:${uid}`))return true;
  return false;
 }
 async function generateUniqueUserId(db){
@@ -236,8 +242,8 @@ export default {async fetch(request,env){
     const online=Boolean(seen&&!banned&&(now-seen)<=ONLINE_WINDOW_MS);
     const uid=normalizeUserId(r.user_id||'')||'';
     const linkedNames=uid&&byUid.has(uid)?byUid.get(uid):[r.username];
-    const primaryOwner=isOwnerUsername(r.username_key,env);
-    const isOwner=primaryOwner||(uid&&grantSet.has(`uid:${uid}`))||grantSet.has(`user:${r.username_key}`);
+    const primaryOwner=isPrimaryOwnerUserId(uid,env);
+    const isOwner=primaryOwner||Boolean(uid&&grantSet.has(`uid:${uid}`));
     return {id:r.id,username:r.username,user_id:uid,linked_profile_count:linkedNames.length,linked_usernames:linkedNames,created_at:r.created_at,last_seen_at:seen,online,app_version:r.app_version||'',banned,banned_at:r.banned_at||null,terminated,terminated_at:r.terminated_at||null,ban_reason:r.ban_reason||'',primary_owner:primaryOwner,is_owner:Boolean(isOwner),profile_picture:extractAvatar(r.document)};
    });
    const counts={total:mapped.length,online:mapped.filter(u=>u.online).length,banned:mapped.filter(u=>u.banned).length,terminated:mapped.filter(u=>u.terminated).length};
@@ -274,30 +280,28 @@ export default {async fetch(request,env){
     }
     grants.push({target_key:g.target_key,target_type:g.target_type,user_id:resolvedUid,username:g.username||linkedUsernames[0]||'',linked_usernames:linkedUsernames,granted_by:g.granted_by||'',granted_at:g.granted_at});
    }
-   return json({ok:true,primary_owners:Array.from(ownerSet(env)),grants});
+   return json({ok:true,primary_owners:Array.from(primaryOwnerUserIds(env)),grants});
   }
   if(path==='/v1/owner/grants'&&request.method==='POST'){
    const ownerCtx=await requireOwner(db,request,env,now);
    const body=strict(await boundedJson(request,2048),['target','user_id','username']);
    const raw=String(body.user_id||body.username||body.target||'').trim();
    if(!raw)throw new ApiError(400,'Enter a User ID or username to grant owner access.');
-   const uid=normalizeUserId(raw);
    const grantedBy=ownerCtx.auth?.username||'owner-token';
-   if(uid){
-    const accts=await all(db,'SELECT id,username,user_id FROM accounts WHERE user_id=? ORDER BY created_at ASC',uid);
-    const names=(accts.results||[]).map(a=>a.username);
-    const key=`uid:${uid}`;
-    await run(db,'INSERT INTO owner_grants (target_key,target_type,user_id,username,granted_by,granted_at) VALUES (?,?,?,?,?,?) ON CONFLICT(target_key) DO UPDATE SET username=excluded.username,granted_by=excluded.granted_by,granted_at=excluded.granted_at',key,'user_id',uid,names[0]||null,grantedBy,now);
-    return json({ok:true,grant:{target_key:key,target_type:'user_id',user_id:uid,username:names[0]||'',linked_usernames:names,granted_by:grantedBy,granted_at:now}});
+   let resolvedUid=normalizeUserId(raw);
+   if(!resolvedUid){
+    if(/^PC-/i.test(raw))throw new ApiError(400,'Invalid User ID format. Expected PC-XXXX-XXXX.');
+    const parsed=username(raw);
+    const acct=await first(db,'SELECT id,username,username_key,user_id,last_device_hash FROM accounts WHERE username_key=?',parsed.key);
+    if(!acct)throw new ApiError(404,'No account found with that username.');
+    resolvedUid=await ensureAccountUserId(db,acct,acct.last_device_hash||null,now);
    }
-   if(/^PC-/i.test(raw))throw new ApiError(400,'Invalid User ID format. Expected PC-XXXX-XXXX.');
-   const parsed=username(raw);
-   const acct=await first(db,'SELECT id,username,username_key,user_id,last_device_hash FROM accounts WHERE username_key=?',parsed.key);
-   const resolvedUid=acct?await ensureAccountUserId(db,acct,acct.last_device_hash||null,now):null;
-   const displayName=acct?.username||parsed.display;
-   const key=`user:${parsed.key}`;
-   await run(db,'INSERT INTO owner_grants (target_key,target_type,user_id,username,granted_by,granted_at) VALUES (?,?,?,?,?,?) ON CONFLICT(target_key) DO UPDATE SET user_id=excluded.user_id,username=excluded.username,granted_by=excluded.granted_by,granted_at=excluded.granted_at',key,'username',resolvedUid,displayName,grantedBy,now);
-   return json({ok:true,grant:{target_key:key,target_type:'username',user_id:resolvedUid||'',username:displayName,linked_usernames:[displayName],granted_by:grantedBy,granted_at:now}});
+   const accts=await all(db,'SELECT id,username,user_id FROM accounts WHERE user_id=? ORDER BY created_at ASC',resolvedUid);
+   if(!(accts.results?.length))throw new ApiError(404,'No account found with that User ID.');
+   const names=(accts.results||[]).map(a=>a.username);
+   const key=`uid:${resolvedUid}`;
+   await run(db,'INSERT INTO owner_grants (target_key,target_type,user_id,username,granted_by,granted_at) VALUES (?,?,?,?,?,?) ON CONFLICT(target_key) DO UPDATE SET username=excluded.username,granted_by=excluded.granted_by,granted_at=excluded.granted_at',key,'user_id',resolvedUid,names[0]||null,grantedBy,now);
+   return json({ok:true,grant:{target_key:key,target_type:'user_id',user_id:resolvedUid,username:names[0]||'',linked_usernames:names,granted_by:grantedBy,granted_at:now}});
   }
   if((path==='/v1/owner/grants/revoke'&&request.method==='POST')||(path==='/v1/owner/grants'&&request.method==='DELETE')){
    await requireOwner(db,request,env,now);
@@ -305,21 +309,37 @@ export default {async fetch(request,env){
    const rawKey=String(body.target_key||'').trim();
    const raw=String(body.user_id||body.username||body.target||'').trim();
    let targetKey='';
+   let checkUid=null;
+   let legacyUserKey='';
    if(rawKey.startsWith('uid:')){
     const uid=normalizeUserId(rawKey.slice(4));
     if(!uid)throw new ApiError(400,'Invalid User ID grant key.');
     targetKey=`uid:${uid}`;
+    checkUid=uid;
    }else if(rawKey.startsWith('user:')){
     const key=rawKey.slice(5).trim().toLowerCase();
     if(!key)throw new ApiError(400,'Invalid username grant key.');
     targetKey=`user:${key}`;
+    const acct=await first(db,'SELECT user_id FROM accounts WHERE username_key=?',key);
+    checkUid=acct?.user_id?normalizeUserId(acct.user_id):null;
    }else if(raw){
     const uid=normalizeUserId(raw);
-    targetKey=uid?`uid:${uid}`:`user:${raw.toLowerCase()}`;
+    if(uid){
+     targetKey=`uid:${uid}`;
+     checkUid=uid;
+    }else{
+     const parsed=username(raw);
+     legacyUserKey=`user:${parsed.key}`;
+     const acct=await first(db,'SELECT user_id FROM accounts WHERE username_key=?',parsed.key);
+     const resolvedUid=acct?.user_id?normalizeUserId(acct.user_id):null;
+     checkUid=resolvedUid;
+     targetKey=resolvedUid?`uid:${resolvedUid}`:legacyUserKey;
+    }
    }
    if(!targetKey)throw new ApiError(400,'Specify a grant to revoke.');
-   if(targetKey.startsWith('user:')&&isOwnerUsername(targetKey.slice(5),env))throw new ApiError(400,'Primary owners configured on the server cannot be revoked here.');
+   if(checkUid&&isPrimaryOwnerUserId(checkUid,env))throw new ApiError(400,'Primary owners configured on the server cannot be revoked here.');
    await run(db,'DELETE FROM owner_grants WHERE target_key=?',targetKey);
+   if(legacyUserKey&&legacyUserKey!==targetKey)await run(db,'DELETE FROM owner_grants WHERE target_key=?',legacyUserKey);
    return json({ok:true,target_key:targetKey,revoked:true});
   }
   const banMatch=path.match(/^\/v1\/owner\/users\/([A-Za-z0-9-]{4,80})\/ban$/);

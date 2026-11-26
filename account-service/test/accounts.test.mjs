@@ -38,14 +38,29 @@ test('profile picture formats, private sync, older-client retention and explicit
 
 test('owner user directory, heartbeat presence, scrypt non-leakage, ban/unban and profile deletion',async()=>{
  const db=database();
- const env={OWNER_USERNAMES:'PlazOwner',OWNER_ADMIN_TOKEN:'owner-admin-secret-999'};
+ const env={OWNER_ADMIN_TOKEN:'owner-admin-secret-999'};
  const avatar='data:image/png;base64,'+Buffer.concat([Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]),Buffer.from('avatarbytes')]).toString('base64');
 
- const ownerReg=await call(db,'/v1/register','POST',{username:'PlazOwner',password:'owner-strong-password-1',proof:fixtureProof(db)},undefined,{},env);
- assert.equal(ownerReg.status,201);
- assert.equal(ownerReg.data.profile.is_owner,true);
+ // Legacy OWNER_USERNAMES must be completely ignored: signing in as stoveez or plazm grants zero owner access.
+ const spoofEnv={OWNER_USERNAMES:'stoveez,plazm',OWNER_ADMIN_TOKEN:'owner-admin-secret-999'};
+ const stoveezReg=await call(db,'/v1/register','POST',{username:'stoveez',password:'player-strong-password-1',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':'1'.repeat(64)},spoofEnv);
+ assert.equal(stoveezReg.status,201);
+ assert.equal(stoveezReg.data.profile.is_owner,false);
+ assert.equal((await call(db,'/v1/owner/status','GET',undefined,stoveezReg.data.token,{},spoofEnv)).status,403);
+ const plazmReg=await call(db,'/v1/register','POST',{username:'plazm',password:'player-strong-password-1',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':'2'.repeat(64)},spoofEnv);
+ assert.equal(plazmReg.status,201);
+ assert.equal(plazmReg.data.profile.is_owner,false);
+ assert.equal((await call(db,'/v1/owner/status','GET',undefined,plazmReg.data.token,{},spoofEnv)).status,403);
 
- const userReg=await call(db,'/v1/register','POST',{username:'TestPlayer',password:'player-strong-password-1',proof:fixtureProof(db)},undefined,{},env);
+ const ownerReg=await call(db,'/v1/register','POST',{username:'PlazOwner',password:'owner-strong-password-1',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':'3'.repeat(64)},env);
+ assert.equal(ownerReg.status,201);
+ assert.equal(ownerReg.data.profile.is_owner,false);
+ const ownerUid=ownerReg.data.profile.user_id;
+ env.OWNER_USER_IDS=ownerUid;
+ assert.equal((await call(db,'/v1/session','GET',undefined,ownerReg.data.token,{},env)).data.profile.is_owner,true);
+ assert.equal((await call(db,'/v1/owner/status','GET',undefined,ownerReg.data.token,{},env)).status,200);
+
+ const userReg=await call(db,'/v1/register','POST',{username:'TestPlayer',password:'player-strong-password-1',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':'4'.repeat(64)},env);
  assert.equal(userReg.status,201);
  assert.equal(userReg.data.profile.is_owner,false);
 
@@ -178,13 +193,19 @@ test('owner user directory, heartbeat presence, scrypt non-leakage, ban/unban an
  assert.equal((await call(db,'/v1/session','GET',undefined,loginB.data.token,{},env)).data.profile.is_owner,true);
  assert.equal((await call(db,'/v1/owner/status','GET',undefined,profOne.data.token,{},env)).status,200);
 
- // Grant by username works and primary owner revoke is blocked
+ // Unknown User ID or nonexistent username rejected (prevents name squatting), existing username binds to its User ID, and primary owner revoke is blocked
+ assert.equal((await call(db,'/v1/owner/grants','POST',{target:'PC-ZZZZ-ZZZZ'},ownerReg.data.token,{},env)).status,404);
+ assert.equal((await call(db,'/v1/owner/grants','POST',{target:'NobodyYet'},ownerReg.data.token,{},env)).status,404);
  const grantByName=await call(db,'/v1/owner/grants','POST',{target:'FuckYeahBuilder'},ownerReg.data.token,{},env);
  assert.equal(grantByName.status,200);
+ assert.equal(grantByName.data.grant.target_type,'user_id');
+ assert.match(grantByName.data.grant.target_key,/^uid:PC-/);
  const grantsList=await call(db,'/v1/owner/grants','GET',undefined,ownerReg.data.token,{},env);
  assert.equal(grantsList.status,200);
  assert.equal(grantsList.data.grants.length,2);
+ assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target:ownerUid},ownerReg.data.token,{},env)).status,400);
  assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target:'PlazOwner'},ownerReg.data.token,{},env)).status,400);
+ assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target_key:grantByName.data.grant.target_key},ownerReg.data.token,{},env)).status,200);
 
  // Revoke User ID grant -> profiles return to non-owner
  assert.equal((await call(db,'/v1/owner/grants/revoke','POST',{target_key:`uid:${sharedUid}`},ownerReg.data.token,{},env)).status,200);

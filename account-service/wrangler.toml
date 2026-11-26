@@ -3,7 +3,7 @@ main = "worker/index.js"
 compatibility_date = "2026-01-01"
 
 [vars]
-OWNER_USERNAMES = "stoveez,plazm"
+OWNER_USER_IDS = "PC-EBPW-Q3M7"
 
 [[d1_databases]]
 binding = "DB"
