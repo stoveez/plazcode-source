@@ -5197,6 +5197,19 @@ return result`;
     }
     return {user:null,label:''};
   }
+  function previousAssistantBefore(userItem) {
+    try {
+      const items = P.allItems();
+      const idx = userItem ? items.lastIndexOf(userItem) : -1;
+      for (let i = (idx >= 0 ? idx : items.length) - 1; i >= 0; i--) {
+        const it = items[i];
+        if (!it || P.isUserItem(it)) continue;
+        const txt = String((P.classifyText ? P.classifyText(it, ".rs-chip") : P.itemText(it)) || "").trim();
+        if (txt) return txt;
+      }
+    } catch {}
+    return "";
+  }
   function trackedRequest(label,chat) {
     const kind=PlazCodeActivity.requestKind(label);
     return kind==='work'||kind==='control'&&/^(?:continue|keep|resume|go on|carry on)\b/i.test(label)&&!!activity.saved(chat);
@@ -5211,15 +5224,42 @@ return result`;
     A.quickCatalogue=/\b(?:commands?|tools?)\b|^(?:`?list_commands`?|`?list_tools`?)$/i.test(label);
     A.catalogueDetail=/\b(?:full|complete|schemas?|parameters?|arguments?)\b/i.test(label);
     A.taskRequest=label;A.creatorTask=false;A.creatorBrief='';
+    const chatKey = P.conversationKey();
+    const prevPlanText = previousAssistantBefore(user);
+    const chatApprovedPlan = !!(
+      planOnNow() &&
+      !A.planApproved &&
+      typeof PlazCodePlanMode !== "undefined" &&
+      typeof PlazCodePlanMode.isUserApprovalReply === "function" &&
+      PlazCodePlanMode.isUserApprovalReply(label) &&
+      typeof PlazCodePlanMode.assistantHasPendingPlan === "function" &&
+      PlazCodePlanMode.assistantHasPendingPlan(prevPlanText, {
+        hadPendingPlan: A.pendingPlanChat === chatKey,
+      })
+    );
+    if (chatApprovedPlan) {
+      A.planApproved = true;
+      A.approveAll = new Set(["*"]);
+      A.pendingPlanChat = null;
+      if (typeof PlazCodePlanMode !== "undefined") {
+        if (PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(true);
+        if (PlazCodePlanMode.approve) PlazCodePlanMode.approve();
+      }
+      try { ui.refreshPlan?.(); } catch {}
+      diag("loop.planApprovedInChat", { label: String(label || "").slice(0, 80) });
+    } else if (A.requestKind === "work" && A.pendingPlanChat === chatKey) {
+      A.pendingPlanChat = null;
+    }
     try{A.turnStartedAt=Date.now();diag('turn.start',{kind:A.requestKind,preview:String(label||'').slice(0,80)});}catch{} // 1.24.30: Logs page groups events by turn
-    if(!trackedRequest(label,P.conversationKey())){
+    if(!chatApprovedPlan && !trackedRequest(label,chatKey)){
       A.checkpointId=null;A.resumeCheckpointId=null;
-      activity.sync(false,P.conversationKey(),undefined,{collapse:false});
+      activity.sync(false,chatKey,undefined,{collapse:false});
       return;
     }
     try{projectChecked=0;await refreshPersonalMemory();}catch{}
     const preEnhanced=A.creatorPreEnhanced && String(A.creatorPreEnhanced.text).replace(/\s+/g," ").trim()===String(label).replace(/\s+/g," ").trim() && A.creatorPreEnhanced.context===JSON.stringify([P.conversationKey(),activeEngine(),A.sessionGen]);
-    A.taskRequest=preEnhanced?A.creatorPreEnhanced.raw:A.requestKind==='control'?activity.saved(P.conversationKey())?.label||label:label;
+    const approvedGoal = activity.saved(chatKey)?.label || (typeof PlazCodePlanMode !== "undefined" && typeof PlazCodePlanMode.parseStructuredPlan === "function" ? PlazCodePlanMode.parseStructuredPlan(prevPlanText).goal : "") || "Approved plan";
+    A.taskRequest=preEnhanced?A.creatorPreEnhanced.raw:((A.requestKind==='control'||(chatApprovedPlan&&A.requestKind!=='work'))?approvedGoal:label);
     A.creatorTask=activeEngine()==="roblox" && typeof PlazCodeChatCreators!=="undefined" && !!(preEnhanced || PlazCodeChatCreators.routeRequest(A.taskRequest));
     A.creatorBrief=A.taskRequest;
     if (typeof PlazCodeTaskLedger !== "undefined") {
@@ -5250,7 +5290,11 @@ return result`;
     A.referenceTaskKey=JSON.stringify([P.conversationKey(),activeEngine(),A.taskRequest]);
     if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.beginRun) {
       PlazCodePlanMode.setEnabled(planOnNow());
-      PlazCodePlanMode.beginRun();
+      if (A.planApproved && PlazCodePlanMode.approve) {
+        PlazCodePlanMode.approve();
+      } else {
+        PlazCodePlanMode.beginRun();
+      }
       try { ui.refreshPlan?.(); } catch {}
     }
     if(!A.referenceDelivered)A.referenceDelivered=new Set();
@@ -5669,7 +5713,7 @@ return result`;
             if (decision === true) {
               if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.approve) PlazCodePlanMode.approve();
               try { ui.refreshPlan?.(); } catch {}
-              A.planApproved = true; A.approveAll = new Set(["*"]); planContinues++;
+              A.planApproved = true; A.approveAll = new Set(["*"]); A.pendingPlanChat = null; planContinues++;
               diag("loop.planApproved", { chars: body.length });
               base = await submitAndGetBase(PLAN_APPROVED_FEEDBACK);
               continue;
@@ -5689,6 +5733,9 @@ return result`;
               try { ui.refreshPlan?.(); } catch {}
             }
             diag("loop.planNotApproved", { decision: String(decision) });
+          }
+          if (planOnNow() && !A.planApproved && !A.stop && (looksLikePlanOnly(body) || (typeof PlazCodePlanMode !== "undefined" && typeof PlazCodePlanMode.assistantHasPendingPlan === "function" && PlazCodePlanMode.assistantHasPendingPlan(body)))) {
+            A.pendingPlanChat = P.conversationKey();
           }
           if (planContinues < 2 && toolsThisLoop === 0 && !A.stop && (!planOnNow() || A.planApproved) && planWantsImplementation() && looksLikePlanOnly(body)) {
             planContinues++;
@@ -5778,9 +5825,21 @@ return result`;
           claimNudges = 0; // a real command arrived: the next unsent-command claim gets its own nudge
           const call = calls[0];
           // Planning/bookkeeping commands (checklists, command lists, memory,
-          // skills, thinking) are not project work: a plan written after them
-          // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_help|plazcode_logs|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          // skills, thinking) and read-only Plan Mode research tools are not project work:
+          // a plan written after them still triggers plan approval / continuation.
+          const isPlanResearchRead = !!(
+            planOnNow() &&
+            !A.planApproved &&
+            typeof PlazCodePlanMode !== "undefined" &&
+            typeof PlazCodePlanMode.isToolMutating === "function" &&
+            !PlazCodePlanMode.isToolMutating(
+              call.tool,
+              activeEngine() === "local" && !String(call.tool || "").includes("__") ? "local" : "studio",
+              typeof PlazCodeSafety !== "undefined" ? PlazCodeSafety : null,
+              call.arguments
+            )
+          );
+          if (!isPlanResearchRead && !/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_help|plazcode_logs|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -6025,6 +6084,7 @@ return result`;
       A.running = false;
       if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(false);
       A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.
+      if (A.planApproved) A.pendingPlanChat = null;
       A.planApproved = false; // an approved plan covers one task
       if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.resetRun) {
         PlazCodePlanMode.resetRun();
@@ -8945,7 +9005,7 @@ return result`;
         ? tr("Plan mode ON — read-only research first, then review and approve before edits")
         : tr("Plan mode — research first, then review and approve a plan before any edits");
     }
-    function setPlanMode(v){ planMode=!!v; try{chrome.storage.local.set({rsPlanMode: planMode});}catch{}; try{ window.__rsPlanMode = () => planMode; }catch{}; if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(planMode); buildMenu(); renderBar(); toast(v ? "Plan mode on — the AI writes a plan, then production code" : "Plan mode off"); markModesChanged(); }
+    function setPlanMode(v){ planMode=!!v; if(!planMode)A.pendingPlanChat=null; try{chrome.storage.local.set({rsPlanMode: planMode});}catch{}; try{ window.__rsPlanMode = () => planMode; }catch{}; if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(planMode); buildMenu(); renderBar(); toast(v ? "Plan mode on — the AI writes a plan, then production code" : "Plan mode off"); markModesChanged(); }
     function setAutoDebug(v){ autoDebugEnabled=!!v; try{chrome.storage.local.set({rsAutoDebug: autoDebugEnabled});}catch{}; try{ window.__rsAutoDebug = () => autoDebugEnabled; }catch{}; buildMenu(); toast(v ? "Automatic Debugger on — new Studio errors are sent to the AI" : "Automatic Debugger off"); markModesChanged(); }
     function setMultiAgent(v){ multiAgent=!!v; try{chrome.storage.local.set({rsMultiAgent: multiAgent});}catch{}; try{ window.__rsMultiAgent = () => multiAgent; }catch{}; buildMenu(); toast(v ? "Multi-Agent on — planner, builder, reviewer, debugger" : "Multi-Agent off"); markModesChanged(); }
     function setForgeMode(v){ forgeMode=!!v; try{chrome.storage.local.set({rsForgeMode: forgeMode});}catch{}; try{ document.documentElement.setAttribute("data-rs-forge", forgeMode?"1":"0"); window.__rsForge = () => forgeMode; }catch{}; buildMenu(); markModesChanged(); }

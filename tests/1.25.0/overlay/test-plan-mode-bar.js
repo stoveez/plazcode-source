@@ -203,8 +203,30 @@ const $ = (id) => w.document.getElementById(id);
   assert(main.indexOf("PlazCodePlanMode.isResearchGateActive") < main.indexOf("if(trustedRead){"), "strict research gate runs before trustedRead/approvalMode");
   assert(main.includes('!(opts&&opts.plan)&&approvalMode==="bypass"'), "plan approval card is never skipped in auto/bypass approvalMode");
   assert(main.includes("PlazCodePlanMode.needsRefinement(body)") && main.includes("PlazCodePlanMode.requestChanges(inlineFb)"), "multi-pass refinement and v2/v3 change loop wired");
+  assert(
+    main.includes("PlazCodePlanMode.isUserApprovalReply") &&
+      main.includes("PlazCodePlanMode.assistantHasPendingPlan") &&
+      main.includes("loop.planApprovedInChat") &&
+      main.includes("previousAssistantBefore"),
+    "chat-reply plan approval is wired in beginTaskCheckpoint and agentLoop"
+  );
+  assert(main.includes("isPlanResearchRead"), "read-only Plan Mode research tools do not increment toolsThisLoop");
 
-  console.log("PASS interactive Plan Mode bar pill, read-only research gate, multi-pass phases, and plan card.");
+  // 7. Chat-reply approval & pending-plan detection
+  for (const ok of ["yes", "Yes!", "go ahead", "approve the plan", "looks good, proceed", "yes, no changes needed", "lgtm", "do it"]) {
+    assert.equal(PlanMode.isUserApprovalReply(ok), true, "expected approval reply: " + ok);
+  }
+  for (const bad of ["no", "yes?", "yes, but change step 2", "wait, revise step 1", "build a shop", ""]) {
+    assert.equal(PlanMode.isUserApprovalReply(bad), false, "expected non-approval reply: " + bad);
+  }
+  assert.equal(PlanMode.assistantHasPendingPlan(structuredPlan), true);
+  assert.equal(PlanMode.assistantHasPendingPlan("## Plan\n1. Inspect UI\n2. Add shop button"), true);
+  assert.equal(PlanMode.assistantHasPendingPlan("I inspected StarterGui. Shall I proceed with these changes?"), true);
+  assert.equal(PlanMode.assistantHasPendingPlan("Unrelated text", { hadPendingPlan: true }), true);
+  assert.equal(PlanMode.assistantHasPendingPlan("Hello! How can I help?"), false);
+  assert.equal(PlanMode.assistantHasPendingPlan("Sure, RemoteEvents pass data between client and server."), false);
+
+  console.log("PASS interactive Plan Mode bar pill, read-only research gate, multi-pass phases, plan card, and chat approval.");
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

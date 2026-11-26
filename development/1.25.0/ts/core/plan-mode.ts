@@ -297,6 +297,44 @@ const PlazCodePlanMode = (() => {
     );
   }
 
+  function isUserApprovalReply(text: unknown): boolean {
+    const cleaned = String(text || "")
+      .trim()
+      .replace(/[‘’]/g, "'")
+      .replace(/[`*"']/g, "")
+      .replace(/[\s.!👍✅👌]+$/g, "")
+      .trim();
+    if (!cleaned || cleaned.length > 220 || /\?\s*$/.test(cleaned)) return false;
+    if (
+      /\b(?:no(?!\s+(?:changes|edits|issues|problems|objections|further|more\s+changes)\b)|nope|nah|don't|do not|dont|cancel|stop|reject|wait|hold on|not yet|change|revise|modify|update the plan|edit the plan|instead|actually(?!\s+(?:yes|yeah|yep|go ahead|approve|proceed))|but|however|except|before you|first\s+(?:explain|check|show|tell))\b/i.test(
+        cleaned
+      )
+    ) {
+      return false;
+    }
+    const shortAffirmative =
+      /^(?:y|yes|yeah|yep|yup|yea|ya|ok|okay|k|kk|sure|bet|alright|all right|agreed|agree|confirm|confirmed|approve|approved|lgtm|proceed|continue|go|go ahead|go for it|do it|let'?s go|lets go|let'?s do it|lets do it|sounds good|looks good|good to go|makes sense|perfect|great|awesome|ship it|send it|start|begin|execute|implement|build it|run it|do that|make it|carry on|yes please|ok please|please proceed|please do|please go ahead|i approve|plan approved|approved plan|si|sí|oui|ja|sim|да|はい|네|是|好的)(?:\s+(?:please|plz|thanks|thank you|now|then|buddy|bro|man|mate))?$/i;
+    const compoundApproval =
+      /^(?:(?:yes|yeah|yep|yup|yea|ok|okay|sure|alright|all right|great|perfect|awesome|lgtm|sounds good|looks good|good to go|agreed|confirmed|approved?)\s*[,!:;\-–—]?\s*(?:no\s+(?:changes|edits|issues|problems|objections)(?:\s+needed)?\s*[,!:;\-–—]?\s*)?)?(?:i\s+approve(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|approve(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|approved|confirm(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|go ahead(?:\s+(?:and|with)\s+.+)?|proceed(?:\s+(?:with|and|to)\s+.+)?|implement(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|build(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|execute(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|start(?:\s+(?:building|implementing|coding|making|working|step\s*1|the\s+plan|it|now).*)?|do it(?:\s+now)?|let'?s\s+(?:do it|go|build it|proceed|start)|make\s+(?:it|the changes|those changes)|no\s+(?:changes|edits|issues|problems|objections)(?:\s+needed)?)$/i;
+    return shortAffirmative.test(cleaned) || compoundApproval.test(cleaned);
+  }
+
+  function assistantHasPendingPlan(text: unknown, opts?: { hadPendingPlan?: boolean }): boolean {
+    if (opts && opts.hadPendingPlan) return true;
+    const t = String(text || "").trim();
+    if (t.length < 24) return false;
+    const parsed = parseStructuredPlan(t);
+    const hasHeading =
+      /(?:^|\n)\s*(?:#+\s*|\*\*)?(?:(?:implementation |build |action |proposed |my |the )?plan\b|goal\b|approach\b|overview\b|steps?\b|roadmap\b|here(?:'s| is) (?:the |my )?(?:plan|approach)|i(?:'ll| will) (?:do|build|create|implement|make))/i.test(
+        t
+      );
+    if (parsed.steps.length >= 2 && hasHeading) return true;
+    const tail = t.slice(-500);
+    return /\b(?:approve|confirm)\b.{0,45}\b(?:plan|changes|proceed|steps?)\b|\b(?:shall|should|would you like me to|want me to|ready for me to|can i|may i)\b.{0,45}\b(?:proceed|start|begin|implement|build|apply|execute|go ahead|make (?:these|the) changes|continue)\b|\b(?:let me know|reply|say|type)\b.{0,45}\b(?:yes|approve|proceed|go ahead|start|ready|if you(?:'d| would) like me to proceed)\b|\bplan mode\b.{0,90}\b(?:approv|proceed|confirm|read-only|review)\b|\bsound good\??\s*$|\bready to (?:proceed|start|begin|implement|build)\??\s*$|\bproceed\?\s*$/i.test(
+      tail
+    );
+  }
+
   return {
     PHASE_LABELS,
     snapshot,
@@ -305,6 +343,7 @@ const PlazCodePlanMode = (() => {
     beginRun,
     recordRead,
     isResearchGateActive,
+    isToolMutating,
     gateTool,
     needsRefinement,
     startRefinement,
@@ -316,6 +355,8 @@ const PlazCodePlanMode = (() => {
     parseStructuredPlan,
     promptExtra,
     buildRefinementPrompt,
+    isUserApprovalReply,
+    assistantHasPendingPlan,
   };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodePlanMode;

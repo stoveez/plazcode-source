@@ -3277,6 +3277,109 @@ pub async fn chat_send(
     .into_response()
 }
 
+static BYOK_HARMLESS_NO_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)\b(?:no\s+(?:changes|edits|issues|problems|objections|further|more\s+changes)|actually\s+(?:yes|yeah|yep|go ahead|approve|proceed))\b",
+    )
+    .expect("valid harmless no regex")
+});
+
+static BYOK_NEG_APPROVAL_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)\b(?:no|not\s+yet|nope|nah|don't|do not|dont|cancel|stop|reject|wait|hold on|change|revise|modify|update the plan|edit the plan|instead|actually|but|however|except|before you|first\s+(?:explain|check|show|tell))\b",
+    )
+    .expect("valid negative approval regex")
+});
+
+static BYOK_SHORT_APPROVAL_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)^(?:y|yes|yeah|yep|yup|yea|ya|ok|okay|k|kk|sure|bet|alright|all right|agreed|agree|confirm|confirmed|approve|approved|lgtm|proceed|continue|go|go ahead|go for it|do it|let'?s go|lets go|let'?s do it|lets do it|sounds good|looks good|good to go|makes sense|perfect|great|awesome|ship it|send it|start|begin|execute|implement|build it|run it|do that|make it|carry on|yes please|ok please|please proceed|please do|please go ahead|i approve|plan approved|approved plan|si|sí|oui|ja|sim|да|はい|네|是|好的)(?:\s+(?:please|plz|thanks|thank you|now|then|buddy|bro|man|mate))?$",
+    )
+    .expect("valid short approval regex")
+});
+
+static BYOK_COMPOUND_APPROVAL_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)^(?:(?:yes|yeah|yep|yup|yea|ok|okay|sure|alright|all right|great|perfect|awesome|lgtm|sounds good|looks good|good to go|agreed|confirmed|approved?)\s*[,!:;\-–—]?\s*(?:no\s+(?:changes|edits|issues|problems|objections)(?:\s+needed)?\s*[,!:;\-–—]?\s*)?)?(?:i\s+approve(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|approve(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|approved|confirm(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan))?|go ahead(?:\s+(?:and|with)\s+.+)?|proceed(?:\s+(?:with|and|to)\s+.+)?|implement(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|build(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|execute(?:\s+(?:(?:the|this|that)(?:\s+plan)?|it|plan)(?:\s+now)?)?|start(?:\s+(?:building|implementing|coding|making|working|step\s*1|the\s+plan|it|now).*)?|do it(?:\s+now)?|let'?s\s+(?:do it|go|build it|proceed|start)|make\s+(?:it|the changes|those changes)|no\s+(?:changes|edits|issues|problems|objections)(?:\s+needed)?)$",
+    )
+    .expect("valid compound approval regex")
+});
+
+static BYOK_PLAN_HEADING_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?im)^\s*(?:#+\s*|\*\*)?(?:(?:implementation |build |action |proposed |my |the )?plan\b|goal\b|approach\b|overview\b|steps?\b|roadmap\b|here(?:'s| is) (?:the |my )?(?:plan|approach)|i(?:'ll| will) (?:do|build|create|implement|make))",
+    )
+    .expect("valid plan heading regex")
+});
+
+static BYOK_PLAN_STEP_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(r"(?m)^\s*(?:\d+[.)]|[-*•])\s+\S").expect("valid plan step regex")
+});
+
+static BYOK_PLAN_TAIL_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)\b(?:approve|confirm)\b.{0,45}\b(?:plan|changes|proceed|steps?)\b|\b(?:shall|should|would you like me to|want me to|ready for me to|can i|may i)\b.{0,45}\b(?:proceed|start|begin|implement|build|apply|execute|go ahead|make (?:these|the) changes|continue)\b|\b(?:let me know|reply|say|type)\b.{0,45}\b(?:yes|approve|proceed|go ahead|start|ready|if you(?:'d| would) like me to proceed)\b|\bplan mode\b.{0,90}\b(?:approv|proceed|confirm|read-only|review)\b|\bsound good\??\s*$|\bready to (?:proceed|start|begin|implement|build)\??\s*$|\bproceed\?\s*$",
+    )
+    .expect("valid plan tail regex")
+});
+
+fn is_plan_approval_reply(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let normalized = trimmed
+        .replace(['\u{2018}', '\u{2019}'], "'")
+        .replace(['`', '*', '"', '\''], "");
+    let cleaned = normalized
+        .trim_end_matches(|c: char| c.is_whitespace() || matches!(c, '.' | '!' | '👍' | '✅' | '👌'))
+        .trim();
+    if cleaned.is_empty() || cleaned.len() > 220 || cleaned.ends_with('?') {
+        return false;
+    }
+    let for_neg = BYOK_HARMLESS_NO_RE.replace_all(cleaned, " ");
+    if BYOK_NEG_APPROVAL_RE.is_match(&for_neg) {
+        return false;
+    }
+    BYOK_SHORT_APPROVAL_RE.is_match(cleaned) || BYOK_COMPOUND_APPROVAL_RE.is_match(cleaned)
+}
+
+fn assistant_has_pending_plan(text: &str) -> bool {
+    let t = text.trim();
+    if t.len() < 24 {
+        return false;
+    }
+    if BYOK_PLAN_HEADING_RE.is_match(t) && BYOK_PLAN_STEP_RE.find_iter(t).count() >= 2 {
+        return true;
+    }
+    let tail: String = t
+        .chars()
+        .rev()
+        .take(500)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    BYOK_PLAN_TAIL_RE.is_match(&tail)
+}
+
+fn plan_approved_in_history(history_msgs: &[ChatMessageRecord]) -> bool {
+    let Some(user_idx) = history_msgs.iter().rposition(|m| m.role == "user") else {
+        return false;
+    };
+    if !is_plan_approval_reply(&history_msgs[user_idx].content) {
+        return false;
+    }
+    let Some(prev_assistant) = history_msgs[..user_idx]
+        .iter()
+        .rev()
+        .find(|m| m.role == "assistant")
+    else {
+        return false;
+    };
+    assistant_has_pending_plan(&prev_assistant.content)
+}
+
 async fn run_agent_loop(
     state: AppState,
     run: Arc<ActiveRun>,
@@ -3305,6 +3408,9 @@ async fn run_agent_loop(
     let prefs = state.preferences.snapshot();
     let tools = gather_tools_for_mode(&state, &mode).await;
 
+    let plan_approved = plan_mode && plan_approved_in_history(&history_msgs);
+    let effective_plan_mode = plan_mode && !plan_approved;
+
     let mut sys = if mode == "local" {
         format!(
             "You are PlazCode Assistant operating in AgentScript workspace mode. Workspace root: {}. Use the provided workspace and engine tools directly to inspect and edit files accurately.",
@@ -3313,8 +3419,10 @@ async fn run_agent_loop(
     } else {
         "You are PlazCode Assistant operating in RobloxScript mode. Use the provided Roblox Studio MCP and Luau validation tools directly to inspect instances, read/edit scripts, and build in Studio.".to_string()
     };
-    if plan_mode {
+    if effective_plan_mode {
         sys.push_str("\n\nPLAN MODE IS ACTIVE: Do NOT make mutating edits or write/delete changes. Only inspect/read and return a clear step-by-step plan.");
+    } else if plan_approved {
+        sys.push_str("\n\nPLAN APPROVED BY USER: The user approved your proposed plan in chat. Proceed to implement the approved steps using the available tools. Deletes still respect safety confirmations.");
     }
     if prefs.read_only {
         sys.push_str("\n\nREAD-ONLY MODE IS ACTIVE: Only read/inspect tools are allowed.");
@@ -3481,7 +3589,7 @@ async fn run_agent_loop(
                         &mode,
                         &tc.name,
                         tc.arguments.clone(),
-                        plan_mode,
+                        effective_plan_mode,
                         confirmed_delete,
                     )
                     .await;
@@ -3967,5 +4075,40 @@ mod tests {
         let ctx = build_byok_skill_context(&state, "roblox", "build a responsive shop ui menu").await;
         assert!(ctx.is_empty() || ctx.contains("REUSABLE SKILL REFERENCE"));
         let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[test]
+    fn plan_approved_in_history_detects_chat_approvals_only_after_pending_plan() {
+        let msg = |role: &str, content: &str| ChatMessageRecord {
+            id: "id".into(),
+            role: role.into(),
+            content: content.into(),
+            reasoning: None,
+            attachments: vec![],
+            tool_calls: vec![],
+            error: None,
+            model_label: None,
+            created_at: 0,
+        };
+        let plan_msg = "## Plan\n**Goal:** Add coin shop\n1. Create UI\n2. Add server script\n\nShall I proceed?";
+        let question_only_plan = "Here is what I will change in StarterGui. Should I proceed with these changes?";
+
+        for ok in ["yes", "Yes!", "Yes, go ahead and build it", "approve", "approve the plan", "yes, no changes needed", "looks good", "lgtm"] {
+            assert!(
+                plan_approved_in_history(&[msg("user", "Add a coin shop"), msg("assistant", plan_msg), msg("user", ok)]),
+                "expected approval for {ok:?}"
+            );
+            assert!(
+                plan_approved_in_history(&[msg("assistant", question_only_plan), msg("user", ok)]),
+                "expected approval after proceed prompt for {ok:?}"
+            );
+        }
+
+        assert!(!plan_approved_in_history(&[msg("assistant", "Hi! How can I help?"), msg("user", "yes")]));
+        assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "no")]));
+        assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "yes, but change step 2")]));
+        assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "can you add sound effects?")]));
+        assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "Build the leaderboard")]));
+        assert!(!plan_approved_in_history(&[msg("assistant", plan_msg), msg("user", "Build a leaderboard instead")]));
     }
 }
