@@ -29,4 +29,42 @@ P.setFlatTranscript(false);
 assert.deepEqual(P.parseToolCalls(reply).map((c) => c.tool), ['list_commands'], 'and the startup command is found');
 // The old reading (furniture glued on one line) is what failed live:
 assert.deepEqual(P.parseToolCalls('  Thinking complete     JSON   Copy {"command": "list_commands"}    ').map((c) => c.tool), [], 'the old text did not parse');
-console.log('PASS Kimi reply text: furniture left out, code block fenced, startup command found.');
+
+// Renamed process-flow header ("Thinking process" outside .process-flow__header) must not leak into ready acknowledgement:
+const readCase = (bodyHtml) => {
+  const dom = new JSDOM(
+    '<main><div class="segment segment-user"><div class="segment-content-box">hi</div></div><div class="segment segment-assistant"><div class="segment-content"><div class="segment-content-box">' + bodyHtml + '</div></div></div></main>',
+    { url: 'https://www.kimi.ai/chat/1a1dd5ca-8e72-8468-8000-09186b04e4a2', runScripts: 'outside-only', pretendToBeVisual: true }
+  );
+  vm.runInContext(src + ';this.K=RSProvider;', dom.getInternalVMContext());
+  const out = dom.window.K.readAssistant().reply;
+  dom.window.close();
+  return out;
+};
+
+assert.equal(
+  readCase('<div class="process-flow"><div class="pf-toggle-v2">Thinking process</div><div class="toolcall-container thinking-container">Thinking complete</div><div class="markdown-container"><div class="markdown"><p>PlazCode is ready.</p></div></div></div>'),
+  'PlazCode is ready.',
+  'renamed process-flow Thinking process label does not corrupt ready acknowledgement'
+);
+assert.equal(
+  readCase('<div class="process-flow"><button type="button">思考过程</button><div class="thinking-container">Reasoning</div><div class="markdown-container"><div class="markdown"><p>PlazCode is ready.</p></div></div></div>'),
+  'PlazCode is ready.',
+  'localized process-flow header is excluded'
+);
+assert.equal(
+  readCase('<div class="process-flow"><div class="pf-toggle-v2">Thinking process</div><div class="thinking-container">Thinking</div></div>'),
+  '',
+  'mid-thinking process-flow turn without answer markdown returns empty reply'
+);
+assert.equal(
+  readCase('<div>Thinking process</div>      <div class="markdown-container"><div class="markdown"><p>PlazCode is ready.</p></div></div>'),
+  'PlazCode is ready.',
+  'opaque Thinking process label before answer is stripped'
+);
+assert.equal(
+  readCase('<div class="markdown-container"><div class="markdown"><p>Thinking process is helpful for debugging.</p></div></div>'),
+  'Thinking process is helpful for debugging.',
+  'genuine prose starting with Thinking process is preserved'
+);
+console.log('PASS Kimi reply text: furniture left out, code block fenced, startup command and ready acknowledgement clean.');

@@ -141,15 +141,45 @@ const RSProvider = (() => {
   // "Thinking complete JSON Copy {"command": ...}" on one line, which is not a code block, so the startup list_commands was
   // never run and the JSON stayed raw. Page furniture (that header, code headers, tooltips) is left out, and a code block is
   // read as a real fenced block on its own lines.
-  const CHROME_SEL = ".process-flow__header, .segment-code-header, [role='tooltip']";
+  const CHROME_SEL = [
+    ".process-flow__header",
+    "[class*='process-flow__header']",
+    "[class*='process-flow-header']",
+    "[class*='process-flow__title']",
+    "[class*='process-flow__status']",
+    "[class*='process-flow__label']",
+    "[class*='thinking-header']",
+    "[class*='thinking-title']",
+    "[class*='thinking-label']",
+    "[class*='think-header']",
+    "[class*='toolcall-header']",
+    "[class*='toolcall-title']",
+    ".segment-code-header",
+    "[role='tooltip']",
+    ".sr-only",
+    ".visually-hidden",
+  ].join(", ");
   function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = ".rs-chip, " + CHROME_SEL + (excludeSel ? ", " + excludeSel : "");
+    const stripThinkingChrome = !!(excludeSel && excludeSel.includes(S.thinking));
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
       if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (stripThinkingChrome && safeRead(() => (n).matches(".process-flow"), false) && !safeClosest(n, ".markdown, .markdown-container")) {
+        for (const part of safeQueryAll(n, ".markdown-container, .markdown, .segment-code")) {
+          if (safeClosest(part, skip)) continue;
+          const nested = safeRead(() => {
+            const p = part.parentElement && safeClosest(part.parentElement, ".markdown-container, .markdown, .segment-code");
+            return !!p && (n).contains(p) && p !== n;
+          }, false);
+          if (!nested) walk(part);
+        }
+        return;
+      }
+      if (stripThinkingChrome && safeRead(() => (n).matches("button, [role='button']"), false) && !safeClosest(n, ".markdown, .markdown-container, .segment-code")) return;
       if (safeRead(() => (n).matches(S.codeWrap), false)) {
         const lang = (safeRead(() => safeQuery(n, ".segment-code-lang").textContent, "") || "").trim().toLowerCase().replace(/[^\w+#.-]/g, "");
         const body = safeQuery(n, "pre") || safeQuery(n, ".segment-code-content");
@@ -162,6 +192,9 @@ const RSProvider = (() => {
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
     };
     walk(root);
+    if (stripThinkingChrome) {
+      t = t.replace(/^\s*(?:(?:Thinking\s+process|Thinking\s+complete|Thought\s+process|Thought\s+for\s+[\d.]+\s*(?:s|sec|seconds|m|min)|No\s+action\s+performed|思考过程|深度思考|已完成思考|思考完成|Processus\s+de\s+réflexion)(?:\s{2,}|\n+|$))+/i, "");
+    }
     return t;
   }
 
