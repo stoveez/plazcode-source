@@ -152,5 +152,106 @@ const turnsHtml = `
     } finally { w.close(); }
   }
 
+  // 5. Non-unique data-testid, duplicate attribute guard, and response wrapper isolation
+  {
+    const liveHtml = `
+      <main>
+        <div class="message-bubble" data-testid="user-message">Start</div>
+        <div class="message-bubble" data-testid="assistant-message">
+          <div class="response-content-markdown"><p>${CMD}</p></div>
+        </div>
+      </main>`;
+    const { w, P } = makePage('https://grok.com/c/live1', liveHtml + composerTextarea());
+    try {
+      const sendToken = P.lastAssistantId();
+      const firstUser = P.allItems().filter(P.isUserItem)[0];
+      const firstUserKey = P.itemKey(firstUser);
+      assert(sendToken && sendToken !== 'assistant-message', 'assistant key must not collapse to generic data-testid');
+      assert(firstUserKey && firstUserKey !== 'user-message', 'user key must not collapse to generic data-testid');
+
+      const main = w.document.querySelector('main');
+      const u2 = w.document.createElement('div');
+      u2.className = 'message-bubble';
+      u2.setAttribute('data-testid', 'user-message');
+      u2.textContent = 'Continue';
+      const a2 = w.document.createElement('div');
+      a2.className = 'message-bubble';
+      a2.setAttribute('data-testid', 'assistant-message');
+      a2.innerHTML = '<div class="response-content-markdown"><p>PlazCode is ready.</p></div>';
+      main.appendChild(u2);
+      main.appendChild(a2);
+
+      assert.equal(P.assistantCount(), 2);
+      assert.equal(P.userCount(), 2);
+      const curTok = P.lastAssistantId();
+      assert(curTok && curTok !== 'assistant-message');
+      assert.notEqual(curTok, sendToken, 'second assistant turn must advance lastAssistantId immediately');
+      assert.equal(P.readAssistant().reply, 'PlazCode is ready.');
+      assert.notEqual(P.itemKey(u2), firstUserKey, 'two user turns with generic data-testid must stay distinct');
+    } finally { w.close(); }
+  }
+
+  {
+    const dupHtml = `
+      <main>
+        <div data-testid="assistant-message" data-message-id="dup">
+          <div class="response-content-markdown"><p>Turn 1</p></div>
+        </div>
+        <div data-testid="assistant-message" data-message-id="dup">
+          <div class="response-content-markdown"><p>Turn 2</p></div>
+        </div>
+      </main>`;
+    const { w, P } = makePage('https://grok.com/c/dup1', dupHtml + composerTextarea());
+    try {
+      const items = P.allItems().filter(P.isAssistantItem);
+      assert.equal(items.length, 2);
+      const k1 = P.itemKey(items[0]);
+      const k2 = P.itemKey(items[1]);
+      assert(k1 && k2 && k1 !== k2, 'duplicate live data-message-id must fall back to distinct keys');
+      assert.equal(P.lastAssistantId(), k2);
+    } finally { w.close(); }
+  }
+
+  {
+    const idHtml = `
+      <main>
+        <div id="response-uuid-1">
+          <div class="message-bubble" data-testid="assistant-message">
+            <div class="response-content-markdown"><p>R1</p></div>
+          </div>
+        </div>
+        <div id="response-uuid-2">
+          <div class="message-bubble" data-testid="assistant-message">
+            <div class="response-content-markdown"><p>R2</p></div>
+          </div>
+        </div>
+        <div id="response-uuid-shared">
+          <div class="message-bubble" data-testid="user-message">Prompt 3</div>
+          <div class="message-bubble" data-testid="assistant-message">
+            <div class="response-content-markdown"><p>R3</p></div>
+          </div>
+        </div>
+        <div data-testid="message" data-message-id="a1" data-message-author-role="assistant">
+          <div class="response-content-markdown"><p>R4</p></div>
+        </div>
+        <div data-testid="message" data-message-id="a2" data-message-author-role="assistant">
+          <div class="response-content-markdown"><p>R5</p></div>
+        </div>
+      </main>`;
+    const { w, P } = makePage('https://grok.com/c/wrap1', idHtml + composerTextarea());
+    try {
+      const assistants = P.allItems().filter(P.isAssistantItem);
+      const users = P.allItems().filter(P.isUserItem);
+      assert.equal(assistants.length, 5);
+      assert.equal(users.length, 1);
+      assert.equal(P.itemKey(assistants[0]), 'a:response-uuid-1');
+      assert.equal(P.itemKey(assistants[1]), 'a:response-uuid-2');
+      assert.equal(P.itemKey(users[0]), 'u:response-uuid-shared');
+      assert.equal(P.itemKey(assistants[2]), 'a:response-uuid-shared');
+      assert.equal(P.itemKey(assistants[3]), 'a1');
+      assert.equal(P.itemKey(assistants[4]), 'a2');
+    } finally { w.close(); }
+  }
+
   console.log('PASS Grok provider fixtures: fresh/active keys, textarea + contenteditable, Voice/Mic separation, thinking/code-chrome exclusion, "+" lazy upload, lock/draft, login gate.');
 })().catch((e) => { console.error(e); process.exit(1); });

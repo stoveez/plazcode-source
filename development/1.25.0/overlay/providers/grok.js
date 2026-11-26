@@ -52,7 +52,7 @@ const RSProvider = (() => {
 
   // Layered selectors for grok.com — primary semantic/aria/testid signals plus layout fallbacks.
   const S = {
-    turn: '[data-testid="message"], [data-message-id], [data-testid*="message-row"], .message-bubble, [class*="message-bubble"], [class*="chat-message"]',
+    turn: '[data-testid="message"], [data-testid="user-message"], [data-testid="assistant-message"], [data-message-id], [data-testid*="message-row"], .message-bubble, [class*="message-bubble"], [class*="chat-message"]',
     userTurn: '[data-message-author-role="user"], [data-role="user"], [data-author="user"], [data-testid*="user-message"]',
     assistantTurn: '[data-message-author-role="assistant"], [data-role="assistant"], [data-author="assistant"], [data-testid*="assistant-message"], [data-testid*="model-message"]',
     reply: '.response-content-markdown, .markdown, .prose, [data-testid*="markdown"], [class*="markdown"]',
@@ -281,12 +281,44 @@ const RSProvider = (() => {
     return it.length ? it[it.length - 1] : null;
   };
 
+  const GENERIC_TURN_ID = /^(?:message|user-message|assistant-message|model-message|message-row|chat-message|turn|item|pending|temp|loading)$/i;
   const _turnIds = new WeakMap();
+  const _attrOwners = new Map();
   let _turnSeq = 0;
+  function ownTurnId(item) {
+    const direct =
+      safeRead(() => item.getAttribute("data-message-id"), null) ||
+      safeRead(() => item.getAttribute("data-turn-id"), null) ||
+      safeRead(() => item.getAttribute("data-response-id"), null) ||
+      safeRead(() => item.getAttribute("id"), null);
+    if (direct && !GENERIC_TURN_ID.test(direct.trim())) return direct.trim();
+    const wrap = safeClosest(item, '[id^="response-"], [data-message-id], [data-response-id]');
+    if (wrap && wrap !== item) {
+      const wrapId =
+        safeRead(() => wrap.getAttribute("data-message-id"), null) ||
+        safeRead(() => wrap.getAttribute("data-response-id"), null) ||
+        safeRead(() => wrap.getAttribute("id"), null);
+      if (wrapId && !GENERIC_TURN_ID.test(wrapId.trim())) {
+        return (isUserItem(item) ? "u:" : "a:") + wrapId.trim();
+      }
+    }
+    return null;
+  }
   function itemKey(item) {
     if (!item) return null;
-    const own = safeRead(() => item.getAttribute("data-message-id"), null) || safeRead(() => item.getAttribute("data-testid"), null);
-    if (own && own !== "message") return own;
+    const own = ownTurnId(item);
+    if (own) {
+      if (_attrOwners.size > 120) {
+        for (const [k, el] of _attrOwners) {
+          if (!safeRead(() => el.isConnected, false)) _attrOwners.delete(k);
+        }
+      }
+      const owner = _attrOwners.get(own);
+      if (!owner || owner === item || !safeRead(() => owner.isConnected, false)) {
+        _attrOwners.set(own, item);
+        return own;
+      }
+    }
     let id = _turnIds.get(item);
     if (!id) { id = "g" + (++_turnSeq); _turnIds.set(item, id); }
     return id;
