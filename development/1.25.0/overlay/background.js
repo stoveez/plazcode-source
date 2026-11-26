@@ -1361,8 +1361,8 @@ function handleBridgeMessage(msg) {
   }
   if (msg.type === "tool_result") {
     resolvePending(msg.id, msg.ok
-      ? { ok: true, text: msg.text, images: msg.images || [] }
-      : { ok: false, kind: msg.kind, error: msg.error });
+      ? { ok: true, text: msg.text, images: msg.images || [], telemetry_recorded: true }
+      : { ok: false, kind: msg.kind, error: msg.error, telemetry_recorded: true });
     return;
   }
   if (msg.type === "mcp_status") {
@@ -3336,6 +3336,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
           const response = await bridgeFetch("http://127.0.0.1:3000/api/mcp/toggle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled: msg.enabled === true }), signal: AbortSignal.timeout(8000) });
           const body = await readBridgeJson(response, "MCP toggle failed."); sendResponse({ ok: response.ok && body.ok !== false, ...body });
         } catch (error) { sendResponse({ ok: false, error: String(error.message || error) }); }
+        break;
+      }
+      case "telemetry_command": {
+        const payload = {
+          chat: msg.chat,
+          tab_title: String(msg.tab_title || (_sender && _sender.tab && _sender.tab.title) || "").trim().slice(0, 140),
+          provider: msg.provider,
+          providerId: msg.providerId,
+          tool: msg.tool,
+          succeeded: msg.succeeded === true,
+          bytes: Math.max(0, Number(msg.bytes) || 0),
+        };
+        bridgeFetch("http://127.0.0.1:3000/api/desktop/telemetry/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(3000),
+        }).catch(() => {});
+        sendResponse({ ok: true });
         break;
       }
       case "call_tool": {

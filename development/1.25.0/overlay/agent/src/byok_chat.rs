@@ -2168,7 +2168,14 @@ async fn execute_bridged_tool(
             });
         }
         return match crate::skills::execute_tool_request(&req).await {
-            Ok(v) => ("ok".into(), v.to_string()),
+            Ok(v) => {
+                let status = if v.get("ok").and_then(|b| b.as_bool()) == Some(false) {
+                    "error"
+                } else {
+                    "ok"
+                };
+                (status.into(), v.to_string())
+            }
             Err(err) => ("error".into(), err.to_string()),
         };
     }
@@ -2182,8 +2189,8 @@ async fn execute_bridged_tool(
         );
     }
     let timeout = crate::tool_budget(name, None, &args);
-    match crate::guarded_tool(state, engine, "", name, args, timeout, confirmed).await {
-        Ok(out) => (
+    match crate::guarded_tool_observed(state, engine, "", name, args, timeout, confirmed).await {
+        (Ok(out), true) => (
             "ok".into(),
             if out.text.is_empty() {
                 "Done.".into()
@@ -2191,7 +2198,15 @@ async fn execute_bridged_tool(
                 out.text
             },
         ),
-        Err(err) => {
+        (Ok(out), false) => (
+            "error".into(),
+            if out.text.is_empty() {
+                "Command failed.".into()
+            } else {
+                out.text
+            },
+        ),
+        (Err(err), _) => {
             let msg = err.to_string();
             let status = if msg.contains("E_READ_ONLY") || msg.contains("E_CONFIRMATION_REQUIRED") {
                 "blocked"

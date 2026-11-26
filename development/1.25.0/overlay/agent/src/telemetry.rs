@@ -142,6 +142,92 @@ pub fn compute_success_rate(succeeded: u64, total: u64) -> Option<u8> {
     }
 }
 
+static PARAM_COMPLAINT_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r#"(?i)^[\w .'"-]{0,60}\bis (?:required|not available|invalid)\b[\w .'"-]{0,80}$"#)
+        .expect("valid param complaint regex")
+});
+
+static LUAU_TRACE_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"\b(?:ExecuteLuauTool|CommandExecution):\d+:").expect("valid luau trace regex")
+});
+
+static RUN_CMD_EXIT_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"^\(ran in .*, exit code (-?\d+),").expect("valid run_command exit regex")
+});
+
+static BODY_ERR_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)^(?:error executing\b|error(?:\s+(?:in|calling|running)\b|\s*:)|erreur\b|exception\b|traceback\b|communication error\b|failed to\b|could not\b|cannot |unable to\b|fatal\b|e_[a-z0-9_]+:)",
+    )
+    .expect("valid body error regex")
+});
+
+/// Detects soft command/tool failures where an MCP tool or local command returned
+/// an `Ok(...)` payload whose body reports an execution, syntax, parameter, or
+/// connection failure (or non-zero exit code for `run_command`).
+pub fn output_indicates_error(tool_name: &str, text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let bare = tool_name.rsplit("__").next().unwrap_or(tool_name);
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.contains("unable to find an active studio instance")
+        || lower.contains("previously active studio has disconnected")
+    {
+        return true;
+    }
+
+    if !trimmed.contains('\n') && PARAM_COMPLAINT_RE.is_match(trimmed) {
+        return true;
+    }
+
+    if bare == "execute_luau" {
+        return LUAU_TRACE_RE.is_match(trimmed) || trimmed.contains("Failed to parse command code");
+    }
+
+    if bare == "run_command" {
+        if trimmed.starts_with("Command TIMED OUT after ") {
+            return true;
+        }
+        for line in trimmed.lines().take(3) {
+            if let Some(caps) = RUN_CMD_EXIT_RE.captures(line.trim()) {
+                if let Some(code) = caps.get(1).and_then(|m| m.as_str().parse::<i64>().ok()) {
+                    return code != 0;
+                }
+            }
+        }
+        return false;
+    }
+
+    if matches!(
+        bare,
+        "read_file"
+            | "grep_files"
+            | "search_files"
+            | "get_console_output"
+            | "plazcode_logs"
+            | "analyze_luau"
+            | "luau_lookup"
+            | "roblox_place_scripts"
+            | "roblox_place_search"
+            | "roblox_lint_script"
+            | "blender_script_check"
+            | "godot_check_script"
+            | "command_status"
+    ) {
+        return false;
+    }
+
+    let first_line = trimmed
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .unwrap_or("");
+    BODY_ERR_RE.is_match(first_line)
+}
+
 pub fn resolve_browser_chat(snapshot: &serde_json::Value) -> (String, String, String) {
     let provider = snapshot
         .get("provider")
@@ -703,5 +789,56 @@ mod tests {
         assert_eq!(active_snap.chats[0].title, "New Task | ChatGPT");
 
         let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn output_indicates_error_detects_soft_failures_without_false_positives() {
+        assert!(output_indicates_error(
+            "execute_luau",
+            "ExecuteLuauTool:139: CommandExecution:54: attempt to index nil with 'Name'"
+        ));
+        assert!(output_indicates_error("execute_luau", "Failed to parse command code"));
+        assert!(output_indicates_error("execute_luau", "datamodel_type is required"));
+        assert!(output_indicates_error(
+            "get_studio_state",
+            "Unable to find an active Studio instance"
+        ));
+        assert!(output_indicates_error(
+            "run_command",
+            "$ python fail.py\n(ran in . with cmd, exit code 1, 0.2s)\n--- stderr ---\nboom"
+        ));
+        assert!(output_indicates_error(
+            "run_command",
+            "Command TIMED OUT after 30s (cmd, in .): sleep 60"
+        ));
+        assert!(output_indicates_error(
+            "blender__execute_blender_code",
+            "Error executing code: NameError: name 'x' is not defined"
+        ));
+        assert!(output_indicates_error("write_file", "ERROR: invalid path"));
+        assert!(output_indicates_error("figma_connect", "Failed to reach Figma helper"));
+        assert!(output_indicates_error("unknown_op", "E_COMMAND: unknown tool"));
+
+        assert!(!output_indicates_error(
+            "run_command",
+            "$ python ok.py\n(ran in . with cmd, exit code 0, 0.1s)\n--- stdout ---\nError: harmless log"
+        ));
+        assert!(!output_indicates_error(
+            "multi_edit",
+            "Failed: 0\nError count: 0\nApplied 3 edits."
+        ));
+        assert!(!output_indicates_error(
+            "read_file",
+            "Error: line 1 of some file content"
+        ));
+        assert!(!output_indicates_error(
+            "get_console_output",
+            "Error: runtime warning inside game console"
+        ));
+        assert!(!output_indicates_error(
+            "analyze_luau",
+            r#"{"status":"ok","errors":0}"#
+        ));
+        assert!(!output_indicates_error("execute_luau", ""));
     }
 }

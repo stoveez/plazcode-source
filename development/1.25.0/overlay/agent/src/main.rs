@@ -991,7 +991,7 @@ for line in sys.stdin:
         let workspace=Arc::new(workspace::Workspace::new(Some(folder.to_str().unwrap())).unwrap());
         let state=AppState::new(broadcast::channel(16).0,alive.clone(),Arc::new(AtomicBool::new(false)),workspace,Arc::new("test".into()),Arc::new(preferences::PreferencesStore::load()),ui);
         let _owned=state.roblox_mcp.lock().await;
-        let error=checkpoint_tool_bounded(&state,"roblox","","script_grep",serde_json::json!({}),Duration::from_millis(50)).await.unwrap_err();
+        let error=checkpoint_tool_bounded(&state,"roblox","","script_grep",serde_json::json!({}),Duration::from_millis(50)).await.0.unwrap_err();
         assert!(error.to_string().contains("deadline exceeded"));assert!(alive.load(Ordering::Relaxed));assert_eq!(state.mcp_in_flight.load(Ordering::Relaxed),0);
         assert_eq!(native_tool_timeout("addon__long",None),Duration::from_millis(640000));
         assert_eq!(native_tool_timeout("execute_luau",Some(20000)),Duration::from_secs(20));
@@ -1066,6 +1066,7 @@ for line in sys.stdin:
         let post = axum::http::Method::POST;
         assert!(!is_work_request(&post, "/api/desktop/browser-agent"));
         assert!(!is_work_request(&post, "/api/desktop/telemetry/reset"));
+        assert!(!is_work_request(&post, "/api/desktop/telemetry/command"));
         assert!(!is_work_request(&post, "/api/desktop/update"));
         assert!(!is_work_request(&post, "/api/debug/browser-log"), "debug uploads never defer updates");
         assert!(!is_work_request(&axum::http::Method::GET, "/api/desktop/activity"));
@@ -1496,6 +1497,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/desktop/browser-agent", post(browser_agent_handler))
         .route("/api/desktop/telemetry", get(desktop_telemetry_handler))
         .route("/api/desktop/telemetry/reset", post(desktop_telemetry_reset_handler))
+        .route("/api/desktop/telemetry/command", post(desktop_telemetry_command_handler).layer(axum::extract::DefaultBodyLimit::max(16 * 1024)))
         .route("/api/desktop/activity", post(|| async { Json(serde_json::json!({"ok":true})) }))
         .route("/api/desktop/agent-result", post(desktop_agent_result_handler))
         .route("/api/studio-dock/state", get(studio_dock::state_handler))
@@ -1611,7 +1613,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 // heartbeat, which also covers long model replies with no tool calls.
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !path.starts_with("/api/owner/") && !matches!(path,
-        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/desktop/telemetry/reset" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
+        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/desktop/telemetry/reset" | "/api/desktop/telemetry/command" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/mcp/desktop-apps/connect" | "/api/mcp/desktop-apps/disconnect" | "/api/mcp/studio/resources/read" | "/api/connections/setup" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
@@ -1975,8 +1977,11 @@ async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &
     }
     // Missing undo bookkeeping must never bypass the actual permission gate.
     if id.is_empty() {
-        let outcome = checkpoint_tool_bounded(state, engine, id, name, args, budget).await;
-        let succeeded = outcome.is_ok();
+        let (outcome, observed) = checkpoint_tool_bounded(state, engine, id, name, args, budget).await;
+        let succeeded = match &outcome {
+            Ok(out) => observed != Some(false) && !telemetry::output_indicates_error(name, &out.text),
+            Err(_) => false,
+        };
         return (outcome, succeeded);
     }
     // Log paths the way the journal stores them (relative to the workspace),
@@ -1988,11 +1993,22 @@ async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &
             if let Some(raw) = args[key].as_str() { if let Ok(p) = state.workspace.resolve_path(raw,false) { logged[key] = serde_json::Value::String(state.workspace.display(&p)); } }
         }
     }
-    let outcome = checkpoint_tool_bounded(state,engine,id,name,args,budget).await;
+    let (outcome, observed) = checkpoint_tool_bounded(state,engine,id,name,args,budget).await;
     let args = logged;
     let mut journal = checkpoints::STORE.lock().await;
     let result = match &outcome {
-        Ok(_) => { let outcome=journal.take_outcome(id);if name=="run_command" && args["background"].as_bool()==Some(true){"started"}else if outcome == Some(false) {"failed"} else {"ok"} }
+        Ok(out) => {
+            let outcome = journal.take_outcome(id);
+            let soft_err = telemetry::output_indicates_error(name, &out.text);
+            let bg_start = name == "run_command" && args["background"].as_bool() == Some(true);
+            if bg_start && !soft_err && outcome != Some(false) && observed != Some(false) {
+                "started"
+            } else if outcome == Some(false) || observed == Some(false) || soft_err {
+                "failed"
+            } else {
+                "ok"
+            }
+        }
         Err(_) => "failed",
     };
     journal.event(id, engine, name, &args, result, &outcome.as_ref().err().map(|e| e.to_string()).unwrap_or_default());
@@ -2009,7 +2025,7 @@ async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &
 async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> anyhow::Result<McpOutput> {
     guarded_tool_observed(state, engine, id, name, args, budget, confirmed).await.0
 }
-async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration) -> anyhow::Result<McpOutput> {
+async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration) -> (anyhow::Result<McpOutput>, Option<bool>) {
     match tokio::time::timeout(budget, checkpoint_tool(state,engine,id,name,args)).await {
         Ok(result)=>result,
         Err(_)=> {
@@ -2033,23 +2049,25 @@ async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name:
                     }
                 }
             }
-            anyhow::bail!("Command deadline exceeded after {} seconds. Partial effects may remain; inspect state before retrying. The command was not replayed.",budget.as_secs())
+            (Err(anyhow::anyhow!("Command deadline exceeded after {} seconds. Partial effects may remain; inspect state before retrying. The command was not replayed.",budget.as_secs())), Some(false))
         }
     }
 }
-async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value) -> anyhow::Result<McpOutput> {
+async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value) -> (anyhow::Result<McpOutput>, Option<bool>) {
     let _activity = updater::ActivityGuard::enter();
     if id.is_empty(){return checkpoint_tool_inner(state,engine,id,name,args).await;}
     let mut cancellation=state.cancellation.register(id);
-    anyhow::ensure!(!*cancellation.borrow(),"Task stopped before tool dispatch.");
+    if *cancellation.borrow() {
+        return (Err(anyhow::anyhow!("Task stopped before tool dispatch.")), None);
+    }
     let result=tokio::select! {
         biased;
         _=cancellation.changed()=>None,
         result=checkpoint_tool_inner(state,engine,id,name,args)=>Some(result),
     };
-    if let Some(result)=result{
+    if let Some((outcome, observed))=result{
         // A Luau check that finished after its edit returned is added to the next result of the same task.
-        return result.map(|mut out|{out.text.push_str(&luau_check::take(id));out});
+        return (outcome.map(|mut out|{out.text.push_str(&luau_check::take(id));out}), observed);
     }
     // Dropping the local command future kills only its owned shell tree.
     // Recycle the specific helper whose response stream was interrupted.
@@ -2061,13 +2079,20 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
     if let Err(error) = journal.save() {
         tracing::warn!("Could not save Immediate Stop warning for {id}: {error}");
     }
-    anyhow::bail!("Immediate Stop interrupted the tool. Its result may be partial; inspect before retrying.")
+    (Err(anyhow::anyhow!("Immediate Stop interrupted the tool. Its result may be partial; inspect before retrying.")), None)
 }
-async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> anyhow::Result<McpOutput> {
-    if engine=="roblox" && name==luau_check::TOOL { return analyze_luau_tool(state,args).await; }
+async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> (anyhow::Result<McpOutput>, Option<bool>) {
+    let inner = checkpoint_tool_inner_res(state, engine, id, name, &mut args).await;
+    match inner {
+        Ok((out, obs)) => (Ok(out), obs),
+        Err(err) => (Err(err), None),
+    }
+}
+async fn checkpoint_tool_inner_res(state: &AppState, engine: &str, id: &str, name: &str, args: &mut serde_json::Value) -> anyhow::Result<(McpOutput, Option<bool>)> {
+    if engine=="roblox" && name==luau_check::TOOL { return analyze_luau_tool(state,args.clone()).await.map(|out| (out, None)); }
     if engine=="roblox" && name==luau_service::LOOKUP_TOOL {
-        let result=tokio::time::timeout(std::time::Duration::from_secs(90),luau_service::lookup(state,&args)).await.map_err(|_|anyhow::anyhow!("luau_lookup ran out of time while reading the place"))??;
-        return Ok(McpOutput{text:result.to_string(),images:Vec::new()});
+        let result=tokio::time::timeout(std::time::Duration::from_secs(90),luau_service::lookup(state,args)).await.map_err(|_|anyhow::anyhow!("luau_lookup ran out of time while reading the place"))??;
+        return Ok((McpOutput{text:result.to_string(),images:Vec::new()}, None));
     }
     if engine=="local" && name.contains("__") {
         // Add-on tool in AgentScript mode: runs in its own app, so it has no file checkpoint.
@@ -2081,11 +2106,23 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
                 tracing::warn!("Could not save add-on checkpoint step for {id}: {error}");
             }
         }
-        let (text,images)=state.addons.lock().await.call_tool(name,args).await?;
-        return Ok(McpOutput{text,images});
+        let (text,images)=state.addons.lock().await.call_tool(name,args.clone()).await?;
+        return Ok((McpOutput{text,images}, None));
     }
-    if id.is_empty() { return match engine { "local"=>workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg), "roblox"=>roblox_tool(state,name,args).await,_=>Err(anyhow::anyhow!("unknown engine")) }; }
-    if safety::file_preview(engine, name, &args) {
+    if id.is_empty() {
+        return match engine {
+            "local" if name == "run_command" => match workspace::tool_run_command_observed(&state.workspace, args).await {
+                Ok((text, success)) => Ok((McpOutput { text, images: Vec::new() }, Some(success))),
+                Err(error) => Err(anyhow::Error::msg(error)),
+            },
+            "local" => workspace::dispatch(&state.workspace, name, args.clone()).await
+                .map(|text| (McpOutput { text, images: Vec::new() }, None))
+                .map_err(anyhow::Error::msg),
+            "roblox" => roblox_tool(state, name, args.clone()).await.map(|out| (out, None)),
+            _ => Err(anyhow::anyhow!("unknown engine")),
+        };
+    }
+    if safety::file_preview(engine, name, args) {
         {
             let journal = checkpoints::STORE.lock().await;
             anyhow::ensure!(
@@ -2093,18 +2130,18 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
                 "This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task."
             );
         }
-        return workspace::dispatch(&state.workspace, name, args).await
-            .map(|text| McpOutput { text, images: Vec::new() })
+        return workspace::dispatch(&state.workspace, name, args.clone()).await
+            .map(|text| (McpOutput { text, images: Vec::new() }, None))
             .map_err(anyhow::Error::msg);
     }
     if engine == "local" {
         if name == "run_command" { args["_plazcode_checkpoint"] = serde_json::json!(id); }
         let paths = {
             let mut journal = checkpoints::STORE.lock().await;
-            journal.begin_local_tool(&state.workspace, id, name, &args)?
+            journal.begin_local_tool(&state.workspace, id, name, args)?
         };
         let (result, success) = if name == "run_command" {
-            match workspace::tool_run_command_observed(&state.workspace, &args).await {
+            match workspace::tool_run_command_observed(&state.workspace, args).await {
                 Ok((text, success)) => (Ok(McpOutput { text, images: Vec::new() }), success),
                 Err(error) => (Err(anyhow::Error::msg(error)), false),
             }
@@ -2117,11 +2154,11 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         };
         {
             let mut journal = checkpoints::STORE.lock().await;
-            if let Err(error) = journal.finish_local_tool(&state.workspace, id, name, &args, &paths, success) {
+            if let Err(error) = journal.finish_local_tool(&state.workspace, id, name, args, &paths, success) {
                 tracing::warn!("Could not finish local checkpoint for {id}: {error}");
             }
         }
-        return result;
+        return result.map(|out| (out, Some(success)));
     }
     if engine != "roblox" {
         let journal = checkpoints::STORE.lock().await;
@@ -2133,10 +2170,10 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     }
     let plan = {
         let mut journal = checkpoints::STORE.lock().await;
-        journal.begin_roblox_tool(&state.workspace, id, name, &args)?
+        journal.begin_roblox_tool(&state.workspace, id, name, args)?
     };
     if plan.read_only || plan.uncheckpointed_mutation {
-        return roblox_tool(state, name, args).await;
+        return roblox_tool(state, name, args.clone()).await.map(|out| (out, None));
     }
     let source_path = if matches!(name, "multi_edit" | "script_set_source") {
         args["file_path"].as_str().or_else(|| args["path"].as_str()).map(str::to_owned)
@@ -2166,7 +2203,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         params
     };
     let before = roblox_tool(state, "execute_luau", mark_args(checkpoints::studio_mark(&format!("Before {label}")))).await;
-    let mut outcome = roblox_tool(state, name, args).await;
+    let mut outcome = roblox_tool(state, name, args.clone()).await;
     let mut luau_edit = None;
     if let Some((before_snap, studio)) = script_before {
         let captured = roblox_tool(state, "execute_luau", mark_args(checkpoints::script_snapshot(before_snap["path"].as_str().unwrap_or("")))).await;
@@ -2191,7 +2228,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
             Err(blocked) => return Err(anyhow::Error::msg(format!("{}{}", out.text, blocked))),
         }
     }
-    outcome
+    outcome.map(|out| (out, None))
 }
 
 /// `analyze_luau`: reads the script with the fixed read-only snapshot snippet (never the script's own code) or
@@ -2583,6 +2620,48 @@ async fn desktop_telemetry_handler() -> impl IntoResponse {
 
 async fn desktop_telemetry_reset_handler() -> impl IntoResponse {
     Json(serde_json::json!({"ok":true,"telemetry":telemetry::reset()}))
+}
+
+fn telemetry_command_chat(
+    state: &AppState,
+    req: &serde_json::Value,
+) -> (String, String, String, bool, usize) {
+    let has_req_chat = ["chat", "provider", "tab_title"].iter().any(|k| {
+        req.get(*k)
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.trim().is_empty())
+    });
+    let (chat_key, chat_title, chat_provider) = if has_req_chat {
+        telemetry::resolve_browser_chat(req)
+    } else {
+        telemetry::resolve_browser_chat(&state.ui.browser_agent_snapshot())
+    };
+    let succeeded = req
+        .get("succeeded")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let bytes = req
+        .get("bytes")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0)
+        .min(2_000_000) as usize;
+    (chat_key, chat_title, chat_provider, succeeded, bytes)
+}
+
+async fn desktop_telemetry_command_handler(
+    State(state): State<AppState>,
+    Json(req): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let (chat_key, chat_title, chat_provider, succeeded, bytes) =
+        telemetry_command_chat(&state, &req);
+    telemetry::record_command(
+        &chat_key,
+        &chat_title,
+        &chat_provider,
+        succeeded,
+        telemetry::estimate_tokens(bytes),
+    );
+    Json(serde_json::json!({"ok": true}))
 }
 
 async fn desktop_agent_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
@@ -3344,7 +3423,9 @@ async fn bridge_studio_tools(state: &AppState) -> (Vec<serde_json::Value>, bool)
 async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Value) -> serde_json::Value {
     let args = if args.is_null() { serde_json::json!({}) } else { args };
     if !args.is_object() {
-        return mcp_server::tool_error_result("invalid_arguments", "Tool arguments must be a JSON object.", serde_json::json!({"tool": name}));
+        let msg = "Tool arguments must be a JSON object.";
+        telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args.to_string().len() + msg.len()));
+        return mcp_server::tool_error_result("invalid_arguments", msg, serde_json::json!({"tool": name}));
     }
     let prefs = state.preferences.snapshot();
     if name == mcp_server::STATUS_TOOL {
@@ -3368,7 +3449,8 @@ async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Valu
         let args_bytes = args.to_string().len();
         return match analyze_luau_tool(state, args).await {
             Ok(out) => {
-                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", true, telemetry::estimate_tokens(args_bytes + out.text.len()));
+                let ok = !telemetry::output_indicates_error(name, &out.text);
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", ok, telemetry::estimate_tokens(args_bytes + out.text.len()));
                 mcp_server::tool_success_result(out.text, out.images)
             }
             Err(error) => {
@@ -3395,7 +3477,9 @@ async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Valu
     }
     if name.starts_with("roblox_place_") || name == "roblox_lint_script" {
         if !state.workspace.ready() {
-            return mcp_server::tool_error_result("workspace_not_ready", "No project folder is selected in PlazCode. Open or select a project folder in PlazCode to use local place file tools.", serde_json::json!({"workspace_ready": false}));
+            let msg = "No project folder is selected in PlazCode. Open or select a project folder in PlazCode to use local place file tools.";
+            telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args.to_string().len() + msg.len()));
+            return mcp_server::tool_error_result("workspace_not_ready", msg, serde_json::json!({"workspace_ready": false}));
         }
         let args_bytes = args.to_string().len();
         let (outcome, succeeded) = guarded_tool_observed(state, "local", "", name, args, Duration::from_secs(60), false).await;
@@ -3412,16 +3496,20 @@ async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Valu
         };
     }
     if name.contains("__") {
-        return mcp_server::tool_error_result("unknown_tool", "External add-on tools are not exposed through PlazCode's Roblox Studio bridge.", serde_json::json!({"tool": name}));
+        let msg = "External add-on tools are not exposed through PlazCode's Roblox Studio bridge.";
+        telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args.to_string().len() + msg.len()));
+        return mcp_server::tool_error_result("unknown_tool", msg, serde_json::json!({"tool": name}));
     }
     let studio_up = state.ui.studio_running.load(Ordering::Relaxed)
         || state.ui.mcp_alive.load(Ordering::Relaxed)
         || std::env::var_os("PLAZCODE_MCP_COMMAND").is_some()
         || std::env::var_os("ROBLOXSCRIPT_MCP_COMMAND").is_some();
     if !studio_up {
+        let msg = "Roblox Studio is not open or Studio MCP is off. Open Roblox Studio, enable Assistant -> Manage MCP Servers -> Enable Studio as MCP server, then retry.";
+        telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args.to_string().len() + msg.len()));
         return mcp_server::tool_error_result(
             "studio_not_running",
-            "Roblox Studio is not open or Studio MCP is off. Open Roblox Studio, enable Assistant -> Manage MCP Servers -> Enable Studio as MCP server, then retry.",
+            msg,
             serde_json::json!({
                 "studio_running": false,
                 "mcp_alive": false,
@@ -4069,7 +4157,9 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         tracing::warn!("program check failed, request refused: {error:#}");
                         let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                         let sent = if typ == "call_tool" {
-                            send_json(&out_tx, serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}))
+                            let (chat_key, chat_title, chat_provider) = telemetry::resolve_browser_chat(&state.ui.browser_agent_snapshot());
+                            telemetry::record_command(&chat_key, &chat_title, &chat_provider, false, telemetry::estimate_tokens(txt.len()));
+                            send_json(&out_tx, serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY,"telemetry_recorded":true}))
                         } else {
                             send_json(&out_tx, serde_json::json!({"type":"error","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}))
                         };
@@ -4209,7 +4299,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                             telemetry::record_command(&chat_key, &chat_title, &chat_provider, succeeded, telemetry::estimate_tokens(args_bytes + out_bytes));
                             let response = match outcome {
                                 Ok(out) => {
-                                    let mut frame = serde_json::json!({"type":"tool_result","id":id,"ok":true,"text":out.text});
+                                    let mut frame = serde_json::json!({"type":"tool_result","id":id,"ok":true,"text":out.text,"telemetry_recorded":true});
                                     // Image blocks (Studio screenshots) ride along as
                                     // [{mimeType, data}] — the extension attaches them to
                                     // the model's next message. Omitted entirely when empty
@@ -4219,23 +4309,27 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                                     }
                                     frame
                                 }
-                                Err(error) => serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"execution","error":error.to_string()}),
+                                Err(error) => serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"execution","error":error.to_string(),"telemetry_recorded":true}),
                             };
                             if let Err(err) = tx.send(response.to_string()) {
                                 tracing::warn!("legacy WS tool_result send failed for '{name}' (id={id}): {err}");
                             }
                         });
                         let panic_tx = out_tx.clone();
+                        let panic_state = state.clone();
                         tokio::spawn(async move {
                             if let Err(join_err) = inner.await {
                                 if join_err.is_panic() {
                                     tracing::error!("legacy WS call_tool task panicked for '{tool_name_for_panic}' (id={id}): {join_err}");
+                                    let (chat_key, chat_title, chat_provider) = telemetry::resolve_browser_chat(&panic_state.ui.browser_agent_snapshot());
+                                    telemetry::record_command(&chat_key, &chat_title, &chat_provider, false, telemetry::estimate_tokens(tool_name_for_panic.len()));
                                     let err_frame = serde_json::json!({
                                         "type": "tool_result",
                                         "id": id,
                                         "ok": false,
                                         "kind": "execution",
-                                        "error": format!("Internal error while running '{tool_name_for_panic}': task panicked.")
+                                        "error": format!("Internal error while running '{tool_name_for_panic}': task panicked."),
+                                        "telemetry_recorded": true
                                     });
                                     if let Err(send_err) = panic_tx.send(err_frame.to_string()) {
                                         tracing::warn!("legacy WS panic tool_result send failed for '{tool_name_for_panic}' (id={id}): {send_err}");
@@ -4596,6 +4690,50 @@ mod wave4_main_tests {
             State(state.clone()),
             Json(json!({"action": "finish", "id": id, "complete": true})),
         ).await;
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[tokio::test]
+    async fn guarded_tool_empty_id_observes_failing_local_run_command() {
+        let (state, folder) = test_state("empty-id-fail-cmd");
+        let cmd = if cfg!(windows) { "cmd /c exit 1" } else { "exit 1" };
+        let (res, ok) = guarded_tool_observed(
+            &state,
+            "local",
+            "",
+            "run_command",
+            json!({"command": cmd}),
+            Duration::from_secs(10),
+            false,
+        ).await;
+        assert!(res.is_ok(), "non-zero exit returns Ok text: {:?}", res);
+        assert!(!ok, "non-zero exit with empty checkpoint id must count as failed");
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[test]
+    fn telemetry_command_chat_prefers_request_metadata_and_falls_back_to_snapshot() {
+        let (state, folder) = test_state("tel-cmd-chat");
+        {
+            let mut slot = state.ui.browser_agent.lock().unwrap();
+            *slot = Some((
+                std::time::Instant::now(),
+                json!({"chat": "deepseek|snap1", "tab_title": "DeepSeek Chat", "provider": "DeepSeek"}),
+            ));
+        }
+
+        let (k1, t1, p1, ok1, b1) = telemetry_command_chat(
+            &state,
+            &json!({"chat": "chatgpt|explicit", "tab_title": "Explicit Tab", "provider": "ChatGPT", "succeeded": false, "bytes": 120}),
+        );
+        assert_eq!((k1.as_str(), t1.as_str(), p1.as_str(), ok1, b1), ("chatgpt|explicit", "Explicit Tab", "ChatGPT", false, 120));
+
+        let (k2, t2, p2, ok2, b2) = telemetry_command_chat(
+            &state,
+            &json!({"succeeded": true, "bytes": 5_000_000}),
+        );
+        assert_eq!((k2.as_str(), t2.as_str(), p2.as_str(), ok2, b2), ("deepseek|snap1", "DeepSeek Chat", "DeepSeek", true, 2_000_000));
+
         let _ = std::fs::remove_dir_all(folder);
     }
 }

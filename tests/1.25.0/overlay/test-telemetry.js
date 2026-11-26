@@ -37,8 +37,43 @@ for (const key of [
 const mainRs = fs.readFileSync(__dirname + "/agent/src/main.rs", "utf8");
 assert(mainRs.includes("mod telemetry;"), "main.rs declares telemetry module");
 assert(mainRs.includes('"/api/desktop/telemetry/reset"'), "main.rs registers reset route");
+assert(mainRs.includes('"/api/desktop/telemetry/command"'), "main.rs registers command telemetry route");
 assert(mainRs.includes("telemetry::record_browser_poll"), "main.rs feeds browser polls");
 assert(mainRs.includes("telemetry::record_command"), "main.rs feeds command stats");
+assert(mainRs.includes("telemetry::output_indicates_error"), "main.rs checks soft MCP/command errors");
+
+const byokRs = fs.readFileSync(__dirname + "/agent/src/byok_chat.rs", "utf8");
+assert(byokRs.includes("guarded_tool_observed"), "byok_chat.rs checks observed tool outcome");
+
+const backgroundJs = fs.readFileSync(__dirname + "/background.js", "utf8");
+assert(backgroundJs.includes('case "telemetry_command":'), "background.js relays command telemetry");
+assert(backgroundJs.includes("telemetry_recorded: true"), "background.js forwards telemetry_recorded for bridge tool_result");
+
+const coreMainJs = fs.readFileSync(__dirname + "/core/main.js", "utf8");
+assert(coreMainJs.includes("reportCommandTelemetry"), "core/main.js defines reportCommandTelemetry");
+assert(coreMainJs.includes("markToolTelemetry"), "core/main.js tracks delegated/bridge telemetry without double-counting");
+assert(
+  coreMainJs.includes('if (res.kind === "parse_error")') &&
+    /if\s*\(\s*res\.kind\s*===\s*"parse_error"[\s\S]{0,200}reportCommandTelemetry/.test(coreMainJs),
+  "core/main.js reports parse_error as failed command"
+);
+assert(
+  /if\s*\(\s*res\.kind\s*===\s*'protocol_error'[\s\S]{0,160}reportCommandTelemetry/.test(coreMainJs),
+  "core/main.js reports protocol_error as failed command"
+);
+assert(
+  /if\s*\(\s*preflight\.length\s*\)[\s\S]{0,160}reportCommandTelemetry/.test(coreMainJs),
+  "core/main.js reports preflight argument errors as failed command"
+);
+assert(
+  /calls\.length\s*>\s*MAX_COMMANDS_PER_REPLY[\s\S]{0,200}reportCommandTelemetry/.test(coreMainJs),
+  "core/main.js reports too-many-commands errors as failed command"
+);
+assert(
+  coreMainJs.includes("r.telemetry_recorded === true") &&
+    coreMainJs.includes("!meta.bridgeRecorded"),
+  "core/main.js skips duplicate telemetry when bridge already recorded tool_result"
+);
 
 const parts = {
   __PLAZCODE_I18N_CATALOG__: "core/i18n-catalog.js",
