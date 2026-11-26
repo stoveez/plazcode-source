@@ -1796,7 +1796,7 @@
   "effort.": null,
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": null,
   "failed": null,
-  "freebuff.ai": null,
+  "freebuff.com": null,
   "gemini.google.com": null,
   "gpt.crax.lol": null,
   "hard to read": null,

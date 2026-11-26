@@ -69,7 +69,7 @@ fn supported_ai_url(action: &str) -> Option<&'static str> {
         "open:glm" => Some("https://chat.z.ai/"),
         "open:qwen" => Some("https://chat.qwen.ai/"),
         "open:arena" => Some("https://arena.ai/"),
-        "open:freebuff" => Some("https://freebuff.ai/chat"),
+        "open:freebuff" => Some("https://freebuff.com/"),
         "open:crax" => Some("https://gpt.crax.lol/"),
         "open:useai" => Some("https://use.ai/"),
         "open:mimo" => Some("https://aistudio.xiaomimimo.com/#/c"),
@@ -671,6 +671,7 @@ mod tests {
             let action=format!("open:{name}");let url=supported_ai_url(&action).expect("missing supported AI action");
             assert!(url.starts_with("https://"));assert!(html.contains(&format!("data-ipc=\"{action}\"")));
         }
+        assert_eq!(supported_ai_url("open:freebuff"),Some("https://freebuff.com/"));
         assert_eq!(supported_ai_url("open:vani"),None);
         assert_eq!(supported_ai_url("open:https://example.com"),None);assert_eq!(supported_ai_url("open:unknown"),None);
     }

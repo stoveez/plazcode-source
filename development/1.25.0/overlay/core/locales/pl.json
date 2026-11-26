@@ -1796,7 +1796,7 @@
   "effort.": "wysiłku.",
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": "czas dozwolony dla jednego przebiegu. Po jego upływie PlazCode wstrzymuje pracę przed rozpoczęciem następnego polecenia; nie cofa pracy ani nie przerywa bieżącego polecenia. Ustaw 0, aby wyłączyć limit czasu.",
   "failed": "błąd",
-  "freebuff.ai": "freebuff.ai",
+  "freebuff.com": "freebuff.com",
   "gemini.google.com": "gemini.google.com",
   "gpt.crax.lol": "gpt.crax.lol",
   "hard to read": "trudne do czytania",

@@ -50,7 +50,7 @@ pub const AI_SITES: &[AiSiteSpec] = &[
     AiSiteSpec { id: "arena", name: "LMArena", url: "https://arena.ai/" },
     AiSiteSpec { id: "notion", name: "Notion AI", url: "https://www.notion.so/" },
     AiSiteSpec { id: "workbuddy", name: "WorkBuddy", url: "https://www.workbuddy.ai/" },
-    AiSiteSpec { id: "freebuff", name: "FreeBuff", url: "https://freebuff.ai/" },
+    AiSiteSpec { id: "freebuff", name: "FreeBuff", url: "https://freebuff.com/" },
     AiSiteSpec { id: "crax", name: "Crax", url: "https://gpt.crax.lol/" },
     AiSiteSpec { id: "useai", name: "Use.ai", url: "https://use.ai/" },
     AiSiteSpec { id: "mimo", name: "MiMo", url: "https://aistudio.xiaomimimo.com/" },
@@ -2438,6 +2438,7 @@ mod tests {
             assert_eq!(resolved.id, id, "missing provider {id}");
             assert!(resolved.url.starts_with("https://"), "{id}");
         }
+        assert_eq!(resolve_ai_site(Some("freebuff")).url, "https://freebuff.com/");
         assert_eq!(resolve_ai_site(Some("Google AI Studio")).id, "aistudio");
         assert_eq!(resolve_ai_site(None).id, "chatgpt");
         assert_eq!(resolve_ai_site(Some("unknown")).id, "chatgpt");

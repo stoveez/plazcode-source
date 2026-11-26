@@ -7,4 +7,6 @@ const manifest=JSON.parse(fs.readFileSync('manifest.json'));const providers=new 
 for(const provider of providers)assert(buttons.some(x=>x.dataset.ipc==='open:'+provider),'Missing registered provider '+provider);
 for(const button of buttons)assert(native.includes('"'+button.dataset.ipc+'" => Some("https://'),'Missing fixed HTTPS action '+button.dataset.ipc);
 for(const name of ['tools','mcp','terminal','settings'])assert.equal(d.querySelector('.action[data-go="'+name+'"] svg').outerHTML,d.querySelector('.navbtn[data-page="'+name+'"] svg').outerHTML,'Icon mismatch '+name);
+assert(native.includes('"open:freebuff" => Some("https://freebuff.com/")'),'Freebuff desktop button links to https://freebuff.com/');
+assert(fs.readFileSync('core/main.js','utf8').includes('{ name: "Freebuff", url: "https://freebuff.com/" }'),'Freebuff bar menu links to https://freebuff.com/');
 dom.window.close();console.log('All registered AI providers have fixed desktop actions; dropdown order and Quick Access icon parity passed.');

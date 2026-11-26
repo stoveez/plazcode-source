@@ -1796,7 +1796,7 @@
   "effort.": "に設定すると有効になります。",
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": "1 回の実行で許容する経過時間です。時間に達すると PlazCode は次のコマンドを開始する前に一時停止します。作業を元に戻したり、現在のコマンドを中断したりはしません。0 にすると時間制限はなくなります。",
   "failed": "失敗",
-  "freebuff.ai": "freebuff.ai",
+  "freebuff.com": "freebuff.com",
   "gemini.google.com": "gemini.google.com",
   "gpt.crax.lol": "gpt.crax.lol",
   "hard to read": "読みにくい",

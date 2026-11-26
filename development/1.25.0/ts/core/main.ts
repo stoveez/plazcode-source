@@ -1026,7 +1026,7 @@
     { name: "GLM", url: "https://chat.z.ai/" },
     { name: "Qwen", url: "https://chat.qwen.ai/" },
     { name: "Arena", url: "https://arena.ai/text/direct" },
-    { name: "Freebuff", url: "https://freebuff.ai/chat" },
+    { name: "Freebuff", url: "https://freebuff.com/" },
     { name: "Crax GPT", url: "https://gpt.crax.lol/" },
     { name: "Use AI", url: "https://use.ai/chat" },
     { name: "MiMo", url: "https://aistudio.xiaomimimo.com/#/c" },

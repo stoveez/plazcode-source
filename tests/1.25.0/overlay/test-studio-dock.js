@@ -60,6 +60,7 @@ const ALL_18 = [
 const dockSites = vm.runInContext("DOCK_AI_SITES", ctx);
 assert.equal(dockSites.length, 18, "exactly 18 browser AI providers configured");
 assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_18, "all 18 AI provider IDs present");
+assert.equal(dockSites.find((s) => s.id === "freebuff").url, "https://freebuff.com/", "Freebuff dock launcher points to https://freebuff.com/");
 
 (async () => {
   // Open new AI tab when none exists (Grok)

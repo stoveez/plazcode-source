@@ -1796,7 +1796,7 @@
   "effort.": "로 설정하면 활성화됩니다.",
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": "한 번의 실행에 허용되는 경과 시간입니다. 시간에 도달하면 PlazCode는 다음 명령을 시작하기 전에 일시 중지합니다. 작업을 되돌리거나 현재 명령을 중단하지는 않습니다. 0으로 설정하면 시간 제한이 없습니다.",
   "failed": "실패",
-  "freebuff.ai": "freebuff.ai",
+  "freebuff.com": "freebuff.com",
   "gemini.google.com": "gemini.google.com",
   "gpt.crax.lol": "gpt.crax.lol",
   "hard to read": "읽기 어려움",

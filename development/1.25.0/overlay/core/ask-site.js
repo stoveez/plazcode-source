@@ -16,7 +16,7 @@ const PlazCodeAskSite = (() => {
     { hosts: ["chat.z.ai"], url: "https://chat.z.ai/", name: "GLM" },
     { hosts: ["chat.qwen.ai"], url: "https://chat.qwen.ai/", name: "Qwen" },
     { hosts: ["arena.ai"], url: "https://arena.ai/", name: "Arena" },
-    { hosts: ["freebuff.ai", "freebuff.com"], url: "https://freebuff.ai/chat", name: "Freebuff" },
+    { hosts: ["freebuff.com", "freebuff.ai"], url: "https://freebuff.com/", name: "Freebuff" },
     { hosts: ["gpt.crax.lol"], url: "https://gpt.crax.lol/", name: "Crax" },
     { hosts: ["use.ai"], url: "https://use.ai/", name: "UseAI" },
     { hosts: ["aistudio.xiaomimimo.com"], url: "https://aistudio.xiaomimimo.com/#/c", name: "MiMo" },

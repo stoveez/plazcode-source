@@ -17,6 +17,8 @@ assert.equal(S.siteFor("https://www.amazon.com/x"), null, "a shop is not an AI c
 assert.equal(S.siteFor("http://chatgpt.com/"), null, "only https");
 assert.equal(S.siteFor("https://gemini.google.com/app/abc123").name, "Gemini");
 assert.equal(S.siteFor("https://www.kimi.com/chat/1").url, "https://www.kimi.com/");
+assert.equal(S.siteFor("https://freebuff.com/?thread=1").url, "https://freebuff.com/");
+assert.equal(S.siteFor("https://freebuff.ai/chat").url, "https://freebuff.com/");
 // The order: a site the person chose, else the AI chat they last used, else DeepSeek.
 assert.deepEqual(S.choose(null, { url: "https://claude.ai/chat/9", name: "x" }), { url: "https://claude.ai/new", name: "Claude", why: "current" });
 assert.equal(S.choose({ url: "https://chat.qwen.ai/", name: "Qwen" }, { url: "https://claude.ai/new" }).why, "chosen");

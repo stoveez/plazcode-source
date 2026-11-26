@@ -1796,7 +1796,7 @@
   "effort.": "時啟用。",
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": "一次執行允許的經過時間。達到時限後，PlazCode 會在開始下一個命令前暫停；不會復原工作，也不會中斷目前命令。設為 0 則不限制時間。",
   "failed": "失敗",
-  "freebuff.ai": "freebuff.ai",
+  "freebuff.com": "freebuff.com",
   "gemini.google.com": "gemini.google.com",
   "gpt.crax.lol": "gpt.crax.lol",
   "hard to read": "難以閱讀",

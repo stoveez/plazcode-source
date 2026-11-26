@@ -1626,7 +1626,7 @@ const DOCK_AI_SITES = [
   { id: "arena", url: "https://arena.ai/", patterns: ["https://arena.ai/*"] },
   { id: "notion", url: "https://www.notion.so/", patterns: ["https://www.notion.so/*", "https://app.notion.so/*", "https://www.notion.com/*", "https://notion.com/*", "https://*.notion.com/*"] },
   { id: "workbuddy", url: "https://www.workbuddy.ai/", patterns: ["https://www.workbuddy.ai/*", "https://workbuddy.ai/*"] },
-  { id: "freebuff", url: "https://freebuff.ai/", patterns: ["https://freebuff.ai/*", "https://www.freebuff.ai/*", "https://freebuff.com/*", "https://www.freebuff.com/*"] },
+  { id: "freebuff", url: "https://freebuff.com/", patterns: ["https://freebuff.ai/*", "https://www.freebuff.ai/*", "https://freebuff.com/*", "https://www.freebuff.com/*"] },
   { id: "crax", url: "https://gpt.crax.lol/", patterns: ["https://gpt.crax.lol/*"] },
   { id: "useai", url: "https://use.ai/", patterns: ["https://use.ai/*", "https://www.use.ai/*"] },
   { id: "mimo", url: "https://aistudio.xiaomimimo.com/", patterns: ["https://aistudio.xiaomimimo.com/*"] },

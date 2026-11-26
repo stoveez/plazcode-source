@@ -1796,7 +1796,7 @@
   "effort.": "für den Denkaufwand aktiviert.",
   "elapsed time allowed for one run. When the time is reached, PlazCode pauses before starting the next command; it does not undo work or interrupt the current command. Use 0 for no time limit.": "zulässige verstrichene Zeit für einen Durchlauf. Wenn die Zeit erreicht ist, pausiert PlazCode vor dem nächsten Befehl; es macht keine Arbeit rückgängig und unterbricht nicht den aktuellen Befehl. Verwenden Sie 0 für kein Zeitlimit.",
   "failed": "fehlgeschlagen",
-  "freebuff.ai": "freebuff.ai",
+  "freebuff.com": "freebuff.com",
   "gemini.google.com": "gemini.google.com",
   "gpt.crax.lol": "gpt.crax.lol",
   "hard to read": "schwer lesbar",
