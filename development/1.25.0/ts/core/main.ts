@@ -7087,7 +7087,18 @@ return result`;
           ui.banner("warn","Startup context was not acknowledged","PlazCode stayed stopped. No project command ran and no message was resent. Inspect this chat before restarting.");return;
         }
       }
-      const readyText = String(readyRes.text || "").replace(/[`*#]/g, "").trim().replace(/^_+|_+$/g, "");
+      const rawReady = String(readyRes.text || "");
+      const readyText = rawReady.replace(/[`*#]/g, "").trim().replace(/^_+|_+$/g, "");
+      const readyLines = readyText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const lastReadyLine = readyLines.length ? readyLines[readyLines.length - 1] : "";
+      // 1.25.0 (live Freebuff, 2026-11-26): Freebuff renders a short 1-line status/reasoning
+      // summary directly above the reply ("Reading the listcommands output...\nPlazCode is ready.").
+      // Accept a short, refusal-free, code/JSON-free reply whose final standalone line is the ready phrase.
+      const trailingReadyOk = readyLines.length >= 2 && readyLines.length <= 4 && readyText.length <= 260 &&
+        /^(?:PLAZCODE_READY|PlazCode is ready|PlazCode ist bereit)[.!]?$/i.test(lastReadyLine) &&
+        !/[{}<>]|```/.test(rawReady) &&
+        !isProviderPolicyRefusal(rawReady) && !looksLikeStartupDecline(rawReady) &&
+        !/\bnot ready\b/i.test(readyText);
       const readyOk = readyRes.kind === 'verified_protocol' || (readyRes.kind === "text" && (
         /^(?:PLAZCODE_READY|PlazCode is ready)[.!]?$/i.test(readyText) ||
         (P.id === "notion" && /^PlazCode ist bereit[.!]?$/i.test(readyText)) ||
@@ -7096,6 +7107,7 @@ return result`;
         // failing the handshake and making the user start again.
         (/^(?:PLAZCODE_READY|PlazCode is ready|PlazCode ist bereit)[.!]/i.test(readyText) && readyText.length <= 240 &&
           !/[{}<>]|\b(?:command|list_commands)\b/i.test(readyText.replace(/^[^.!]*[.!]/, ""))) ||
+        trailingReadyOk ||
         (P.id === "chatgpt" && /^(?:i(?:'m| am) )?ready(?: to (?:help|work|go))?[.!]?$/i.test(readyText)) ||
         (P.userVoiceStartup && P.id !== "notion" && startupVoiceReady(readyText))
       ));

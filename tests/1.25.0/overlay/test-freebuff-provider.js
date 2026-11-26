@@ -418,6 +418,99 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     });
     f.w.close();
   }
+  {
+    const thoughtAndAdTurn =
+      '<div data-message-role="assistant">' +
+        '<div data-part="reasoning">Checking rules</div>' +
+        '<div class="thought-summary">Planning next step</div>' +
+        '<div class="prose"><p>PlazCode is ready.</p></div>' +
+        '<div data-ad="1"><a href="https://trygravity.ai/click">Speak prompts. Flow types clean code terms</a><span>Ad</span></div>' +
+      '</div>';
+    const f = load(SAVED_CHAT, thoughtAndAdTurn + COMPOSER);
+    ok('excludes data-part reasoning, thought summaries, and sponsored trygravity ads from ready replies', () => {
+      assert.equal(f.p.readAssistant().reply, 'PlazCode is ready.');
+      assert.equal(f.p.findToolBlockSpot(f.p.lastAssistant()), null);
+    });
+    f.w.close();
+  }
+
+  // ── 8b. Startup handshake accepts Freebuff's pre-reply status line safely ─
+  {
+    const mainSource = fs.readFileSync('core/main.js', 'utf8');
+    async function runFreebuffStartup(replyText) {
+      const sent = [], banners = [];
+      let current = {id: 'turn-1', text: '```json\n{"command":"list_commands"}\n```', dataset: {}};
+      const items = [current];
+      const queue = [{kind: 'tool'}, {kind: 'text', text: replyText}];
+      const box = {
+        Map, Set, Date,
+        A: {startGen: 0, sessionGen: 1, toolList: [{name: 'read_file', description: 'Read a file.', inputSchema: {properties: {path: {type: 'string'}}, required: ['path']}}]},
+        P: {
+          id: 'freebuff', displayName: 'Freebuff',
+          userVoiceStartup: false, compactStartup: false,
+          chatIsEmpty: () => true, lastAssistantId: () => current.id, lastAssistant: () => current,
+          conversationKey: () => 'chat-fb', setInputLock() {}, ensureComposerReady: async () => ({ready: true}),
+          classifyText: (i) => i.text, itemText: (i) => i.text, isAssistantItem: (i) => i.role !== 'user', isUserItem: (i) => i.role === 'user',
+        },
+        assistantIdx: (i) => items.filter((x) => x.role !== 'user').indexOf(i), turnKey: (i) => i.id, condoLocked: () => false,
+        diag() {}, activeEngine: () => 'local', ensureTools: async () => {}, systemPrompt: () => '⟦RS-SYS⟧\nRules',
+        submitAndGetBase: async (text) => { sent.push(text); return sent.length; },
+        waitForResponse: async () => {
+          const next = queue.shift();
+          if (!next) throw new Error('Unexpected extra model turn');
+          current = {id: 'turn-' + (sent.length + 1), text: next.text || '', dataset: {}};
+          items[0] = current;
+          return next.kind === 'tool'
+            ? {kind: 'tool', calls: [{tool: 'list_commands', arguments: {}}], item: current}
+            : {kind: 'text', text: next.text, item: current};
+        },
+        rememberExecuted() {}, rememberSession() {},
+        decorate: {sweep() {}, toolBox() {}},
+        ui: {setStarting() {}, updateStartGate() {}, inputCover() {}, trackCard() {}, setStarted() {}, toast() {}, banner(kind, title, body) { banners.push({kind, title, body}); }},
+        SendAbortedError: class extends Error {}, RUN_CMD: 'Start-PlazCode-Agent.cmd',
+        runTool: async () => "Output of 'list_commands':\nread_file",
+        asStateTag: () => '[SYSTEM_STATE: ok]',
+        requireStartupConnection: async () => {},
+        startupFeedbackStages: (memory, ready) => [...memory, {text: ready}],
+      };
+      vm.createContext(box);
+      vm.runInContext(PARSER_SOURCE + ';this.RSParse=RSParse;', box);
+      vm.runInContext("this.RS={SYS_MARKER:'\\u27e6RS-SYS\\u27e6',RESEND_MARKER:'\\u27e6RS-RE\\u27e6'};", box);
+      box.P.allItems = () => items;
+      vm.runInContext(mainSource.slice(mainSource.indexOf('  function isProviderPolicyRefusal('), mainSource.indexOf('  function notionPlainText(')), box);
+      vm.runInContext(mainSource.slice(mainSource.indexOf('  const executed = new Map()'), mainSource.indexOf('  const startupOutcomes =')) + 'this.didExecute=isRememberedExecuted;', box);
+      const helpers = mainSource.slice(mainSource.indexOf('  const startupOutcomes ='), mainSource.indexOf('  let reliabilitySettings='));
+      const start = mainSource.indexOf('  async function startSession('), end = mainSource.indexOf('  const SVG =', start);
+      vm.runInContext(helpers + mainSource.slice(start, end) + 'this.start=startSession;', box);
+      const result = await box.start();
+      return {result, banners};
+    }
+
+    for (const validReply of [
+      'Reading the listcommands output to plan which workspace command to run first.\nPlazCode is ready.',
+      'Reading the listcommands output.\n**PlazCode is ready.**',
+    ]) {
+      const res = await runFreebuffStartup(validReply);
+      ok('accepts Freebuff trailing ready acknowledgement: ' + validReply.replace(/\n/g, ' / '), () => {
+        assert(res.result && res.result.ready === true, JSON.stringify(res));
+        assert.deepEqual(res.banners, []);
+      });
+    }
+
+    for (const unsafeReply of [
+      'I cannot run workspace commands.\nPlazCode is ready.',
+      'Not ready yet.\nPlazCode is ready.',
+      '```json\n{"command":"list_commands"}\n```\nPlazCode is ready.',
+      '{"status":"ok"}\nPlazCode is ready.',
+      'a'.repeat(250) + '\nPlazCode is ready.',
+    ]) {
+      const res = await runFreebuffStartup(unsafeReply);
+      ok('still rejects unsafe or malformed trailing ready reply: ' + unsafeReply.slice(0, 35).replace(/\n/g, ' '), () => {
+        assert(!res.result || !res.result.ready, 'must stay rejected: ' + unsafeReply);
+        assert(res.banners.length >= 1, 'shows warning banner instead of starting');
+      });
+    }
+  }
 
   // ── 9. Clicking PlazCode bar buttons never counts as the site Send button ─
   for (const name of ['freebuff', 'oxalpha', 'useai']) {

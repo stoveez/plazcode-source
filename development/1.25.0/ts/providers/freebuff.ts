@@ -91,8 +91,8 @@ const RSProvider: PlazCodeProvider = (() => {
     return true;
   }
 
-  const THINKING_SEL = ".reasoning, [class*='thinking'], [class*='reason']";
-  const CHROME_SEL = "button, [role='button'], [role='tooltip'], svg, textarea, input, form, .sr-only, .visually-hidden, .feedback, [class*='feedback'], [class*='suggestion'], [class*='follow-up'], [class*='followup']";
+  const THINKING_SEL = ".reasoning, [class*='thinking'], [class*='reason'], [class*='thought'], [data-part='reasoning'], [data-type='reasoning'], [data-reasoning]";
+  const CHROME_SEL = "button, [role='button'], [role='tooltip'], svg, textarea, input, form, .sr-only, .visually-hidden, .feedback, [class*='feedback'], [class*='suggestion'], [class*='follow-up'], [class*='followup'], [data-ad], [class*='sponsored'], a[href*='trygravity.ai']";
   const BODY_CONTAINER_SEL = ".prose, .markdown, .bubble, [class*='message-content']";
 
   function codeLang(pre: Element, headerText: string): string {
