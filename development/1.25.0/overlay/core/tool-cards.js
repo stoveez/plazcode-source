@@ -134,7 +134,12 @@ const PlazCodeToolCards = (() => {
     const tool = String((call && call.tool) || "");
     const args = (call && call.arguments && typeof call.arguments === "object") ? call.arguments : {};
     const name = bare(tool);
-    const target = text(first(args, TARGET_KEYS)).slice(0, 200);
+    let target = text(first(args, TARGET_KEYS)).slice(0, 200);
+    if (!target && (name === "read_scripts" || name === "read_files")) {
+      const scope = first(args, ["paths", "folders"]);
+      const listTxt = Array.isArray(scope) ? scope.map(String).filter(Boolean).join(", ") : text(scope).trim();
+      target = (listTxt || (args.outline ? "outline" : args.list_only ? "list" : (name === "read_scripts" ? "whole game" : "whole workspace"))).slice(0, 120);
+    }
     const m = { tool, title: nice(tool), target, kind: "other", edits: [], stats: null, code: "", raw: rawRequest(args), output: feedback === undefined || feedback === null ? "" : text(feedback), defaultTab: "RAW REQUEST" };
     let edits = null;
     if (name === "multi_edit" && Array.isArray(args.edits)) edits = args.edits.map(cleanEdit);

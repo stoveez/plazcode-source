@@ -186,6 +186,12 @@
   } catch {}
   try { window.__rsPermMode = () => permMode; } catch {}
   const TOOL_ALIASES: Record<string, string> = {
+    read_all_scripts: "read_scripts",
+    bulk_read_scripts: "read_scripts",
+    read_many_scripts: "read_scripts",
+    read_all_files: "read_files",
+    bulk_read_files: "read_files",
+    read_many_files: "read_files",
     script_read_analysis: "script_analysis",
     script_readanalysis: "script_analysis",
     read_script_analysis: "script_analysis",
@@ -3191,13 +3197,31 @@ return result`;
     return { used: String(extra).slice(0, room - 140).trimEnd() + "\n[PlazCode shortened this reference to fit your input limit.]", left: "" };
   }
   function resultPageSize() {
-    const output=characterLimits.rsOutputLimitEnabled?characterLimits.rsOutputCharLimit:Infinity;
+    const toolName: unknown = arguments.length > 0 ? arguments[0] : "";
+    const bare = String(toolName || "").trim().split("/").pop()!.split("__").pop() || "";
+    const bulkRead = bare === "read_scripts" || bare === "read_files";
+    const rawOutput=characterLimits.rsOutputLimitEnabled?characterLimits.rsOutputCharLimit:Infinity;
+    const output = bulkRead && (!characterLimits.rsOutputLimitEnabled || characterLimits.rsOutputCharLimit >= 32000) ? Math.max(rawOutput, 96000) : rawOutput;
     const input=characterLimits.rsInputLimitEnabled?Math.max(400,characterLimits.rsInputCharLimit-600):Infinity;
     const transport=typeof P!=="undefined" && Number(P.toolResultPageChars)>0 ? Number(P.toolResultPageChars) : Infinity;
     const compactOn=typeof reliabilitySettings==="undefined" || reliabilitySettings.rsCompactOutputs!==false;
     const softCap=typeof PlazCodeTokenOptimizer!=="undefined" ? PlazCodeTokenOptimizer.DEFAULT_SOFT_RESULT_CHARS : 8000;
-    const soft=compactOn && characterLimits.rsOutputLimitEnabled && characterLimits.rsOutputCharLimit>=32000 ? softCap : Infinity;
+    const soft=!bulkRead && compactOn && characterLimits.rsOutputLimitEnabled && characterLimits.rsOutputCharLimit>=32000 ? softCap : Infinity;
     return Math.min(output,input,transport,soft);
+  }
+  function effectiveBulkMaxChars(toolName: string, requested?: unknown): number | undefined {
+    let cap = (resultPageSize as any)(toolName);
+    if (typeof P !== "undefined" && P.id === "deepseek") {
+      const dsLimit = typeof PlazCodeDeepSeekAntiBan !== "undefined" && Number(PlazCodeDeepSeekAntiBan.BULK_READ_COMPRESS_LIMIT) > 0
+        ? Number(PlazCodeDeepSeekAntiBan.BULK_READ_COMPRESS_LIMIT) - 4000
+        : 72000;
+      cap = Math.min(cap, dsLimit);
+    }
+    const ceiling = toolName === "read_scripts" ? 90000 : 120000;
+    const maxAllowed = Math.max(2000, Math.min(ceiling, Number.isFinite(cap) ? Math.floor(cap - 2500) : ceiling));
+    if (requested != null && Number.isFinite(Number(requested))) return Math.max(2000, Math.min(Number(requested), maxAllowed));
+    if (maxAllowed < 60000) return maxAllowed;
+    return undefined;
   }
   function readRetainedToolResult(args: any) {
     const record=retainedToolResults.get(String(args.id||''));
@@ -3219,7 +3243,7 @@ return result`;
   function compressToolFeedback(text: unknown, name: string) {
     const s = String(text || "");
     if (name === "plazcode_clarify" || name === "plazcode_result_read") return s;
-    const limit=resultPageSize();
+    const limit=(resultPageSize as any)(name);
     if(s.length<=limit)return s;
     const id=crypto.randomUUID();
     retainedToolResults.set(id,{text:s,chat:P.conversationKey(),engine:activeEngine()});
@@ -3249,7 +3273,7 @@ return result`;
     if(images?.length)result.attachments=images.length;
     if(failed)result.error={code:(raw.match(/\bE_[A-Z_]+\b/)||['E_TOOL'])[0]};
     const prefix=failed?'ERROR in '+tool+':\n':"Output of '"+tool+"':\n";
-    const full=prefix+JSON.stringify({result}),budget=resultPageSize();
+    const full=prefix+JSON.stringify({result}),budget=(resultPageSize as any)(tool);
     if(full.length<=budget)return full;
     const id=crypto.randomUUID();retainedToolResults.set(id,{text:body,chat:P.conversationKey(),engine:activeEngine()});
     let retained=0;for(const entry of retainedToolResults.values())retained+=entry.text.length;
@@ -3509,7 +3533,7 @@ return result`;
       const ms=Date.now()-started;
       results[i]={index:i+1,command:call.tool,ok:!failed,result:retained};
       diag("batch.childDone",{index:i+1,name:call.tool,ms,ok:!failed});
-      if(!failed && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool)))A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(stripOutputPrefix(output)).slice(0,4000),project:currentProject,chat:owner.chat,session:owner.session}].slice(-6);
+      if(!failed && /^(?:script_read|read_file|read_files|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool)))A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(stripOutputPrefix(output)).slice(0,4000),project:currentProject,chat:owner.chat,session:owner.session}].slice(-6);
       return !failed;
     };
     // The batch envelope already consumed one slot. Account for each extra child.
@@ -4470,6 +4494,10 @@ return result`;
         try { if (window.__rsForge && window.__rsForge()) args = Object.assign({}, args, { forge: true }); } catch {}
       }
       if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
+      if (name === "read_scripts") {
+        const fitted = effectiveBulkMaxChars("read_scripts", args?.max_chars);
+        if (fitted !== undefined) args = Object.assign({}, args, { max_chars: fitted });
+      }
       const built = RobloxScriptSkills.buildLuau(name, args);
       if (built.err) return built.err;
       const readOnlySkill = !PlazCodeSafety.isChange(name, "studio");
@@ -4596,6 +4624,10 @@ return result`;
     });
     if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
     let sendArgs: any = args && typeof args === "object" ? Object.assign({}, args) : args;
+    if (bareName === "read_files") {
+      const fitted = effectiveBulkMaxChars("read_files", sendArgs && typeof sendArgs === "object" ? sendArgs.max_chars : undefined);
+      if (fitted !== undefined) sendArgs = Object.assign({}, sendArgs && typeof sendArgs === "object" ? sendArgs : {}, { max_chars: fitted });
+    }
     if (sendArgs && typeof sendArgs === "object") {
       if (bareName === "execute_luau" && sendArgs.code && sendArgs._orNoTxn !== true && sendArgs._orChunk !== true && !/ChangeHistoryService/.test(String(sendArgs.code))) {
         sendArgs.code = wrapStudioTxn(String(sendArgs.code), String(bareName || "edit"));
@@ -4728,6 +4760,10 @@ return result`;
       return first.slice(0, 46);
     }
     const a = call.arguments || {};
+    const b = bareToolName(call.tool);
+    if ((b === "read_scripts" || b === "read_files") && a.paths == null && a.folders == null && a.path == null && a.folder == null) {
+      return a.outline ? (b === "read_scripts" ? "outline (whole game)" : "outline (whole workspace)") : a.list_only ? "list" : (b === "read_scripts" ? "whole game" : "whole workspace");
+    }
     const k = Object.keys(a)[0];
     if (!k) return "";
     let v = String(a[k]);
@@ -5370,7 +5406,7 @@ return result`;
     if (A.running || A.starting || A.stopping || A.enhancing || A.pendingToolSettles || (A.budgetResume && A.budgetResume.chat===P.conversationKey())) return;
     A.running = true;
     if (typeof syncTabKeepAwake === "function") syncTabKeepAwake(true);
-    A.budgetResume=null;A.visualChecks=0;
+    A.budgetResume=null;A.visualChecks=0;A.singleReadStreak=0;
     const taskBudget=A.taskBudget=PlazCodeReliability.createBudget({calls:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsToolBudget:0,minutes:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsTaskMinutes:0});
     if (!activity.active()) {
       const items=P.allItems();let assistants=0;
@@ -5952,8 +5988,14 @@ return result`;
             } catch {}
           }
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
+          const bareCalled = bareToolName(call.tool);
+          if (!isErr && (bareCalled === "script_read" || bareCalled === "read_file")) {
+            A.singleReadStreak = (A.singleReadStreak || 0) + 1;
+          } else {
+            A.singleReadStreak = 0;
+          }
           const outBody = stripOutputPrefix(feedback);
-          if(!isErr && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool))){A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(outBody).slice(0,4000),project:currentProject,chat:P.conversationKey(),session:A.sessionGen}].slice(-6);}
+          if(!isErr && /^(?:script_read|read_file|read_files|read_scripts|script_read_analysis|script_analysis)$/.test(bareCalled)){A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(outBody).slice(0,4000),project:currentProject,chat:P.conversationKey(),session:A.sessionGen}].slice(-6);}
           // Trace the chip's DERIVED phase vs summary. Blender (and any MCP whose
           // output leads with a warning/diagnostic line) resolves ✓ done - the
           // payload starts "Output of…", not "ERROR" - yet outSummary shows its
@@ -5998,9 +6040,10 @@ return result`;
           // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).
           const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish only any remaining work already requested, then answer briefly.' : '\nThis is a quick user request: answer briefly; no checklist or unrelated work.') : '';
           const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Re-read the error, inspect state, and try a different approach.)" : "";
-          const reserve = quickNote.length + failNote.length + stateTag.length + 80;
+          const bulkReadNudge = !isErr && (A.singleReadStreak || 0) >= 2 ? (activeEngine() === "local" ? "\n\n(Efficiency tip: use read_files to read many files, folders, or the whole workspace in ONE call — or outline:true for a quick structural map — instead of reading files one by one with read_file.)" : "\n\n(Efficiency tip: use read_scripts to read many scripts, folders, or the whole game in ONE call — or outline:true for a quick map — instead of reading scripts one by one with script_read.)") : "";
+          const reserve = quickNote.length + bulkReadNudge.length + failNote.length + stateTag.length + 80;
           let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
-          if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, "combined_feedback");
+          if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, call?.tool || "combined_feedback");
           // Changed saved memory rides along only if it fits; the AI's own vault/memory write is not echoed back.
           const ownMemoryWrite = calls.some((call: any) => /^(?:plazcode_vault|plazcode_memory)$/.test(String(call.tool || call.command || "")) && /^(?:write|save|archive|add_image|append|replace|section)$/.test(String((call.params || call.arguments || {}).action || (call.params || call.arguments || {}).mode || "write")));
           const memoryContext = personalMemoryContext();
@@ -6021,7 +6064,7 @@ return result`;
           A.pendingImages = null;
           diag("images.consumed", { count: images ?  images.length : 0 });
           // 1.21.0: repeated failures no longer pause the run; the model is told to change approach.
-          const toSendFinal = toSend + failNote + (stateTag ? '\n'+stateTag : '');
+          const toSendFinal = toSend + bulkReadNudge + failNote + (stateTag ? '\n'+stateTag : '');
           if(failedToolAttempts===3) diag("loop.failStreak",{n:failedToolAttempts});
           A.loopBeatAt = Date.now();
           const preparedFeedback = prepareToolFeedback(toSendFinal);
@@ -10240,7 +10283,7 @@ return result`;
       const is = (c: any, re: any) => re.test(c.tool);
       const edits = acts.filter((c: any) => is(c, /^(write_file|edit_file|create_folder|delete_path|move_path)$/)).length;
       const runs = acts.filter((c: any) => is(c, /^run_command$/)).length;
-      const reads = acts.filter((c: any) => is(c, /^(read_file|grep_files|search_files|tree|list_directory|file_info|env_info|process_list|process_kill|open_path|download_file|workspace_info)$/)).length;
+      const reads = acts.filter((c: any) => is(c, /^(read_file|read_files|grep_files|search_files|tree|list_directory|file_info|env_info|process_list|process_kill|open_path|download_file|workspace_info)$/)).length;
       const errs = acts.filter((c: any) => c.status === "err").length;
       const chip = (n: any, label: any, cls?: any) => `<span class="rs-sum-chip${cls ? " " + cls : ""}${n ? "" : " zero"}">${n} <i>${label}</i></span>`;
       const stats =

@@ -55,12 +55,15 @@ assert(/^\s*read_scripts = api\.read_scripts,$/m.test(lib), "dispatched in the L
 const argsOf = (built) => JSON.parse(/local args = jdec\(\[==\[(.*?)\]==\]\)/s.exec(built.code)[1]);
 assert.deepEqual(argsOf(S.buildLuau("read_scripts", { path: "ServerScriptService.Main", folder: "StarterGui", cursor: 3 })),
   { op: "read_scripts", cursor: "3", paths: ["ServerScriptService.Main"], folders: ["StarterGui"] }, "single path/folder and a numeric cursor");
+assert.deepEqual(argsOf(S.buildLuau("read_scripts", { paths: "A.B, C.D", max_chars: "5000", skip: "Packages, HDAdmin", filter: "Combat", class: "ModuleScript", summary: true })),
+  { op: "read_scripts", paths: ["A.B", "C.D"], exclude: ["Packages", "HDAdmin"], classes: ["ModuleScript"], match: "Combat", outline: true, max_chars: 5000 }, "comma-separated paths + exclude/match/classes/outline aliases");
 assert.deepEqual(argsOf(S.buildLuau("read_scripts", { paths: "A.B, C.D", max_chars: "5000" })), { op: "read_scripts", paths: ["A.B", "C.D"], max_chars: 5000 }, "comma-separated paths");
 assert.deepEqual(argsOf(S.buildLuau("read_scripts", {})), { op: "read_scripts" }, "no params = the whole game");
 const described = S.describeCommands().find((l) => l.startsWith("read_scripts:"));
 assert(/many scripts in ONE call/.test(described) && /Use it instead of script_read/.test(described), "the AI is told what it is for");
 const fn = lib.slice(lib.indexOf("function api.read_scripts(a)"), lib.indexOf("function api.script_analysis(a)"));
 assert(/math\.clamp\(math\.floor\(tonumber\(a\.max_chars\) or 60000\), 2000, 90000\)/.test(fn), "pages default to 60,000 and stay below Studio's 100,000 limit");
+assert(/outlineMode/.test(fn) && /matchesFilters/.test(fn), "read_scripts supports outline mode and exclude/match/classes filtering");
 assert(/SES:GetEditorSource\(s\)/.test(fn) && /s\.Source/.test(fn), "unsaved editor text first, saved source as fallback");
 assert(!/:Destroy\(|\.Parent\s*=|:Clone\(|SetAttribute|\.Source\s*=|UpdateSourceAsync|Instance\.new/.test(fn), "read_scripts changes nothing");
 const safety = new Function(fs.readFileSync(dir + "/core/safety.js", "utf8") + ";return PlazCodeSafety;")();

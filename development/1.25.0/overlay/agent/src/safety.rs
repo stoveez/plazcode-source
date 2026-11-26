@@ -14,6 +14,7 @@ const LOCAL_READ: &[u64] = &[
     crate::hidden::fnv("list_directory"),
     crate::hidden::fnv("tree"),
     crate::hidden::fnv("read_file"),
+    crate::hidden::fnv("read_files"),
     crate::hidden::fnv("read_file_base64"),
     crate::hidden::fnv("search_files"),
     crate::hidden::fnv("grep_files"),
@@ -263,7 +264,7 @@ mod tests {
             ("roblox", "execute_luau"), ("roblox", "multi_edit"), ("roblox", "playwright__browser_click"), ("roblox", "blender__execute_blender_code"), ("roblox", "blender__import_asset"), ("roblox", "godot__run_project"), ("roblox", "godot__create_scene"), ("roblox", "godot__add_node"), ("roblox", "godot__save_scene"), ("roblox", "godot__launch_editor")] {
             assert!(gate(true, false, engine, name, &json!({}), false).is_err(), "{engine} {name} must be blocked");
         }
-        for (engine, name) in [("local", "read_file"), ("local", "grep_files"), ("roblox", "script_read"), ("roblox", "get_studio_state"),
+        for (engine, name) in [("local", "read_file"), ("local", "read_files"), ("local", "grep_files"), ("roblox", "script_read"), ("roblox", "get_studio_state"),
             ("roblox", "inspect_instance"), ("roblox", "figma__get_design_context"), ("roblox", "playwright__browser_snapshot"),
             ("roblox", "blender__look"), ("roblox", "blender__get_scene_info"), ("roblox", "godot__get_debug_output"), ("roblox", "godot__list_projects"), ("roblox", "godot__get_project_info")] {
             assert!(gate(true, false, engine, name, &json!({}), false).is_ok(), "{engine} {name} must be allowed");

@@ -198,6 +198,12 @@ async function runEngineUnitTests() {
   const huge = "Output of 'scan':\n" + ("alpha ".repeat(5000)) + "TAIL_MARKER_OK";
   const shaped = AntiBan.shapeOutput(huge);
   assert(shaped.compressed && shaped.text.length <= 22000 && shaped.text.includes("TAIL_MARKER_OK"));
+  const bulkScripts = "Output of 'read_scripts':\n--- ReplicatedStorage.Main (ModuleScript, 100 lines) ---\n" + ("local x = 1\n".repeat(4500));
+  const shapedBulk = AntiBan.shapeOutput(bulkScripts, "read_scripts");
+  assert(!shapedBulk.compressed && shapedBulk.text === bulkScripts, "bulk read_scripts <= 76k stays 100% lossless on DeepSeek");
+  const bulkFiles = "Output of 'read_files':\n--- src/app.ts (100 lines) ---\n" + ("const a = 1;\n".repeat(4500));
+  const shapedBulkFiles = AntiBan.shapeOutput(bulkFiles, "read_files");
+  assert(!shapedBulkFiles.compressed && shapedBulkFiles.text === bulkFiles, "bulk read_files <= 76k stays 100% lossless on DeepSeek");
 
   // 9. Cross-tab storage sync under plazcodeDeepSeekGuardV5
   const tabB = AntiBan.createEngine({

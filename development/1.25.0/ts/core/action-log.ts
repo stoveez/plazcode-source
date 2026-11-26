@@ -12,12 +12,12 @@ const PlazCodeActionLog = (() => {
   const VERBS: Record<string, string> = {
     write_file: "Wrote", edit_file: "Edited", append_file: "Added to", delete_path: "Deleted", move_path: "Moved",
     copy_file: "Copied", create_folder: "Created folder", download_file: "Downloaded", read_file: "Read",
-    read_file_base64: "Read", list_directory: "Looked in", tree: "Looked through", search_files: "Searched for",
+    read_files: "Read files", read_file_base64: "Read", list_directory: "Looked in", tree: "Looked through", search_files: "Searched for",
     grep_files: "Searched files for", file_info: "Checked", run_command: "Ran command", process_kill: "Closed program",
     open_path: "Opened", launch_app: "Started app", focus_window: "Switched to window", key_type: "Typed text",
     mouse_click: "Clicked", mouse_move: "Moved the mouse", screen_capture: "Took a screenshot",
     window_screenshot: "Took a screenshot of", screen_record: "Recorded the screen", godot_project_info: "Read the Godot project", godot_scene_tree: "Read the Godot scene", godot_add_node: "Added a Godot node to", godot_create_script: "Created Godot script", godot_check_script: "Checked Godot script", godot_find_uses: "Found uses in Godot of", unity_project_info: "Read the Unity project", unity_list_assets: "Listed Unity assets", unity_scene_objects: "Read the Unity scene", unity_create_script: "Created Unity script", unity_packages: "Read the Unity packages", roblox_place_info: "Read the Roblox place file", roblox_place_scripts: "Read scripts in", roblox_place_search: "Searched the place file for", roblox_lint_script: "Checked Luau script", blender_file_info: "Read the Blender file", blender_script_check: "Checked Blender script", ultralab_read: "Read an Ultra skill file", roblox_docs: "Looked up the Roblox docs", execute_luau: "Ran Studio code", multi_edit: "Edited script",
-    script_set_source: "Replaced script", script_read: "Read script", script_grep: "Searched scripts for",
+    script_set_source: "Replaced script", script_read: "Read script", read_scripts: "Read scripts", script_grep: "Searched scripts for",
     inspect_instance: "Inspected", search_game_tree: "Searched Studio for", get_studio_state: "Checked Studio",
     start_stop_play: "Started or stopped Play", insert_asset: "Inserted asset", execute_blender_code: "Ran Blender code",
   };

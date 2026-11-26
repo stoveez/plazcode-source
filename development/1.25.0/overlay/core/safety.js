@@ -10,7 +10,7 @@ const PlazCodeSafety = (() => {
   const DEFAULTS = Object.freeze({ readOnly: false, confirmDelete: true, allowedFolders: [] });
   const KEYS = ["rsReadOnly", "rsConfirmDelete", "rsAllowedFolders"];
   // AgentScript (local) tools that only look; every other local tool is a change.
-  const LOCAL_READ = new Set(["workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
+  const LOCAL_READ = new Set(["workspace_info", "list_directory", "tree", "read_file", "read_files", "read_file_base64", "search_files",
     "grep_files", "file_info", "env_info", "process_list", "command_status", "screen_capture", "screen_record", "list_windows", "window_screenshot",
     "tab_read", "tab_screenshot",
     "file_exists", "count_lines", "find_todos", "list_by_ext", "grep_count", "read_range", "file_stat", "list_recent",

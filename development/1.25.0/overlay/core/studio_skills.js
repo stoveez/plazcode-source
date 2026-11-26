@@ -2564,11 +2564,12 @@ end
 -- 1.24.29 (owner, 2026-10-31: "the AI does a bunch of individual script reads which takes forever").
 -- One call returns many scripts: listed paths, every script under listed folders/services, or the whole
 -- game. Pages of about 60,000 characters (Studio's execute_luau returns at most 100,000), ending on a
--- script boundary; a script larger than a page is split by lines. Read-only: nothing is changed.
+-- script boundary; a script larger than a page is split by lines. Supports outline:true and exclude/match/classes. Read-only: nothing is changed.
 function api.read_scripts(a)
 	local SES = game:GetService("ScriptEditorService")
 	local maxChars = math.clamp(math.floor(tonumber(a.max_chars) or 60000), 2000, 90000)
 	local numbered = a.line_numbers == true
+	local outlineMode = a.outline == true or a.summary == true or tostring(a.mode or ""):lower() == "outline" or tostring(a.mode or ""):lower() == "summary"
 	local cursorText = tostring(a.cursor or "1")
 	local startIndex, startLine = cursorText:match("^%s*(%d+)%s*:%s*(%d+)%s*$")
 	if not startIndex then startIndex = cursorText:match("^%s*(%d+)%s*$"); startLine = "1" end
@@ -2580,6 +2581,23 @@ function api.read_scripts(a)
 		RobloxReplicatedStorage = true, CSGDictionaryService = true,
 	}
 	local scripts, seen, missing, names = {}, {}, {}, {}
+	local function asList(v)
+		if v == nil or v == "" then return {} end
+		if type(v) == "table" then return v end
+		return { v }
+	end
+	local excludes = {}
+	for _, ex in ipairs(asList(a.exclude)) do
+		local s = tostring(ex or ""):lower()
+		if s ~= "" then excludes[#excludes + 1] = s end
+	end
+	local matchNeedle = tostring(a.match or ""):lower()
+	local classAllow = {}
+	local hasClassFilter = false
+	for _, cl in ipairs(asList(a.classes)) do
+		local s = tostring(cl or ""):lower()
+		if s ~= "" then classAllow[s] = true; hasClassFilter = true end
+	end
 	local function isScript(inst)
 		local ok, r = pcall(function() return inst:IsA("LuaSourceContainer") end)
 		return ok and r == true
@@ -2589,8 +2607,21 @@ function api.read_scripts(a)
 		if n == nil then n = pathOf(inst); names[inst] = n end
 		return n
 	end
-	local function add(inst)
-		if inst ~= nil and not seen[inst] then seen[inst] = true; scripts[#scripts + 1] = inst end
+	local function matchesFilters(inst, explicit)
+		if explicit then return true end
+		local low = nameOf(inst):lower()
+		if matchNeedle ~= "" and not low:find(matchNeedle, 1, true) then return false end
+		for _, ex in ipairs(excludes) do
+			if low:find(ex, 1, true) then return false end
+		end
+		if hasClassFilter then
+			local cls = tostring(inst.ClassName or ""):lower()
+			if not classAllow[cls] then return false end
+		end
+		return true
+	end
+	local function add(inst, explicit)
+		if inst ~= nil and not seen[inst] and matchesFilters(inst, explicit) then seen[inst] = true; scripts[#scripts + 1] = inst end
 	end
 	local function under(root)
 		local found = {}
@@ -2600,18 +2631,13 @@ function api.read_scripts(a)
 			for _, d in ipairs(list) do if isScript(d) then found[#found + 1] = d end end
 		end
 		table.sort(found, function(x, y) return nameOf(x) < nameOf(y) end)
-		for _, s in ipairs(found) do add(s) end
-	end
-	local function asList(v)
-		if v == nil or v == "" then return {} end
-		if type(v) == "table" then return v end
-		return { v }
+		for _, s in ipairs(found) do add(s, false) end
 	end
 	local paths, folders = asList(a.paths), asList(a.folders)
 	for _, p in ipairs(paths) do
 		local inst = resolvePath(p)
 		if inst == nil then missing[#missing + 1] = tostring(p)
-		elseif isScript(inst) then add(inst)
+		elseif isScript(inst) then add(inst, true)
 		else under(inst) end
 	end
 	for _, f in ipairs(folders) do
@@ -2652,6 +2678,56 @@ function api.read_scripts(a)
 	end
 	if startIndex > #scripts then
 		return ("read_scripts: cursor %s is past the last script (%d scripts). Everything has been read."):format(cursorText, #scripts) .. missingNote
+	end
+	if outlineMode then
+		local function summarizeLines(lines)
+			local hits = {}
+			for ln, raw in ipairs(lines) do
+				local t = raw:match("^%s*(.-)%s*$") or ""
+				if t ~= "" and (
+					t:match("^local%s+function%s+") or t:match("^function%s+") or
+					t:match("^[%w_.:]+%s*=%s*function%s*%(") or t:match("^return%s+") or
+					t:find("require(", 1, true) or t:find("GetService(", 1, true) or
+					t:find("RemoteEvent", 1, true) or t:find("RemoteFunction", 1, true) or
+					t:find("BindableEvent", 1, true) or t:find("BindableFunction", 1, true) or
+					t:find("OnServerEvent", 1, true) or t:find("OnClientEvent", 1, true)
+				) then
+					hits[#hits + 1] = ("L%d: %s"):format(ln, t:sub(1, 140))
+					if #hits >= 30 then break end
+				end
+			end
+			if #hits == 0 then
+				for ln, raw in ipairs(lines) do
+					local t = raw:match("^%s*(.-)%s*$") or ""
+					if t ~= "" then
+						hits[#hits + 1] = ("L%d: %s"):format(ln, t:sub(1, 140))
+						if #hits >= 5 then break end
+					end
+				end
+			end
+			return hits
+		end
+		local out, used, nextCursor, lastShown, totalChars = {}, 0, nil, startIndex - 1, 0
+		for _, s in ipairs(scripts) do totalChars += #source(s) end
+		for i = startIndex, #scripts do
+			local s = scripts[i]
+			local src = source(s)
+			local lines = string.split(src, "\\n")
+			local hits = summarizeLines(lines)
+			local hdr = ("--- %s (%s, %d lines, %d chars) ---"):format(nameOf(s), s.ClassName, #lines, #src)
+			local block = #hits > 0 and (hdr .. "\\n" .. table.concat(hits, "\\n")) or hdr
+			if used > 0 and used + #block + 1 > maxChars then
+				nextCursor = tostring(i)
+				break
+			end
+			out[#out + 1] = block; used += #block + 1; lastShown = i
+		end
+		if nextCursor then
+			out[#out + 1] = ("[read_scripts outline: shown up to script %d of %d (%d total chars). Next page: call read_scripts again with outline=true, same filters, cursor=\\"%s\\".]"):format(lastShown, #scripts, totalChars, nextCursor)
+		else
+			out[#out + 1] = ("[read_scripts outline: all %d scripts outlined (%d total chars); this was the last page.]"):format(#scripts, totalChars)
+		end
+		return table.concat(out, "\\n") .. missingNote
 	end
 	local out, used, nextCursor, lastShown = {}, 0, nil, startIndex - 1
 	for i = startIndex, #scripts do
@@ -3406,12 +3482,16 @@ const SKILL_COMMANDS = [
   },
   {
     name: "read_scripts",
-    description: "FAST READ: many scripts in ONE call. Use it instead of script_read one by one. paths: script paths, or folders/services (every script inside). Nothing given = every script in the game. Returns the source of each script under a '--- Path (Class, N lines) ---' header, about 60,000 characters per page; when there is more, the result ends with the cursor for the next page. list_only:true gives a quick list of all scripts with sizes. Read-only.",
+    description: "FAST READ: many scripts in ONE call. Use it instead of script_read one by one. paths: script paths, or folders/services (every script inside). Nothing given = every script in the game. Returns the source of each script under a '--- Path (Class, N lines) ---' header, about 60,000 characters per page; when there is more, the result ends with the cursor for the next page. list_only:true gives a quick list of all scripts with sizes; outline:true returns a compact whole-game structural map (functions, requires, remotes) in one call; exclude/match/classes filter folders or script types. Read-only.",
     params: {
       paths: { type: "array", req: false, desc: "script or folder paths, e.g. [\"ServerScriptService.Main\", \"StarterGui\"]" },
       folders: { type: "array", req: false, desc: "folders/services to read every script under, e.g. [\"ReplicatedStorage.Modules\"]" },
+      exclude: { type: "array", req: false, desc: "path substrings to skip during folder/game walks, e.g. [\"Packages\", \"HDAdmin\"]" },
+      match: { type: "string", req: false, desc: "case-insensitive substring to keep only matching script paths" },
+      classes: { type: "array", req: false, desc: "only include these script classes, e.g. [\"Script\", \"ModuleScript\"]" },
       cursor: { type: "string", req: false, desc: "next-page cursor from the previous result, e.g. \"14\" or \"14:300\"" },
       list_only: { type: "boolean", req: false, desc: "only list the scripts with line and character counts" },
+      outline: { type: "boolean", req: false, desc: "return compact structural summary (functions, requires, remotes) per script instead of full source" },
       line_numbers: { type: "boolean", req: false, desc: "prefix each line with its number (default off)" },
       max_chars: { type: "number", req: false, desc: "page size, default 60000 (2000-90000)" }
     }
@@ -3552,15 +3632,24 @@ return HttpService:JSONEncode({ok=true,data={path=root:GetFullName(),cards=${cou
 }
 
 // read_scripts accepts the shapes AIs commonly send: one string instead of a list, a single "path",
-// "folder", "targets" or "scripts", a comma-separated string, and a numeric cursor.
+// "folder", "targets" or "scripts", a comma-separated string, exclude/classes/match/outline aliases, and a numeric cursor.
 function normalizeReadScripts(args) {
   const out = Object.assign({}, args);
   const list = (v) => v == null || v === "" ? [] : Array.isArray(v) ? v.map(String) : String(v).split(",").map((x) => x.trim()).filter(Boolean);
   const paths = [...list(out.paths), ...list(out.path), ...list(out.targets), ...list(out.scripts), ...list(out.target_file)];
   const folders = [...list(out.folders), ...list(out.folder), ...list(out.scope), ...list(out.under)];
-  for (const k of ["path", "targets", "scripts", "target_file", "folder", "scope", "under"]) delete out[k];
+  const exclude = [...list(out.exclude), ...list(out.skip), ...list(out.ignore)];
+  const classes = [...list(out.classes), ...list(out.class), ...list(out.class_name), ...list(out.types)];
+  const match = out.match ?? out.filter ?? out.pattern;
+  if (out.summary === true || (typeof out.mode === "string" && /^(?:outline|summary)$/i.test(out.mode.trim()))) {
+    out.outline = true;
+  }
+  for (const k of ["path", "targets", "scripts", "target_file", "folder", "scope", "under", "skip", "ignore", "class", "class_name", "types", "filter", "pattern", "summary", "mode"]) delete out[k];
   if (paths.length) out.paths = paths; else delete out.paths;
   if (folders.length) out.folders = folders; else delete out.folders;
+  if (exclude.length) out.exclude = exclude; else delete out.exclude;
+  if (classes.length) out.classes = classes; else delete out.classes;
+  if (match != null && String(match).trim()) out.match = String(match).trim(); else delete out.match;
   if (typeof out.cursor === "number") out.cursor = String(out.cursor);
   if (typeof out.max_chars === "string" && /^\d+$/.test(out.max_chars)) out.max_chars = Number(out.max_chars);
   return out;

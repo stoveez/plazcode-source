@@ -1410,9 +1410,17 @@ const RSProvider = (() => {
     return ref ? { parent, ref } : null;
   }
 
+  const PROMPT_EXTRA = [
+    "DEEPSEEK TURN BUDGET: Every tool reply counts toward rate-limit cooldowns, so avoid one-by-one file/script reads.",
+    "- Roblox Studio: use `read_scripts` (empty params for the whole game, `folders:[...]` for services/folders, `outline:true` for a whole-game map, or `exclude`/`match`/`classes` to filter) instead of individual `script_read` calls.",
+    "- AgentScript: use `read_files` (empty params for the whole workspace, `folders:[...]`, `include`/`exclude`, or `outline:true`) instead of individual `read_file` calls.",
+    "- Batch up to 2 independent read/inspect commands in one reply when safe.",
+  ].join("\n");
+
   return {
     id: "deepseek",
     compactStartup: true,
+    promptExtra: PROMPT_EXTRA,
     startupReplyAsCode: true,
     settleStartupReply: true,
     displayName: "DeepSeek",

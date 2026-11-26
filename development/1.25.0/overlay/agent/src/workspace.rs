@@ -23,6 +23,18 @@ use std::time::Instant;
 
 const MAX_TEXT_CHARS: usize = 40_000;
 const MAX_READ_BYTES: u64 = 2 * 1024 * 1024;
+const BULK_READ_DEFAULT_CHARS: usize = 60_000;
+const BULK_READ_MIN_CHARS: usize = 2_000;
+const BULK_READ_MAX_CHARS: usize = 120_000;
+const BULK_SKIP_FILENAMES: &[&str] = &[
+    "package-lock.json",
+    "cargo.lock",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "bun.lockb",
+    "poetry.lock",
+    "composer.lock",
+];
 const MAX_RUN_OUTPUT: usize = 8_000;
 const DEFAULT_RUN_TIMEOUT: u64 = 60;
 const MAX_RUN_TIMEOUT: u64 = 600;
@@ -613,6 +625,680 @@ pub async fn tool_read_file(ws: &Workspace, args: &serde_json::Value) -> Result<
     let end = start - 1 + chunk.len();
     let footer = if end < total { format!("\n... lines {}-{total} continue (use offset={})", end + 1, end + 1) } else { String::new() };
     Ok(clip(&format!("{header}\n{}{footer}", chunk.join("\n")), MAX_TEXT_CHARS))
+}
+
+fn parse_string_list(args: &serde_json::Value, keys: &[&str]) -> Vec<String> {
+    let mut out = Vec::new();
+    for key in keys {
+        match args.get(*key) {
+            Some(serde_json::Value::Array(items)) => {
+                for item in items {
+                    if let Some(s) = item.as_str() {
+                        let t = s.trim();
+                        if !t.is_empty() {
+                            out.push(t.to_string());
+                        }
+                    } else if let Some(n) = item.as_i64() {
+                        out.push(n.to_string());
+                    }
+                }
+            }
+            Some(serde_json::Value::String(s)) => {
+                for part in s.split(',') {
+                    let t = part.trim();
+                    if !t.is_empty() {
+                        out.push(t.to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn parse_bulk_cursor(args: &serde_json::Value) -> Result<(String, usize, usize), String> {
+    let raw = match args.get("cursor") {
+        None | Some(serde_json::Value::Null) => return Ok(("1".to_string(), 1, 1)),
+        Some(serde_json::Value::Number(n)) => n
+            .as_u64()
+            .filter(|v| *v >= 1)
+            .map(|v| v.to_string())
+            .ok_or_else(|| "cursor must look like \"12\" or \"12:340\"; copy it from the previous read_files result".to_string())?,
+        Some(serde_json::Value::String(s)) => {
+            let t = s.trim();
+            if t.is_empty() {
+                return Ok(("1".to_string(), 1, 1));
+            }
+            t.to_string()
+        }
+        _ => return Err("cursor must look like \"12\" or \"12:340\"; copy it from the previous read_files result".into()),
+    };
+    if let Some((a, b)) = raw.split_once(':') {
+        let idx = a.trim().parse::<usize>().map_err(|_| {
+            "cursor must look like \"12\" or \"12:340\"; copy it from the previous read_files result".to_string()
+        })?;
+        let ln = b.trim().parse::<usize>().map_err(|_| {
+            "cursor must look like \"12\" or \"12:340\"; copy it from the previous read_files result".to_string()
+        })?;
+        Ok((raw, idx.max(1), ln.max(1)))
+    } else {
+        let idx = raw.trim().parse::<usize>().map_err(|_| {
+            "cursor must look like \"12\" or \"12:340\"; copy it from the previous read_files result".to_string()
+        })?;
+        Ok((raw, idx.max(1), 1))
+    }
+}
+
+fn compile_bulk_includes(items: Vec<String>) -> Vec<glob::Pattern> {
+    items
+        .into_iter()
+        .filter_map(|raw| {
+            let trimmed = raw.trim().replace('\\', "/");
+            if trimmed.is_empty() {
+                return None;
+            }
+            let normalized = if !trimmed.contains(['*', '?', '[', '/']) {
+                format!("*.{}", trimmed.trim_start_matches('.'))
+            } else {
+                trimmed
+            };
+            glob::Pattern::new(&normalized.to_lowercase()).ok()
+        })
+        .collect()
+}
+
+fn compile_bulk_excludes(items: Vec<String>) -> Vec<(String, Option<glob::Pattern>)> {
+    items
+        .into_iter()
+        .filter_map(|raw| {
+            let norm = raw.trim().replace('\\', "/").to_lowercase();
+            if norm.is_empty() {
+                None
+            } else {
+                let pat = glob::Pattern::new(&norm).ok();
+                Some((norm, pat))
+            }
+        })
+        .collect()
+}
+
+fn matches_bulk_filters(
+    display_rel: &str,
+    name: &str,
+    includes: &[glob::Pattern],
+    excludes: &[(String, Option<glob::Pattern>)],
+    explicit: bool,
+) -> bool {
+    let rel_low = display_rel.replace('\\', "/").to_lowercase();
+    let name_low = name.to_lowercase();
+    if !explicit && BULK_SKIP_FILENAMES.contains(&name_low.as_str()) {
+        return false;
+    }
+    for (needle, pat) in excludes {
+        if rel_low.contains(needle.as_str())
+            || name_low.contains(needle.as_str())
+            || pat.as_ref().is_some_and(|p| p.matches(&rel_low) || p.matches(&name_low))
+        {
+            return false;
+        }
+    }
+    if !includes.is_empty()
+        && !includes
+            .iter()
+            .any(|p| p.matches(&rel_low) || p.matches(&name_low))
+    {
+        return false;
+    }
+    true
+}
+
+fn is_outline_line(trimmed: &str) -> bool {
+    if trimmed.is_empty() {
+        return false;
+    }
+    let prefixes = [
+        "pub fn ",
+        "pub async fn ",
+        "pub(crate) fn ",
+        "pub(crate) async fn ",
+        "fn ",
+        "async fn ",
+        "pub struct ",
+        "struct ",
+        "pub enum ",
+        "enum ",
+        "pub trait ",
+        "trait ",
+        "impl ",
+        "mod ",
+        "use ",
+        "export ",
+        "function ",
+        "async function ",
+        "local function ",
+        "class ",
+        "interface ",
+        "type ",
+        "def ",
+        "async def ",
+        "func ",
+        "namespace ",
+        "public ",
+        "private ",
+        "protected ",
+        "return ",
+        "# ",
+        "## ",
+        "### ",
+        "--[[",
+    ];
+    if prefixes.iter().any(|p| trimmed.starts_with(p)) {
+        return true;
+    }
+    trimmed.contains("require(")
+        || trimmed.contains("RemoteEvent")
+        || trimmed.contains("RemoteFunction")
+        || trimmed.contains("GetService")
+        || (trimmed.starts_with("const ") && (trimmed.contains("=>") || trimmed.contains("= function")))
+}
+
+fn extract_file_outline(lines: &[&str], max_entries: usize) -> Vec<String> {
+    let mut hits = Vec::new();
+    for (idx, raw) in lines.iter().enumerate() {
+        let t = raw.trim();
+        if is_outline_line(t) {
+            let preview: String = t.chars().take(140).collect();
+            hits.push(format!("L{}: {}", idx + 1, preview));
+            if hits.len() >= max_entries {
+                break;
+            }
+        }
+    }
+    if hits.is_empty() {
+        for (idx, raw) in lines.iter().enumerate() {
+            let t = raw.trim();
+            if !t.is_empty() {
+                let preview: String = t.chars().take(140).collect();
+                hits.push(format!("L{}: {}", idx + 1, preview));
+                if hits.len() >= 5 {
+                    break;
+                }
+            }
+        }
+    }
+    hits
+}
+
+async fn walk_bulk_dir(
+    ws: &Workspace,
+    dir: &Path,
+    includes: &[glob::Pattern],
+    excludes: &[(String, Option<glob::Pattern>)],
+    seen: &mut std::collections::HashSet<String>,
+    out: &mut Vec<(PathBuf, String, bool)>,
+    skipped_binary: &mut usize,
+    timed_out: &mut bool,
+    deadline: std::time::Instant,
+) {
+    let mut stack = vec![dir.to_path_buf()];
+    let mut found: Vec<(PathBuf, String)> = Vec::new();
+    let full = ws.full_access();
+    while let Some(d) = stack.pop() {
+        if std::time::Instant::now() >= deadline {
+            *timed_out = true;
+            break;
+        }
+        let Ok(mut rd) = tokio::fs::read_dir(&d).await else {
+            continue;
+        };
+        while let Ok(Some(e)) = rd.next_entry().await {
+            let path = e.path();
+            let name = e.file_name().to_string_lossy().to_string();
+            let ft = match e.file_type().await {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            if ft.is_symlink() && !full {
+                let Ok(canon) = std::fs::canonicalize(&path) else {
+                    continue;
+                };
+                if !canon.starts_with(&ws.canon_root) {
+                    continue;
+                }
+            }
+            let is_dir = if ft.is_dir() {
+                true
+            } else if ft.is_symlink() {
+                tokio::fs::metadata(&path).await.map(|m| m.is_dir()).unwrap_or(false)
+            } else {
+                false
+            };
+            if is_dir {
+                if !IGNORED_DIRS.contains(&name.as_str()) && !GREP_EXTRA_SKIP_DIRS.contains(&name.as_str()) {
+                    let rel_dir = ws.display(&path).replace('\\', "/").to_lowercase();
+                    let excluded_dir = excludes.iter().any(|(needle, pat)| {
+                        rel_dir.contains(needle.as_str())
+                            || name.to_lowercase() == *needle
+                            || pat.as_ref().is_some_and(|p| p.matches(&rel_dir) || p.matches(&name.to_lowercase()))
+                    });
+                    if !excluded_dir {
+                        stack.push(path);
+                    }
+                }
+                continue;
+            }
+            if let Some(ext) = path.extension().and_then(|x| x.to_str()) {
+                if GREP_SKIP_EXTS.contains(&ext.to_ascii_lowercase().as_str()) {
+                    *skipped_binary += 1;
+                    continue;
+                }
+            }
+            let display = ws.display(&path);
+            if !matches_bulk_filters(&display, &name, includes, excludes, false) {
+                continue;
+            }
+            found.push((path, display));
+            if out.len() + found.len() >= 20_000 {
+                break;
+            }
+        }
+        if out.len() + found.len() >= 20_000 {
+            break;
+        }
+    }
+    found.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+    for (path, display) in found {
+        let key = display.to_lowercase();
+        if seen.insert(key) {
+            out.push((path, display, true));
+        }
+    }
+}
+
+/// FAST BULK READ for AgentScript: read many named files, whole folders, or the
+/// entire workspace in ONE paginated call (~60,000 chars per page by default).
+pub async fn tool_read_files(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
+    let max_chars = j_u64(args, "max_chars", BULK_READ_DEFAULT_CHARS as u64)
+        .clamp(BULK_READ_MIN_CHARS as u64, BULK_READ_MAX_CHARS as u64) as usize;
+    let list_only = j_bool(args, "list_only", false);
+    let line_numbers = j_bool(args, "line_numbers", false);
+    let mode_str = args
+        .get("mode")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_ascii_lowercase());
+    let outline = j_bool(args, "outline", false)
+        || j_bool(args, "summary", false)
+        || matches!(mode_str.as_deref(), Some("outline" | "summary"));
+    let (cursor_text, start_index, start_line) = parse_bulk_cursor(args)?;
+
+    let paths = parse_string_list(args, &["paths", "path", "files", "targets"]);
+    let folders = parse_string_list(args, &["folders", "folder", "dirs", "dir", "scope", "under"]);
+    let includes = compile_bulk_includes(parse_string_list(args, &["include", "extensions", "ext", "glob", "pattern"]));
+    let excludes = compile_bulk_excludes(parse_string_list(args, &["exclude", "skip", "ignore"]));
+
+    let started = std::time::Instant::now();
+    let deadline = started + std::time::Duration::from_secs(GREP_TIME_BUDGET_SECS);
+    let mut files: Vec<(PathBuf, String, bool)> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut missing: Vec<String> = Vec::new();
+    let mut skipped_binary = 0usize;
+    let mut timed_out = false;
+
+    for p_raw in &paths {
+        match ws.resolve_path(p_raw, true) {
+            Err(err) => {
+                if !err.contains("does not exist") {
+                    return Err(err);
+                }
+                missing.push(p_raw.clone());
+            }
+            Ok(resolved) => {
+                if resolved.is_dir() {
+                    walk_bulk_dir(
+                        ws,
+                        &resolved,
+                        &includes,
+                        &excludes,
+                        &mut seen,
+                        &mut files,
+                        &mut skipped_binary,
+                        &mut timed_out,
+                        deadline,
+                    )
+                    .await;
+                } else {
+                    let display = ws.display(&resolved);
+                    let key = display.to_lowercase();
+                    if seen.insert(key) {
+                        files.push((resolved, display, false));
+                    }
+                }
+            }
+        }
+    }
+
+    for f_raw in &folders {
+        match ws.resolve_path(f_raw, true) {
+            Err(err) => {
+                if !err.contains("does not exist") {
+                    return Err(err);
+                }
+                missing.push(f_raw.clone());
+            }
+            Ok(resolved) => {
+                if resolved.is_dir() {
+                    walk_bulk_dir(
+                        ws,
+                        &resolved,
+                        &includes,
+                        &excludes,
+                        &mut seen,
+                        &mut files,
+                        &mut skipped_binary,
+                        &mut timed_out,
+                        deadline,
+                    )
+                    .await;
+                } else {
+                    let display = ws.display(&resolved);
+                    let name = resolved.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                    if matches_bulk_filters(&display, &name, &includes, &excludes, false) {
+                        let key = display.to_lowercase();
+                        if seen.insert(key) {
+                            files.push((resolved, display, true));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if paths.is_empty() && folders.is_empty() {
+        walk_bulk_dir(
+            ws,
+            &ws.canon_root,
+            &includes,
+            &excludes,
+            &mut seen,
+            &mut files,
+            &mut skipped_binary,
+            &mut timed_out,
+            deadline,
+        )
+        .await;
+    }
+
+    let missing_note = if missing.is_empty() {
+        String::new()
+    } else {
+        format!("\nNot found: {}", missing.join(", "))
+    };
+    let time_note = if timed_out {
+        format!("\n(scan reached {GREP_TIME_BUDGET_SECS}s budget; narrow with folders or include)")
+    } else {
+        String::new()
+    };
+
+    if files.is_empty() {
+        return Ok(format!("read_files: no matching files found.{missing_note}{time_note}"));
+    }
+
+    // Helper to load text cleanly per candidate file.
+    enum Loaded {
+        Text(String, usize),
+        Skipped(String),
+    }
+    let load_one = |p: PathBuf, display: String| async move {
+        let size = match tokio::fs::metadata(&p).await {
+            Ok(m) => m.len(),
+            Err(e) => return Loaded::Skipped(format!("--- {display} (unreadable: {e}) ---")),
+        };
+        if size > MAX_READ_BYTES {
+            return Loaded::Skipped(format!(
+                "--- {display} (skipped: {}, over {} limit; use read_file with offset/limit) ---",
+                human_size(size as f64),
+                human_size(MAX_READ_BYTES as f64)
+            ));
+        }
+        match read_text(&p).await {
+            Ok((text, true)) => Loaded::Skipped(format!(
+                "--- {display} (binary, {}) ---",
+                human_size(size as f64)
+            )),
+            Ok((text, false)) => Loaded::Text(text, size as usize),
+            Err(e) => Loaded::Skipped(format!("--- {display} (unreadable: {e}) ---")),
+        }
+    };
+
+    if list_only {
+        let mut out: Vec<String> = Vec::new();
+        let mut used = 0usize;
+        let mut total_chars = 0usize;
+        for (i, (p, display, walked)) in files.iter().enumerate() {
+            let row = match load_one(p.clone(), display.clone()).await {
+                Loaded::Text(text, _) => {
+                    let lc = count_lines(&text);
+                    total_chars += text.len();
+                    format!("{}. {} ({} lines, {} chars)", i + 1, display, lc, text.len())
+                }
+                Loaded::Skipped(note) => {
+                    if *walked && note.contains("(binary,") {
+                        skipped_binary += 1;
+                        continue;
+                    }
+                    format!("{}. {}", i + 1, note.trim_matches(|c| c == '-' || c == ' '))
+                }
+            };
+            if used + row.len() + 1 > max_chars {
+                out.push(format!(
+                    "... {} more files not listed; narrow with folders/include",
+                    files.len() - i
+                ));
+                break;
+            }
+            used += row.len() + 1;
+            out.push(row);
+        }
+        let bin_note = if skipped_binary > 0 {
+            format!("\n({skipped_binary} binary/ignored asset file(s) skipped)")
+        } else {
+            String::new()
+        };
+        return Ok(format!(
+            "read_files list: {} files, {} characters in total. Read them with read_files (paths or folders), about {} characters per page.\n{}{bin_note}{missing_note}{time_note}",
+            files.len(),
+            total_chars,
+            max_chars,
+            out.join("\n")
+        ));
+    }
+
+    if start_index > files.len() {
+        return Ok(format!(
+            "read_files: cursor {} is past the last file ({} files). Everything has been read.{missing_note}{time_note}",
+            cursor_text,
+            files.len()
+        ));
+    }
+
+    if outline {
+        let mut out: Vec<String> = Vec::new();
+        let mut used = 0usize;
+        let mut next_cursor: Option<String> = None;
+        let mut last_shown = start_index - 1;
+        for i in start_index..=files.len() {
+            let (p, display, walked) = &files[i - 1];
+            let block = match load_one(p.clone(), display.clone()).await {
+                Loaded::Text(text, _) => {
+                    let mut lines: Vec<&str> = text.split('\n').collect();
+                    if lines.len() > 1 && lines.last() == Some(&"") {
+                        lines.pop();
+                    }
+                    let summary = extract_file_outline(&lines, 35);
+                    let hdr = format!("--- {} ({} lines, {} chars) ---", display, lines.len(), text.len());
+                    if summary.is_empty() {
+                        hdr
+                    } else {
+                        format!("{hdr}\n{}", summary.join("\n"))
+                    }
+                }
+                Loaded::Skipped(note) => {
+                    if *walked && note.contains("(binary,") {
+                        skipped_binary += 1;
+                        last_shown = i;
+                        continue;
+                    }
+                    note
+                }
+            };
+            if used > 0 && used + block.len() + 1 > max_chars {
+                next_cursor = Some(i.to_string());
+                break;
+            }
+            used += block.len() + 1;
+            out.push(block);
+            last_shown = i;
+        }
+        if let Some(nc) = next_cursor {
+            out.push(format!(
+                "[read_files outline: shown up to file {} of {}. Next page: call read_files again with outline=true, the same paths/folders/filters, and cursor=\"{}\".]",
+                last_shown,
+                files.len(),
+                nc
+            ));
+        } else {
+            out.push(format!(
+                "[read_files outline: all {} files outlined; this was the last page.]",
+                files.len()
+            ));
+        }
+        let bin_note = if skipped_binary > 0 {
+            format!("\n({skipped_binary} binary/ignored asset file(s) skipped)")
+        } else {
+            String::new()
+        };
+        return Ok(format!("{}{bin_note}{missing_note}{time_note}", out.join("\n")));
+    }
+
+    let mut out: Vec<String> = Vec::new();
+    let mut used = 0usize;
+    let mut next_cursor: Option<String> = None;
+    let mut last_shown = start_index - 1;
+
+    for i in start_index..=files.len() {
+        let (p, display, walked) = &files[i - 1];
+        let text = match load_one(p.clone(), display.clone()).await {
+            Loaded::Text(t, _) => t,
+            Loaded::Skipped(note) => {
+                if *walked && note.contains("(binary,") {
+                    skipped_binary += 1;
+                    last_shown = i;
+                    continue;
+                }
+                if used > 0 && used + note.len() + 1 > max_chars {
+                    next_cursor = Some(i.to_string());
+                    break;
+                }
+                out.push(note);
+                used += out.last().map(|s| s.len() + 1).unwrap_or(0);
+                last_shown = i;
+                continue;
+            }
+        };
+
+        let mut lines: Vec<&str> = text.split('\n').collect();
+        if lines.len() > 1 && lines.last() == Some(&"") {
+            lines.pop();
+        }
+        let total_lines = lines.len();
+        let first = if i == start_index {
+            start_line.min(total_lines.max(1))
+        } else {
+            1
+        };
+        let cont = if first > 1 {
+            format!(", continued from line {first}")
+        } else {
+            String::new()
+        };
+        let header = format!("--- {} ({} lines){} ---", display, total_lines, cont);
+
+        let mut remainder = header.len() + 1;
+        if total_lines > 0 {
+            for ln in first..=total_lines {
+                let prefix_len = if line_numbers { ln.to_string().len() + 2 } else { 0 };
+                remainder += lines[ln - 1].len() + 1 + prefix_len;
+            }
+        }
+        if used > 0 && used + remainder > max_chars {
+            next_cursor = Some(if first > 1 {
+                format!("{i}:{first}")
+            } else {
+                i.to_string()
+            });
+            break;
+        }
+
+        out.push(header);
+        used += out.last().map(|s| s.len() + 1).unwrap_or(0);
+
+        if total_lines > 0 {
+            let mut ln = first;
+            while ln <= total_lines {
+                let raw_line = lines[ln - 1];
+                let formatted = if line_numbers {
+                    format!("{ln}: {raw_line}")
+                } else {
+                    raw_line.to_string()
+                };
+                if used + formatted.len() + 1 > max_chars {
+                    if ln == first && out.len() == 1 {
+                        let keep = max_chars.saturating_sub(used + 40);
+                        let mut cut = keep.min(formatted.len());
+                        while cut > 0 && !formatted.is_char_boundary(cut) {
+                            cut -= 1;
+                        }
+                        let sliced = format!("{} [line cut: too long]", &formatted[..cut]);
+                        used += sliced.len() + 1;
+                        out.push(sliced);
+                        ln += 1;
+                    }
+                    break;
+                }
+                used += formatted.len() + 1;
+                out.push(formatted);
+                ln += 1;
+            }
+            last_shown = i;
+            if ln <= total_lines {
+                next_cursor = Some(format!("{i}:{ln}"));
+                break;
+            }
+        } else {
+            last_shown = i;
+        }
+    }
+
+    if let Some(nc) = next_cursor {
+        out.push(format!(
+            "[read_files: shown up to file {} of {}. Next page: call read_files again with the same paths/folders/filters and cursor=\"{}\".]",
+            last_shown,
+            files.len(),
+            nc
+        ));
+    } else {
+        out.push(format!(
+            "[read_files: all {} files shown; this was the last page.]",
+            files.len()
+        ));
+    }
+    let bin_note = if skipped_binary > 0 {
+        format!("\n({skipped_binary} binary/ignored asset file(s) skipped)")
+    } else {
+        String::new()
+    };
+    Ok(format!("{}{bin_note}{missing_note}{time_note}", out.join("\n")))
 }
 
 // ── binary → base64 (for images that must reach the browser) ───────────────
@@ -2243,13 +2929,13 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
     let empty = serde_json::Value::Null;
     let a = if args.is_null() || !args.is_object() { &empty } else { &args };
     let h = crate::hidden::fnv(name);
-    let file_tool=matches!(name,"list_directory"|"tree"|"read_file"|"read_file_base64"|"write_file"|"edit_file"|"create_folder"|"delete_path"|"move_path"|"search_files"|"grep_files"|"file_info"|"download_file"|"run_command");
+    let file_tool=matches!(name,"list_directory"|"tree"|"read_file"|"read_files"|"read_file_base64"|"write_file"|"edit_file"|"create_folder"|"delete_path"|"move_path"|"search_files"|"grep_files"|"file_info"|"download_file"|"run_command");
     let mut paths=serde_json::Map::new();
     if file_tool {
         for key in ["path","source","destination","cwd"] {
             if let Some(raw)=a[key].as_str(){if let Ok(path)=ws.resolve_path(raw,false){paths.insert(key.into(),serde_json::json!(deverbatim_string(&path)));}}
         }
-        if paths.is_empty() && matches!(name,"list_directory"|"tree"|"search_files"|"grep_files"|"run_command") {
+        if paths.is_empty() && matches!(name,"list_directory"|"tree"|"read_files"|"search_files"|"grep_files"|"run_command") {
             let key=if name=="run_command"{"cwd"}else{"path"};
             paths.insert(key.into(),serde_json::json!(ws.root_display()));
         }
@@ -2261,6 +2947,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("list_directory") } => tool_list_directory(ws, a).await,
         _ if h == const { crate::hidden::fnv("tree") } => tool_tree(ws, a).await,
         _ if h == const { crate::hidden::fnv("read_file") } => tool_read_file(ws, a).await,
+        _ if h == const { crate::hidden::fnv("read_files") } => tool_read_files(ws, a).await,
         _ if h == const { crate::hidden::fnv("read_file_base64") } => tool_read_file_base64(ws, a).await,
         _ if h == const { crate::hidden::fnv("write_file") } => tool_write_file(ws, a).await,
         _ if h == const { crate::hidden::fnv("edit_file") } => tool_edit_file(ws, a).await,
@@ -2312,7 +2999,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         #[cfg(windows)]
         _ if h == const { crate::hidden::fnv("window_screenshot") } => tool_window_screenshot(ws, a).await,
         _ => Err(format!("E_COMMAND: unknown tool '{name}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
-read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
+read_files, read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
 app_do (control another app by the names of its buttons; FULL mode), screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
 Engine file tools (no editor needed): godot_project_info / godot_scene_tree / godot_add_node / godot_create_script / godot_check_script / godot_find_uses, unity_project_info / unity_list_assets / unity_scene_objects / unity_create_script / unity_packages, roblox_place_info / roblox_place_scripts / roblox_place_search / roblox_lint_script, blender_file_info / blender_script_check. \
@@ -2341,7 +3028,8 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("workspace_info"), "description": crate::hidden::hidden!("Overview of the connected project folder: absolute root path, file/folder counts, total size and top-level entries."), "inputSchema": schema(serde_json::json!({}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("list_directory"), "description": crate::hidden::hidden!("List one folder's entries with types and sizes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("tree"), "description": crate::hidden::hidden!("Recursive directory tree. Generated folders (.git, node_modules, __pycache__, dist...) are skipped."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "depth": {"type": "integer"}}), &[])}),
-        serde_json::json!({"name": crate::hidden::hidden!("read_file"), "description": crate::hidden::hidden!("Read a text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("read_file"), "description": crate::hidden::hidden!("Read one text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte. For 2+ files or exploring folders/the workspace, use read_files instead."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("read_files"), "description": crate::hidden::hidden!("FAST BULK READ: read many files, whole folders, or the entire workspace in ONE call instead of read_file one by one. Nothing given = every text file in the workspace (skips .git, node_modules, target, lockfiles, and binaries). Returns each file under '--- Path (N lines) ---', about 60,000 chars per page with cursor pagination. Set outline:true for a quick whole-project structural map in one turn, or list_only:true for file sizes."), "inputSchema": schema(serde_json::json!({"paths": {"type": "array", "items": {"type": "string"}}, "folders": {"type": "array", "items": {"type": "string"}}, "include": {"type": "array", "items": {"type": "string"}}, "exclude": {"type": "array", "items": {"type": "string"}}, "cursor": {"type": "string"}, "list_only": {"type": "boolean"}, "outline": {"type": "boolean"}, "line_numbers": {"type": "boolean"}, "max_chars": {"type": "integer"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create or overwrite a file. With append:true, append content without replacing existing bytes; ensure_newline:true inserts a separator only if needed. Parent folders are created automatically. Prefer edit_file for partial changes. Set preview:true to inspect an exact diff and hashes without changing any file or creating folders."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}, "append":{"type":"boolean","description":"append content without replacing existing bytes"}, "ensure_newline":{"type":"boolean","description":"append mode only: add a newline separator if the existing file needs one"}, "preview":{"type":"boolean","description":"true returns an exact read-only diff; writes no file or folder"}}), &["path", "content"])}),
         serde_json::json!({"name": crate::hidden::hidden!("read_file_base64"), "description": crate::hidden::hidden!("Read ANY file (text or binary) as base64 + mimeType. The way to hand an image or a screenshot file to the AI as an attachment. Returns {path, mimeType, bytes, data}."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("edit_file"), "description": crate::hidden::hidden!("Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous. Set preview:true for an exact read-only diff; no file or undo checkpoint is changed."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}, "preview":{"type":"boolean","description":"true checks the match and returns an exact read-only diff without writing"}}), &["path", "old_string", "new_string"])}),
@@ -3049,6 +3737,88 @@ print(" --> src/main.rs:12:5")
         ws.set_compact_outputs(false);
         let disabled = tool_run_command(&ws, &serde_json::json!({"command": "python noisy.py"})).await.unwrap();
         assert!(disabled.contains("Compiling crate_0 v0.1.0"), "{disabled}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn read_files_reads_workspace_paginates_filters_outlines_and_guards_sandbox() {
+        let ws = temp_ws("read-files");
+        std::fs::create_dir_all(ws.canon_root.join("src/nested")).unwrap();
+        std::fs::create_dir_all(ws.canon_root.join("node_modules/pkg")).unwrap();
+        std::fs::create_dir_all(ws.canon_root.join(".git")).unwrap();
+        std::fs::write(ws.canon_root.join("src/a.ts"), "export function alpha() {\n  return 1;\n}\n").unwrap();
+        std::fs::write(ws.canon_root.join("src/b.ts"), "export const beta = () => 2;\n").unwrap();
+        std::fs::write(ws.canon_root.join("src/nested/c.rs"), "pub fn gamma() -> i32 {\n    42\n}\n").unwrap();
+        std::fs::write(ws.canon_root.join("README.md"), "# Demo Project\n## Usage\nRun tests.\n").unwrap();
+        std::fs::write(ws.canon_root.join("package-lock.json"), "{ \"lockfileVersion\": 3 }\n").unwrap();
+        std::fs::write(ws.canon_root.join("node_modules/pkg/ignored.js"), "ignored()\n").unwrap();
+        std::fs::write(ws.canon_root.join(".git/config"), "[core]\n").unwrap();
+        std::fs::write(ws.canon_root.join("icon.png"), b"\x89PNG\r\n\x1a\n\xff\x00").unwrap();
+        std::fs::write(ws.canon_root.join("raw.bin"), b"\xff\xfe\xfd\x00\x01").unwrap();
+
+        // 1. Whole-workspace bulk read skips .git, node_modules, lockfiles, and binaries.
+        let all = tool_read_files(&ws, &serde_json::json!({})).await.unwrap();
+        assert!(all.contains("--- README.md (3 lines) ---"), "{all}");
+        assert!(all.contains("--- src/a.ts (3 lines) ---"), "{all}");
+        assert!(all.contains("--- src/b.ts (1 lines) ---"), "{all}");
+        assert!(all.contains("--- src/nested/c.rs (3 lines) ---"), "{all}");
+        assert!(all.contains("all 4 files shown; this was the last page"), "{all}");
+        assert!(!all.contains("node_modules"), "{all}");
+        assert!(!all.contains("package-lock.json"), "{all}");
+        assert!(!all.contains(".git/config"), "{all}");
+        assert!(!all.contains("icon.png"), "{all}");
+        assert!(!all.contains("raw.bin"), "{all}");
+
+        // 2. Include, exclude, line_numbers, and list_only modes work accurately.
+        let filtered = tool_read_files(
+            &ws,
+            &serde_json::json!({"folders": ["src"], "include": ["ts"], "exclude": ["b.ts"], "line_numbers": true}),
+        )
+        .await
+        .unwrap();
+        assert!(filtered.contains("1: export function alpha()"), "{filtered}");
+        assert!(!filtered.contains("beta"), "{filtered}");
+        assert!(!filtered.contains("gamma"), "{filtered}");
+
+        let listed = tool_read_files(&ws, &serde_json::json!({"list_only": true})).await.unwrap();
+        assert!(listed.contains("read_files list: 4 files"), "{listed}");
+        assert!(listed.contains("src/nested/c.rs (3 lines,"), "{listed}");
+
+        // 3. Outline mode returns compact structural symbols.
+        let outlined = tool_read_files(&ws, &serde_json::json!({"outline": true})).await.unwrap();
+        assert!(outlined.contains("L1: export function alpha()"), "{outlined}");
+        assert!(outlined.contains("L1: pub fn gamma()"), "{outlined}");
+        assert!(outlined.contains("L1: # Demo Project"), "{outlined}");
+
+        // 4. Cursor pagination splits cleanly across files and within long files.
+        let long_a = (1..=80).map(|n| format!("// line {n} padding {}", "x".repeat(40))).collect::<Vec<_>>().join("\n");
+        let long_b = (1..=80).map(|n| format!("// file b line {n} {}", "y".repeat(40))).collect::<Vec<_>>().join("\n");
+        std::fs::write(ws.canon_root.join("src/long_a.ts"), &long_a).unwrap();
+        std::fs::write(ws.canon_root.join("src/long_b.ts"), &long_b).unwrap();
+        let page1 = tool_read_files(
+            &ws,
+            &serde_json::json!({"paths": ["src/long_a.ts", "src/long_b.ts"], "max_chars": 2000}),
+        )
+        .await
+        .unwrap();
+        assert!(page1.contains("Next page: call read_files again"), "{page1}");
+        let cursor = page1.split("cursor=\"").nth(1).and_then(|s| s.split('"').next()).unwrap().to_string();
+        let page2 = tool_read_files(
+            &ws,
+            &serde_json::json!({"paths": ["src/long_a.ts", "src/long_b.ts"], "max_chars": 2000, "cursor": cursor}),
+        )
+        .await
+        .unwrap();
+        assert!(page2.contains("continued from line") || page2.contains("--- src/long_b.ts"), "{page2}");
+
+        // 5. Explicitly named files override default lockfile skips, and sandbox rejects escapes.
+        let lock = tool_read_files(&ws, &serde_json::json!({"paths": "package-lock.json"})).await.unwrap();
+        assert!(lock.contains("lockfileVersion"), "{lock}");
+        let esc = tool_read_files(&ws, &serde_json::json!({"folders": [".."]})).await.unwrap_err();
+        assert!(esc.contains("outside the workspace"), "{esc}");
+        let bad_cur = tool_read_files(&ws, &serde_json::json!({"cursor": "nope"})).await.unwrap_err();
+        assert!(bad_cur.contains("cursor must look like"), "{bad_cur}");
+
         let _ = std::fs::remove_dir_all(&ws.canon_root);
     }
 }

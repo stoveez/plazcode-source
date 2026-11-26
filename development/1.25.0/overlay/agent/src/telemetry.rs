@@ -204,6 +204,8 @@ pub fn output_indicates_error(tool_name: &str, text: &str) -> bool {
     if matches!(
         bare,
         "read_file"
+            | "read_files"
+            | "read_scripts"
             | "grep_files"
             | "search_files"
             | "get_console_output"
@@ -830,6 +832,14 @@ mod tests {
         assert!(!output_indicates_error(
             "read_file",
             "Error: line 1 of some file content"
+        ));
+        assert!(!output_indicates_error(
+            "read_files",
+            "Error: line 1 of some file content"
+        ));
+        assert!(!output_indicates_error(
+            "read_scripts",
+            "Error: runtime comment inside game script"
         ));
         assert!(!output_indicates_error(
             "get_console_output",

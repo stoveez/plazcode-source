@@ -57,7 +57,7 @@ const RS = (() => {
     if (/^animation_/.test(n)) return "generate";
     if (/^generate_/.test(n)) return "generate";
     // AgentScript (LOCAL) engine tools
-    if (/^(workspace_info|list_directory|tree|read_file|read_file_base64|search_files|grep_files|file_exists|count_lines|find_todos|list_by_ext|grep_count)$/.test(n))
+    if (/^(workspace_info|list_directory|tree|read_file|read_files|read_file_base64|search_files|grep_files|file_exists|count_lines|find_todos|list_by_ext|grep_count)$/.test(n))
       return "read";
     if (/^(write_file|edit_file|create_folder|delete_path|move_path|append_file|copy_file|replace_in_files|touch_file|write_json|patch_json|concat_files|scaffold_file)$/.test(n))
       return "edit";
@@ -224,7 +224,7 @@ RULES:
 - Property/enum error: check valid options via docs/inspect commands before retrying.
 - Build objects first, then scripts that find them via WaitForChild.
 - NEVER DELETE BROADLY: before any :Destroy()/:ClearAllChildren confirm scope is exactly what the user asked; ask when unsure.
-READ FAST: read code with read_scripts - many scripts in ONE call (paths:[...]), every script under folders/services (folders:["ServerScriptService"]) or the whole game (no params), about 60,000 characters per page; follow its cursor for the next page. Never read scripts one by one with script_read; use script_read only for the one script you are about to multi_edit.
+READ FAST: read code with read_scripts - many scripts in ONE call (paths:[...]), every script under folders/services (folders:["ServerScriptService"]) or the whole game (no params), about 60,000 characters per page; follow its cursor for the next page. Use outline:true for a whole-game structural map in one call, or exclude/match/classes to filter. Never read scripts one by one with script_read; use script_read only for the one script you are about to multi_edit.
 PROJECT MEMORY: ModuleScript game.ServerStorage.RobloxScript.Memory is shared long-term memory across AIs/chats. PlazCode sends it to you (with all your vault notes) at the start of every chat; read_scripts it again after it changes; update lasting facts with multi_edit (skeleton headers: Overview / Where things live / Conventions / Key systems / Decisions & gotchas / User preferences). Not a task log; never store unverified guesses.
 SKILLS (full params come from list_commands - this is just a name index): lighting_set_preset, lighting_inspect, lighting_setup_day_night, ui_create_screen, ui_create_component (incl. forge:true), ui_inspect, fx_create_emitter, fx_create_light, fx_create_vfx (12 effects: explosion, laser_beam, sword_trail, fire_aura, healing_aura, portal_ring, rain_zone, snow_zone, lightning_strike, frost_breath, sparkle_halo, smoke_plume), audio_setup_sound_hierarchy, audio_create_sound, terrain_fill_region, terrain_clear, camera_set_style, diagnostics_audit, diagnostics_fix_common, datastore_setup, leaderboard_setup, remote_setup, teams_setup, npc_spawn_pathfinding, proximity_setup, tween_create, marketplace_setup, web_fetch, web_search, script_analysis, plugin_list, plugin_create, plugin_inspect.
 ANIMATION: animation_* tools build real KeyframeSequences in ServerStorage.RobloxScript.AnimLib. Flow: animation_create -> animation_open -> animation_set_pose {t, poses:[{bone,pos?,rot?}]} (DEGREE rotations, YXZ) -> animation_add_keyframe -> animation_preview; iterate via animation_inspect/list/set_length. ALWAYS run animation_test first: it reports 'standard' or 'MIRRORED' sign convention - flip every rot sign if mirrored. Animations pin to the rig with most joints (R15>R6); bone names must match that rig.
@@ -402,6 +402,7 @@ For discovery, call motion_scan {action:"scan"} first. It scans ServerStorage, R
 - On ERROR: read it and adapt - fix the command, try another, or tell the user plainly if it is an environment problem (Studio closed, bridge offline).
 - NEVER CLAIM THE BRIDGE PlazCode STUDIO IS OFFLINE WITHOUT TESTING IT ON THIS TURN. An offline error you saw EARLIER in this conversation says nothing about now - outages here are usually momentary (a reconnect that lasts a second or two), and the user often fixes it between two messages. So whenever you are about to say anything is offline or unavailable, actually run the command first and let the fresh result decide. If it succeeds, just carry on as normal without mentioning the earlier failure. Only report it as offline if the command you just ran came back with that error. The same applies when the user tells you it is back: believe them and retry immediately, never answer "it is still offline" from memory.
 - On a property/attribute/value error (e.g. "X is not available", "unknown property", "invalid enum"): if there is any way to list the valid options for that tool (its docs, an inspect/list command, schema info), use it to check the correct value BEFORE retrying. Never guess blindly a second time.
+- READ FAST: read code with read_scripts — many scripts in ONE call (paths:[...]), every script under folders/services (folders:["ServerScriptService"]) or the whole game (no params), ~60,000 chars per page with cursor pagination; use outline:true for a whole-game structural map in one turn, or exclude/match/classes to filter. Never read scripts one by one with script_read; use script_read only for the one script you are about to multi_edit.
 
  ━━━ PROJECT MEMORY (persistent notes — engine-tagged when dualMemory flag is on) ━━━
 ${FLAGS.dualMemory ? `You have TWO memories, one per engine. Pick by the current engine (RS vs AS):
@@ -572,7 +573,8 @@ ${BT}
 
 ━━━ AUTO-ACTION PROTOCOL (MANDATORY) ━━━
 - When the objective is clear, ACT IMMEDIATELY: write the tool call NOW - never announce intent ("let me check...", "shall I...?") without writing the command in the same reply. Announcing without a command runs nothing and strands the user.
-- DEFAULT PIPELINE for any code/build task: read the relevant files (read_file) -> apply changes (edit_file) -> VERIFY by running (run_command: tests/build/compiler) -> read the output -> fix -> rerun. Loop silently until green or genuinely blocked. Do not hand the user instructions to do what you can do yourself.
+- DEFAULT PIPELINE for any code/build task: read the relevant files (read_files for multiple files/folders/whole workspace, or read_file for one file) -> apply changes (edit_file) -> VERIFY by running (run_command: tests/build/compiler) -> read the output -> fix -> rerun. Loop silently until green or genuinely blocked. Do not hand the user instructions to do what you can do yourself.
+- READ FAST: use read_files to read many files (paths:[...]), whole folders (folders:["src"]), or the whole workspace (no params) in ONE call (~60,000 chars per page; supports include, exclude, outline:true for a whole-repo structural map, and list_only:true). Never read files one by one with read_file; use read_file only for one specific file or line slice right before edit_file.
 - Put each complete command envelope in its own fenced code block; short prose before or after is allowed. You may send AT MOST TWO (2) commands in one reply, never more (2 blocks, or one plazcode_batch with at most 2 calls); a reply with 3 or more commands runs none of them. Two independent commands in one reply: reads run at the same time, changes run in the order written, and both results come back together. Wait for results only before dependent work.
 
 ━━━ SILENT ERROR RECOVERY (MANDATORY) ━━━
@@ -636,8 +638,9 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
       "and a children summary (not the children's properties - inspect them separately). If several instances share the path, " +
       "up to 20 matches are returned. Use this to read exact property names/values before editing them with execute_luau.",
     script_read:
-      "Reads the WHOLE script by default with line numbers (LINE→CONTENT). Use it before multi_edit so your old_string " +
-      "matches exactly. target_file is a full dot-path; it never creates a script (use search/grep first to find the path).",
+      "Reads ONE script with line numbers (LINE→CONTENT). Use it only right before multi_edit on that script so your old_string matches exactly. For reading 2+ scripts, whole folders/services, or the entire game, ALWAYS use read_scripts instead.",
+    read_scripts:
+      "FAST BULK READ: returns many scripts, whole folders/services, or the entire game in ONE call (~60,000 chars per page; follow cursor for the next page). Supports outline:true (compact structural map of functions/requires/remotes in one turn), list_only:true, and exclude/match/classes filters. Use this instead of calling script_read one by one.",
     user_keyboard_input:
       "Simulates a real player typing during PLAY. REQUIRES \"datamodel_type\":\"Client\" AND the game RUNNING - the Client " +
       "datamodel only exists in play mode, so first call start_stop_play {\"is_start\": true}; in Edit mode this fails. " +
@@ -683,8 +686,10 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
     read_file_base64:
       "Binary-safe read: returns {path, mimeType, bytes, data} with the file base64-encoded (12 MB cap) instead of text. Use it for images/fonts/archives or any file read_file calls non-UTF-8. " +
       "Pairs with attach_feedback {path:...} when you need an image on screen rather than its bytes.",
+    read_files:
+      "FAST BULK READ: returns many files, whole folders, or the entire workspace in ONE call (~60,000 chars per page; follow cursor for the next page; skips .git, node_modules, target, lockfiles, and binaries). Supports paths, folders, include, exclude, outline:true (whole-repo structural map in one turn), list_only:true, and line_numbers. Use this instead of calling read_file one by one.",
     read_file:
-      "Returns numbered lines as 'LINE | content'. ALWAYS read a file (at least the relevant section) before editing it, so your old_string in edit_file matches byte-for-byte. Use offset/limit to page through big files instead of dumping everything into context.",
+      "Returns ONE file's numbered lines as 'LINE | content'. Use before edit_file so old_string matches byte-for-byte, or offset/limit for giant files. For 2+ files, folders, or exploring the repo, ALWAYS use read_files instead.",
     edit_file:
       "old_string must match the file's current content EXACTLY, byte-for-byte including indentation - copy it from read_file rather than retyping (this chat can turn straight quotes into curly ones, which breaks the match). Replaces the FIRST match; a short old_string matching several places fails on purpose, so include enough surrounding lines to be unique, or pass replace_all:true for renames. old_string and new_string must differ. For brand-new files use write_file instead.",
     write_file:

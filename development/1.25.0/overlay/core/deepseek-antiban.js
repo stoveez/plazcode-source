@@ -126,6 +126,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
   const DEFAULT_HEAT_DECAY_MS = 15000;
   const DEFAULT_HIDDEN_GRACE_MS = 1500;
   const OUTPUT_COMPRESS_LIMIT = 22000;
+  const BULK_READ_COMPRESS_LIMIT = 76000;
   const WINDOW_2M_MS = 120000;
   const WINDOW_10M_MS = 600000;
   const WINDOW_1H_MS = 3600000;
@@ -413,27 +414,30 @@ const PlazCodeDeepSeekAntiBan = (() => {
     return combined.length > 300 ? combined.slice(combined.length - 300) : combined;
   }
 
-  function shapeOutput(text) {
+  function shapeOutput(text, toolName) {
     const raw = String(text || "");
     const origLen = raw.length;
-    if (origLen <= OUTPUT_COMPRESS_LIMIT) {
+    const tName = String(toolName || "").trim().split("/").pop().split("__").pop() || "";
+    const isBulkRead = (tName === "read_scripts" || tName === "read_files" || /^Output of '(?:read_scripts|read_files)':/.test(raw)) && !ERROR_OUTPUT_RE.test(raw);
+    const limit = isBulkRead ? BULK_READ_COMPRESS_LIMIT : OUTPUT_COMPRESS_LIMIT;
+    if (origLen <= limit) {
       return { text: raw, compressed: false, originalChars: origLen };
     }
-    let compact = raw.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-    if (compact.length <= OUTPUT_COMPRESS_LIMIT) {
-      return { text: compact, compressed: true, originalChars: origLen };
+    const compact = isBulkRead ? raw : raw.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (compact.length <= limit) {
+      return { text: compact, compressed: compact !== raw, originalChars: origLen };
     }
     const probe = `\n\n[…PlazCode Anti-Ban: compacted ${origLen} verbose characters to stay safe on DeepSeek while preserving head & tail output…]\n\n`;
-    const budget = Math.max(2000, OUTPUT_COMPRESS_LIMIT - probe.length);
-    const headLen = Math.floor(budget * 0.65);
-    const tailLen = budget - headLen;
+    const budget = Math.max(2000, limit - probe.length);
+    const tailLen = isBulkRead ? Math.min(2400, Math.floor(budget * 0.15)) : budget - Math.floor(budget * 0.65);
+    const headLen = budget - tailLen;
     const head = compact.slice(0, headLen);
     const tail = compact.slice(compact.length - tailLen);
     const omitted = Math.max(1, origLen - head.length - tail.length);
     const marker = `\n\n[…PlazCode Anti-Ban: compacted ${omitted} verbose characters from ${origLen}-char tool output while preserving head & tail output…]\n\n`;
     let finalText = head + marker + tail;
-    if (finalText.length > OUTPUT_COMPRESS_LIMIT) {
-      const over = finalText.length - OUTPUT_COMPRESS_LIMIT;
+    if (finalText.length > limit) {
+      const over = finalText.length - limit;
       finalText = head.slice(0, Math.max(500, head.length - over)) + marker + tail;
     }
     return { text: finalText, compressed: true, originalChars: origLen };
@@ -1045,7 +1049,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
         }
       }
 
-      const shaped = shapeOutput(outText);
+      const shaped = shapeOutput(outText, parsed.name);
       if (shaped.compressed) {
         logDiag("deepseek.antiban.compressed", { from: shaped.originalChars, to: shaped.text.length });
       }
@@ -1117,6 +1121,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
       LIMITS,
       POST_TOOL_WAIT_MS: postToolWaitMs,
       OUTPUT_COMPRESS_LIMIT,
+      BULK_READ_COMPRESS_LIMIT,
       shapeOutput,
       parseToolFeedback,
       bellJitterMs,
@@ -1914,6 +1919,8 @@ const PlazCodeDeepSeekAntiBan = (() => {
 
   return {
     createEngine,
+    OUTPUT_COMPRESS_LIMIT,
+    BULK_READ_COMPRESS_LIMIT,
     shapeOutput,
     parseToolFeedback,
     bellJitterMs,

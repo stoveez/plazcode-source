@@ -2030,6 +2030,7 @@ fn is_local_workspace_tool(name: &str) -> bool {
             | "list_directory"
             | "tree"
             | "read_file"
+            | "read_files"
             | "read_file_base64"
             | "write_file"
             | "edit_file"
@@ -3413,11 +3414,11 @@ async fn run_agent_loop(
 
     let mut sys = if mode == "local" {
         format!(
-            "You are PlazCode Assistant operating in AgentScript workspace mode. Workspace root: {}. Use the provided workspace and engine tools directly to inspect and edit files accurately.",
+            "You are PlazCode Assistant operating in AgentScript workspace mode. Workspace root: {}. Use read_files to read many files, folders, or the whole workspace in one call instead of calling read_file one by one; use read_file for a single file or line range. Use the provided workspace and engine tools directly to inspect and edit files accurately.",
             state.workspace.root_display()
         )
     } else {
-        "You are PlazCode Assistant operating in RobloxScript mode. Use the provided Roblox Studio MCP and Luau validation tools directly to inspect instances, read/edit scripts, and build in Studio.".to_string()
+        "You are PlazCode Assistant operating in RobloxScript mode. Prefer bulk script reading (read_scripts / roblox_place_scripts) over many one-by-one reads when inspecting multiple scripts. Use the provided Roblox Studio MCP and Luau validation tools directly to inspect instances, read/edit scripts, and build in Studio.".to_string()
     };
     if effective_plan_mode {
         sys.push_str("\n\nPLAN MODE IS ACTIVE: Do NOT make mutating edits or write/delete changes. Only inspect/read and return a clear step-by-step plan.");

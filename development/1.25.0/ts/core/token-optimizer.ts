@@ -8,6 +8,7 @@ const PlazCodeTokenOptimizer = (() => {
   const DEFAULT_SOFT_RESULT_CHARS = 8000;
   const PASSTHROUGH_TOOLS = new Set([
     "read_file",
+    "read_files",
     "script_read",
     "read_scripts",
     "read_file_base64",
@@ -15,6 +16,7 @@ const PlazCodeTokenOptimizer = (() => {
     "plazcode_clarify",
     "plazcode_help",
   ]);
+  const BULK_READ_TOOLS = new Set(["read_scripts", "read_files"]);
   const JSON_COMPACT_TOOLS = new Set([
     "search_game_tree",
     "inspect_instance",
@@ -72,6 +74,10 @@ const PlazCodeTokenOptimizer = (() => {
 
   function isPassthroughTool(toolName: unknown): boolean {
     return PASSTHROUGH_TOOLS.has(bareName(toolName));
+  }
+
+  function isBulkReadTool(toolName: unknown): boolean {
+    return BULK_READ_TOOLS.has(bareName(toolName));
   }
 
   function isCriticalTextLine(line: string): boolean {
@@ -237,6 +243,7 @@ const PlazCodeTokenOptimizer = (() => {
   return {
     DEFAULT_SOFT_RESULT_CHARS,
     isPassthroughTool,
+    isBulkReadTool,
     stripNoiseFields,
     foldNoisyText,
     compactToolResult,
