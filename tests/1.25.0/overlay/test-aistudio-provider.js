@@ -128,5 +128,140 @@ const turnsHtml = `
     } finally { w.close(); }
   }
 
+  // 3. Compact composer anchoring (must never stretch to full-page ms-chunk-editor)
+  {
+    const layoutHtml = `
+      <ms-chunk-editor id="fullPageWrap">
+        <div id="centerCol">
+          <div id="promptBox" style="border-radius: 20px;">
+            <textarea placeholder="Start typing a prompt to see what our models can do"></textarea>
+            <ms-run-button><button aria-label="Run">Run</button></ms-run-button>
+          </div>
+        </div>
+      </ms-chunk-editor>`;
+    const { w, P } = makePage('https://aistudio.google.com/prompts/new_chat', layoutHtml);
+    try {
+      w.innerWidth = 1366;
+      w.innerHeight = 768;
+      const setRect = (sel, r) => {
+        const el = w.document.querySelector(sel);
+        el.getBoundingClientRect = () => ({ ...r, right: r.left + r.width, bottom: r.top + r.height });
+      };
+      setRect('#fullPageWrap', { x: 0, y: 0, left: 0, top: 0, width: 1366, height: 768 });
+      setRect('#centerCol', { x: 0, y: 0, left: 0, top: 0, width: 1060, height: 768 });
+      setRect('#promptBox', { x: 120, y: 610, left: 120, top: 610, width: 780, height: 130 });
+      setRect('textarea', { x: 136, y: 626, left: 136, top: 626, width: 748, height: 48 });
+      setRect('ms-run-button button', { x: 820, y: 685, left: 820, top: 685, width: 70, height: 34 });
+
+      assert.equal(P.barOutside, true);
+      assert.equal(P.settleStartupReply, true);
+      assert.equal(P.barAnchor(), w.document.getElementById('promptBox'), 'must anchor to compact prompt box, not full-page ms-chunk-editor or centerCol');
+    } finally { w.close(); }
+  }
+
+  {
+    const oversizedWrapperHtml = `
+      <ms-prompt-input-wrapper id="hugeWrap">
+        <div id="promptCard" style="border-radius: 20px;">
+          <textarea placeholder="Start typing a prompt to see what our models can do"></textarea>
+          <ms-run-button><button aria-label="Run">Run</button></ms-run-button>
+        </div>
+      </ms-prompt-input-wrapper>`;
+    const { w, P } = makePage('https://aistudio.google.com/prompts/new_chat', oversizedWrapperHtml);
+    try {
+      w.innerWidth = 1366;
+      w.innerHeight = 768;
+      const setRect = (sel, r) => {
+        const el = w.document.querySelector(sel);
+        el.getBoundingClientRect = () => ({ ...r, right: r.left + r.width, bottom: r.top + r.height });
+      };
+      setRect('#hugeWrap', { x: 0, y: 0, left: 0, top: 0, width: 1366, height: 768 });
+      setRect('#promptCard', { x: 120, y: 610, left: 120, top: 610, width: 780, height: 130 });
+      setRect('textarea', { x: 136, y: 626, left: 136, top: 626, width: 748, height: 48 });
+      assert.equal(P.barAnchor(), w.document.getElementById('promptCard'), 'must skip oversized ms-prompt-input-wrapper and anchor to inner compact card');
+    } finally { w.close(); }
+  }
+
+  // 4. "Rerun this turn" inside ms-chat-turn must never hijack typeAndSend or click hooks
+  {
+    const rerunHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t1">
+          <button id="rerunBtn" aria-label="Rerun this turn" mattooltip="Rerun this turn">Rerun</button>
+          <ms-cmark-node><p>${CMD}</p></ms-cmark-node>
+        </ms-chat-turn>
+      </main>
+      <ms-prompt-input-wrapper>
+        <ms-autosize-textarea><textarea aria-label="Type something"></textarea></ms-autosize-textarea>
+        <ms-run-button><button id="bottomRun" aria-label="Run">Run</button></ms-run-button>
+      </ms-prompt-input-wrapper>`;
+    const { w, P } = makePage('https://aistudio.google.com/prompts/1a2b3c', rerunHtml);
+    try {
+      let rerunClicks = 0, bottomRunClicks = 0, nativeUserSends = 0;
+      const ed = P.getEditor();
+      w.document.getElementById('rerunBtn').addEventListener('click', () => { rerunClicks++; });
+      w.document.getElementById('bottomRun').addEventListener('click', () => { bottomRunClicks++; ed.value = ''; });
+      P.installSendHooks({ isBlocked: () => false, isStarted: () => true, onBlockedAttempt: () => {}, onUserMessage: () => nativeUserSends++, onNativeStop: () => {} });
+
+      w.document.getElementById('rerunBtn').click();
+      assert.equal(nativeUserSends, 0, 'clicking Rerun this turn must not trigger user send hook');
+      rerunClicks = 0;
+
+      await P.typeAndSend("Output of 'list_commands':\n" + CMD);
+      assert.equal(rerunClicks, 0, 'typeAndSend must never click Rerun this turn');
+      assert.equal(bottomRunClicks, 1, 'typeAndSend must click bottom composer Run button');
+      assert.equal(ed.value, '', 'composer must be cleared after Run');
+    } finally { w.close(); }
+  }
+
+  // 5. Lingering Stop wait, clearEditor lock preservation, 2026 thinking containers & material-symbols stop
+  {
+    const stopAndThinkHtml = `
+      <main>
+        <ms-chat-turn data-turn-role="Model" id="t1">
+          <div class="model-prompt-container">
+            <ms-thinking-chunk>Hidden thinking A {"command":"ignore_a"}</ms-thinking-chunk>
+            <div class="thought-panel">Hidden thinking B {"command":"ignore_b"}</div>
+            <ms-cmark-node><p>Visible answer</p></ms-cmark-node>
+          </div>
+        </ms-chat-turn>
+      </main>
+      <ms-prompt-input-wrapper>
+        <textarea aria-label="Type something"></textarea>
+        <ms-run-button><button id="actionBtn" class="stoppable"><span class="material-symbols-outlined">stop</span></button></ms-run-button>
+      </ms-prompt-input-wrapper>`;
+    const { w, P } = makePage('https://aistudio.google.com/prompts/9z8y7x', stopAndThinkHtml);
+    try {
+      assert.equal(P.isHardGenerating(), true, 'material-symbols-outlined stop icon must detect generation');
+      const read = P.readAssistant();
+      assert.equal(read.reply, 'Visible answer');
+      assert(!read.reply.includes('ignore_a') && !read.reply.includes('ignore_b'));
+      assert(read.thinking.includes('ignore_a'));
+
+      const ed = P.getEditor();
+      P.setInputLock(true);
+      ed.value = 'Stranded prompt text';
+      P.clearEditor();
+      assert.equal(ed.value, '', 'clearEditor must empty textarea even when locked');
+      assert.equal(ed.hasAttribute('readonly'), true, 'clearEditor must preserve readonly lock');
+      P.setInputLock(false);
+
+      const actionBtn = w.document.getElementById('actionBtn');
+      const iconSpan = actionBtn.querySelector('.material-symbols-outlined');
+      setTimeout(() => {
+        actionBtn.classList.remove('stoppable');
+        iconSpan.textContent = 'arrow_upward';
+        actionBtn.setAttribute('aria-label', 'Run');
+      }, 150);
+      let runClicked = 0;
+      actionBtn.addEventListener('click', () => {
+        if (!actionBtn.classList.contains('stoppable')) { runClicked++; ed.value = ''; }
+      });
+      await P.typeAndSend('Next command result');
+      assert.equal(runClicked, 1, 'typeAndSend must wait for lingering stop to clear then click Run');
+      assert.equal(ed.value, '');
+    } finally { w.close(); }
+  }
+
   console.log('PASS Google AI Studio provider fixtures: Ctrl+Enter vs Enter semantics, Run/Stop buttons, ms-chat-turn/thought/code-block parsing, system-instructions isolation, media upload.');
 })().catch((e) => { console.error(e); process.exit(1); });

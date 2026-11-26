@@ -56,8 +56,8 @@ const RSProvider: PlazCodeProvider = (() => {
     userTurn: '[data-turn-role="User"], [data-turn-role="user"], .user-prompt-container, [class*="turn-role-user"]',
     modelTurn: '[data-turn-role="Model"], [data-turn-role="model"], [data-turn-role="assistant"], .model-prompt-container, [class*="turn-role-model"]',
     reply: 'ms-cmark-node, ms-text-chunk, .markdown-content, .turn-content',
-    thinking: 'ms-thought-chunk, .thought-container, [class*="thought-chunk"], [class*="thinking-process"]',
-    inputWrap: 'ms-prompt-input-wrapper, .prompt-input-wrapper, ms-chunk-editor, .bottom-container',
+    thinking: 'ms-thought-chunk, ms-thinking-chunk, .thought-container, .model-thought, [class*="thought-chunk" i], [class*="thought-panel" i], [class*="thinking-process" i], [class*="thinking-panel" i], [data-testid*="thought" i], [data-testid*="thinking" i]',
+    inputWrap: 'ms-prompt-input-wrapper, .prompt-input-wrapper, ms-prompt-box, .prompt-box-container, .prompt-input-container',
     editor: [
       'ms-prompt-input-wrapper textarea',
       'ms-autosize-textarea textarea',
@@ -70,7 +70,7 @@ const RSProvider: PlazCodeProvider = (() => {
       '[data-rs-locked="1"]',
       '[contenteditable="true"][role="textbox"]',
     ].join(", "),
-    runBtn: 'ms-run-button button, button.run-button, button[aria-label*="Run" i], button[mattooltip*="Run" i]',
+    runBtn: 'ms-run-button button, button.run-button',
     stopBtn: 'ms-run-button button.stoppable, button[aria-label*="Stop" i], button[mattooltip*="Stop" i]',
     addMenuBtn: 'ms-add-chunk-menu button, button[aria-label*="Add" i], button[aria-label*="Insert" i], button[aria-label*="Upload" i]',
     mediaPreview: 'ms-image-chunk, ms-media-chunk, ms-video-chunk, [class*="media-preview" i], [class*="attachment-preview" i]',
@@ -125,6 +125,11 @@ const RSProvider: PlazCodeProvider = (() => {
       candidates.push(el);
     }
     if (!candidates.length) return null;
+    const promptHinted = candidates.find((el) => {
+      const h = [safeRead(() => el.getAttribute("placeholder"), ""), safeRead(() => el.getAttribute("aria-label"), "")].join(" ");
+      return /start typing|enter a prompt|type something|\bprompt\b/i.test(h);
+    });
+    if (promptHinted) return promptHinted;
     const inWrapper = candidates.find((el) => !!safeClosest(el, S.inputWrap));
     if (inWrapper) return inWrapper;
     candidates.sort((a, b) => safeRect(a).bottom - safeRect(b).bottom);
@@ -139,10 +144,52 @@ const RSProvider: PlazCodeProvider = (() => {
     return (safeRead(() => (e as HTMLElement).innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   }
 
+  const FULL_PAGE_TAGS = /^(?:BODY|HTML|MAIN|MS-CHUNK-EDITOR|MS-PROMPT-RENDERER)$/;
+  function isCompactComposerBox(el: Element | null, ed: Element): boolean {
+    if (!el) return false;
+    const tag = safeRead(() => el.tagName, "");
+    if (FULL_PAGE_TAGS.test(tag)) return false;
+    if (safeRead(() => el.getAttribute("role"), null) === "main") return false;
+    const r = safeRect(el);
+    if (r.readFailed || r.width < 120 || r.height < 28) return false;
+    const vw = safeRead(() => window.innerWidth, 1280) || 1280;
+    const vh = safeRead(() => window.innerHeight, 800) || 800;
+    if (r.height > Math.max(380, Math.round(vh * 0.52))) return false;
+    const er = safeRect(ed);
+    if (!er.readFailed && er.height > 0) {
+      if (er.top > vh * 0.45 && r.top < 120) return false;
+      if (er.top - r.top > 180 || r.bottom - er.bottom > 180) return false;
+      if (er.width >= 160 && r.width > er.width + 220) return false;
+    } else if (r.width > Math.round(vw * 0.85)) {
+      return false;
+    }
+    return true;
+  }
+
   function composerFrame(): Element | null {
     const ed = getEditor();
     if (!ed) return null;
-    return safeClosest(ed, S.inputWrap) || safeClosest(ed, "form") || safeRead(() => ed.parentElement, null);
+    const named = safeClosest(ed, S.inputWrap);
+    if (named && isCompactComposerBox(named, ed)) return named;
+    let withControls: Element | null = null;
+    let styledCard: Element | null = null;
+    let lastCompact: Element | null = null;
+    let n: Element | null = safeRead(() => ed.parentElement, null);
+    for (let i = 0; i < 10 && n && n !== document.body; i++) {
+      const node: Element = n;
+      const tag = safeRead(() => node.tagName, "");
+      if (FULL_PAGE_TAGS.test(tag) || safeRead(() => node.getAttribute("role"), null) === "main") break;
+      if (!isCompactComposerBox(node, ed)) break;
+      lastCompact = node;
+      if (safeQuery(node, "ms-run-button, button.run-button, ms-add-chunk-menu")) withControls = node;
+      const st = safeStyle(node);
+      const rad = parseFloat(st.borderTopLeftRadius) || 0;
+      const bw = parseFloat(st.borderTopWidth) || 0;
+      const bg = String(st.backgroundColor || "");
+      if (rad >= 10 || bw > 0 || (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)")) styledCard = node;
+      n = safeRead((): Element | null => node.parentElement, null);
+    }
+    return withControls || styledCard || lastCompact || ed;
   }
   const barAnchor = composerFrame;
 
@@ -243,12 +290,26 @@ const RSProvider: PlazCodeProvider = (() => {
     return it.length ? it[it.length - 1] : null;
   };
 
+  const GENERIC_TURN_ID = /^(?:turn|message|user|model|assistant|item|pending|temp|loading)$/i;
   const _turnIds = new WeakMap<Element, string>();
+  const _attrOwners = new Map<string, Element>();
   let _turnSeq = 0;
   function itemKey(item: Element | null): string | null {
     if (!item) return null;
-    const own = safeRead(() => item.getAttribute("id"), null) || safeRead(() => item.getAttribute("data-turn-id"), null);
-    if (own) return own;
+    const raw = safeRead(() => item.getAttribute("id"), null) || safeRead(() => item.getAttribute("data-turn-id"), null);
+    const own = raw ? raw.trim() : "";
+    if (own && !GENERIC_TURN_ID.test(own)) {
+      if (_attrOwners.size > 120) {
+        for (const [k, el] of _attrOwners) {
+          if (!safeRead(() => el.isConnected, false)) _attrOwners.delete(k);
+        }
+      }
+      const owner = _attrOwners.get(own);
+      if (!owner || owner === item || !safeRead(() => owner.isConnected, false)) {
+        _attrOwners.set(own, item);
+        return own;
+      }
+    }
     let id = _turnIds.get(item);
     if (!id) { id = "ai" + (++_turnSeq); _turnIds.set(item, id); }
     return id;
@@ -265,8 +326,11 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Run / Stop Buttons ────────────────────────────────────────────────────
+  const inNonComposerRegion = (el: Element | null): boolean =>
+    !!safeClosest(el, "#rs-root, ms-chat-turn, .chat-turn-container, [data-turn-role], ms-run-settings, ms-system-instructions, nav, aside, header, [role='dialog']");
+
   const iconName = (btn: Element | null): string => {
-    const ic = btn && safeQuery(btn, "mat-icon");
+    const ic = btn && safeQuery(btn, "mat-icon, .material-symbols-outlined, .material-icons");
     return ic ? (safeRead(() => ic.getAttribute("fonticon"), null) || safeRead(() => ic.getAttribute("data-mat-icon-name"), null) || (safeRead(() => ic.textContent, "") || "").trim()) : "";
   };
   const btnLabel = (btn: Element): string => [
@@ -286,24 +350,44 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   function runButton(): HTMLButtonElement | null {
-    for (const b of safeQueryAll<HTMLButtonElement>(document, S.runBtn)) {
-      if (!safeClosest(b, "#rs-root") && visible(b) && !isStopBtn(b)) return b;
-    }
     const frame = composerFrame();
     if (frame) {
+      for (const b of safeQueryAll<HTMLButtonElement>(frame, "ms-run-button button, button.run-button")) {
+        if (!inNonComposerRegion(b) && visible(b) && !isStopBtn(b)) return b;
+      }
       for (const b of safeQueryAll<HTMLButtonElement>(frame, "button")) {
-        if (!safeClosest(b, "#rs-root") && visible(b) && !isStopBtn(b) && (RE.runLabel.test(btnLabel(b)) || iconName(b) === "arrow_upward")) return b;
+        const lbl = btnLabel(b);
+        if (!inNonComposerRegion(b) && visible(b) && !isStopBtn(b) &&
+            ((RE.runLabel.test(lbl) && !/\brerun\b/i.test(lbl)) || iconName(b) === "arrow_upward")) {
+          return b;
+        }
+      }
+    }
+    for (const b of safeQueryAll<HTMLButtonElement>(document, S.runBtn)) {
+      if (!inNonComposerRegion(b) && visible(b) && !isStopBtn(b)) return b;
+    }
+    for (const b of safeQueryAll<HTMLButtonElement>(document, "button[aria-label], button[mattooltip]")) {
+      const lbl = btnLabel(b);
+      if (!inNonComposerRegion(b) && visible(b) && !isStopBtn(b) &&
+          RE.runLabel.test(lbl) && !/\brerun\b/i.test(lbl)) {
+        return b;
       }
     }
     return null;
   }
 
   function stopButton(): HTMLButtonElement | null {
+    const frame = composerFrame();
+    if (frame) {
+      for (const b of safeQueryAll<HTMLButtonElement>(frame, "button")) {
+        if (!safeClosest(b, "#rs-root") && visible(b) && isStopBtn(b)) return b;
+      }
+    }
     for (const b of safeQueryAll<HTMLButtonElement>(document, S.stopBtn)) {
-      if (!safeClosest(b, "#rs-root") && visible(b)) return b;
+      if (!inNonComposerRegion(b) && visible(b)) return b;
     }
     for (const b of safeQueryAll<HTMLButtonElement>(document, S.runBtn)) {
-      if (!safeClosest(b, "#rs-root") && visible(b) && isStopBtn(b)) return b;
+      if (!inNonComposerRegion(b) && visible(b) && isStopBtn(b)) return b;
     }
     return null;
   }
@@ -544,11 +628,28 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
   }
 
+  function clearEditor(): void {
+    const ed = getEditor();
+    if (!ed) return;
+    const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
+    try {
+      setInputLock(false);
+      setRichText(ed, "");
+    } finally {
+      if (relock) setInputLock(true);
+    }
+  }
+
   async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const ed = getEditor();
     if (!ed) throw new Error("Google AI Studio prompt box not found — open aistudio.google.com/prompts/new_chat");
     const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
     text = truncateForSend(text);
+    const tail = String(text).replace(/\s+/g, " ").trim().slice(-40);
+    const editorCleared = (): boolean => {
+      const cur = editorText().replace(/\s+/g, " ").trim();
+      return cur === "" || (tail.length >= 8 && !cur.includes(tail));
+    };
     try {
       if (relock) setInputLock(false);
       ed.focus();
@@ -556,6 +657,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (images && images.length && !hasPendingAttachment()) {
         try { await attachImages(images); } catch {}
       }
+      if (isHardGenerating()) await waitFor(() => !isHardGenerating(), 6000);
       const runReady = (): boolean => {
         const b = runButton();
         return !!b && !safeRead(() => b.disabled, false) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true";
@@ -566,12 +668,13 @@ const RSProvider: PlazCodeProvider = (() => {
         const b = runButton();
         if (b && !safeRead(() => b.disabled, false) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true") {
           try { b.click(); } catch {}
-        } else if (!isHardGenerating()) {
+        }
+        if ((i >= 2 || !b) && !isHardGenerating() && !editorCleared()) {
           const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || "");
           const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, ctrlKey: !isMac, metaKey: isMac, bubbles: true, cancelable: true };
           try { ed.dispatchEvent(new KeyboardEvent("keydown", o)); } catch {}
         }
-        sent = await waitFor(() => editorText().trim() === "" || isHardGenerating(), 900);
+        sent = await waitFor(editorCleared, 900);
       }
       diag("aistudio.send", { sent, editorLen: editorText().length });
     } finally {
@@ -620,7 +723,7 @@ const RSProvider: PlazCodeProvider = (() => {
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
       const btn = safeRead(() => (e.target as Element).closest, null) && (safeClosest(e.target, "button") as HTMLButtonElement | null);
-      if (!btn) return;
+      if (!btn || inNonComposerRegion(btn)) return;
       if (isStopBtn(btn)) {
         if (e.isTrusted !== false) handlers.onNativeStop();
         return;
@@ -662,6 +765,8 @@ const RSProvider: PlazCodeProvider = (() => {
     chipAtItemLevel: true,
     chipAnchor: (item: Element) => item,
     reliableCounts: true,
+    barOutside: true,
+    settleStartupReply: true,
     init({ diag: d } = {}) {
       if (d) diag = d;
       diag("aistudio.init", { editor: !!getEditor(), path: location.pathname });
@@ -669,7 +774,7 @@ const RSProvider: PlazCodeProvider = (() => {
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant, streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
-    setInputLock, writeDraft, typeAndSend, stopGeneration,
+    setInputLock, writeDraft, clearEditor, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer() { return { ready: !!getEditor() }; },
     async ensureComposerReady(reason?: string) {
