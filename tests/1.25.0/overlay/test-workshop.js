@@ -260,7 +260,8 @@ const WorkshopUI = require("./core/workshop-ui.js");
 
   // Owner Panel: hidden before unlock -> unlock rejected -> unlock succeeds -> Users, Grants, & Workshop Moderation
   assert.equal(wq('[data-ws="open-owner"]').hidden, true, "Owner Panel hidden for non-owners before unlock");
-  wq('[data-ws="owner-unlock-btn"]').click();
+  assert.equal(wq('[data-ws="owner-unlock-btn"]').hidden, true, "Owner access lock button hidden for non-owners");
+  w.dispatchEvent(new w.KeyboardEvent("keydown", { key: "O", ctrlKey: true, shiftKey: true, bubbles: true }));
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(wq('[data-ws="owner-unlock-modal"]').hidden, false);
   wq('[data-ws="unlock-acct-token"]').value = "bad";
@@ -280,6 +281,7 @@ const WorkshopUI = require("./core/workshop-ui.js");
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(prefs.workshopRegistryUrl, "https://plazcode-workshop.workers.dev");
   assert.equal(wq('[data-ws="open-owner"]').hidden, false, "Owner Panel button visible after unlock");
+  assert.equal(wq('[data-ws="owner-unlock-btn"]').hidden, false, "Owner access button visible once unlocked");
   assert.equal(wq('[data-ws="owner-panel"]').hidden, false, "Owner Panel opens after unlock");
   assert.match(wq('[data-ws="owner-users-view"]').textContent, /scrypt/);
   assert.match(wq('[data-ws="owner-users-list"]').textContent, /TestPlayer/);
@@ -358,6 +360,7 @@ const WorkshopUI = require("./core/workshop-ui.js");
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(wq('[data-ws="owner-panel"]').hidden, true);
   assert.equal(wq('[data-ws="open-owner"]').hidden, true);
+  assert.equal(wq('[data-ws="owner-unlock-btn"]').hidden, true, "Owner access button hidden again after locking");
 
   dom.window.close();
   console.log("PASS workshop & workbench UI: 3-pane Workbench, 60k part meter, validation/scanner, verbatim preview, dedicated Workshop page, pending upload, Owner Panel Users & Moderation");

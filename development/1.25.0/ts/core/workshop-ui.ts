@@ -241,7 +241,7 @@ html[data-theme-tone=light] .ws-star-btn.on .ws-star-svg,html[data-theme-tone=li
       <button type="button" class="softbtn" data-ws="reg-config" hidden>Configure Registry</button>
       <button type="button" class="softbtn" data-ws="reg-settings" hidden>Settings</button>
       <button type="button" class="accentbtn" data-ws="open-owner" hidden>Owner Panel <span data-ws="owner-badge" class="ws-count-pill" hidden>0</span></button>
-      <button type="button" class="softbtn" data-ws="owner-unlock-btn" title="Owner access (Ctrl+Shift+O)" aria-label="Owner access">
+      <button type="button" class="softbtn" data-ws="owner-unlock-btn" title="Owner access (Ctrl+Shift+O)" aria-label="Owner access" hidden>
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="vertical-align:-2px"><rect x="4" y="11" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
       </button>
     </div>
@@ -837,6 +837,7 @@ html[data-theme-tone=light] .ws-star-btn.on .ws-star-svg,html[data-theme-tone=li
       }
       const canOpen = Boolean(ownerStatus.is_owner || ownerStatus.unlocked);
       find('open-owner').hidden = !canOpen;
+      find('owner-unlock-btn').hidden = !canOpen;
       find('owner-lock').hidden = !ownerStatus.unlocked;
       find('unlock-lock').hidden = !ownerStatus.unlocked;
       if (canOpen && ownerStatus.registry_configured && ownerStatus.workshop_owner) {
