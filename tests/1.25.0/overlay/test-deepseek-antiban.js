@@ -393,6 +393,56 @@ async function runPlaywrightUiTest() {
     }));
     assert.equal(afterReset.state, "safe", "Reset Shield restores Safe state");
     assert(afterReset.text.includes("Shield Safe"));
+
+    // 4. Studio look redesign: square popover/modal panels, rounded action button & switch, kicker, and live modal header
+    await page.evaluate(() => {
+      document.documentElement.setAttribute("data-rs-studio", "1");
+    });
+    await page.click("#rs-ds-antiban-pill");
+    await page.waitForSelector("#rs-ds-antiban-popover .rs-ds-ab-switch");
+    const popUi = await page.evaluate(() => {
+      const pop = document.getElementById("rs-ds-antiban-popover");
+      const btn = pop.querySelector(".rs-ds-ab-pop-btn");
+      const sw = pop.querySelector(".rs-ds-ab-switch");
+      const chk = pop.querySelector(".rs-ds-ab-chk-input");
+      return {
+        kicker: pop.querySelector(".rs-ds-ab-kicker")?.textContent || "",
+        popRadius: getComputedStyle(pop).borderTopLeftRadius,
+        btnRadius: parseFloat(getComputedStyle(btn).borderTopLeftRadius),
+        swRadius: parseFloat(getComputedStyle(sw).borderTopLeftRadius),
+        checkedBefore: chk.checked,
+      };
+    });
+    assert(popUi.kicker.length > 0, "Popover renders Studio eyebrow kicker");
+    assert.equal(popUi.popRadius, "0px", "Popover is square under Studio look");
+    assert(popUi.btnRadius >= 8, "Popover footer button stays rounded under Studio look");
+    assert(popUi.swRadius >= 8, "Checkpoint control uses rounded Studio switch");
+    assert.equal(popUi.checkedBefore, true, "Checkpoint switch starts enabled");
+    await page.click("#rs-ds-antiban-popover .rs-ds-ab-chk-row");
+    const checkedAfter = await page.evaluate(() => ({
+      domChecked: document.querySelector("#rs-ds-antiban-popover .rs-ds-ab-chk-input").checked,
+      engineChecked: PlazCodeDeepSeekAntiBan.getEngine().getSnapshot().checkpointEnabled,
+    }));
+    assert.equal(checkedAfter.domChecked, false, "Checkpoint switch toggles unchecked in DOM");
+    assert.equal(checkedAfter.engineChecked, false, "Checkpoint switch updates engine state");
+    await page.evaluate(async () => {
+      PlazCodeDeepSeekAntiBan.getEngine().setCheckpointEnabled(true);
+      await PlazCodeDeepSeekAntiBan.getEngine().recordEvent("site_warning", { notify: true, reason: "Turnstile check" });
+    });
+    const modalUi = await page.evaluate(() => {
+      const modal = document.getElementById("rs-ds-antiban-modal");
+      const primary = modal.querySelector(".rs-ds-ab-modal-primary");
+      return {
+        radius: getComputedStyle(modal).borderTopLeftRadius,
+        primaryRadius: parseFloat(getComputedStyle(primary).borderTopLeftRadius),
+        kicker: modal.querySelector(".rs-ds-ab-modal-kicker")?.textContent || "",
+        hasIconSvg: !!modal.querySelector(".rs-ds-ab-modal-ico svg"),
+        meta: modal.querySelector(".rs-ds-ab-modal-meta")?.textContent || "",
+      };
+    });
+    assert.equal(modalUi.radius, "0px", "Modal is square under Studio look");
+    assert(modalUi.primaryRadius >= 8, "Modal primary button stays rounded");
+    assert(modalUi.kicker.length > 0 && modalUi.hasIconSvg && modalUi.meta.includes("%"), "Notification renders Studio icon, kicker, and meta chip");
     assert.deepEqual(errors, [], "Zero page errors in Playwright Chromium UI test");
     console.log("PASS DeepSeek Anti-Ban v5 Playwright UI check");
   } finally {

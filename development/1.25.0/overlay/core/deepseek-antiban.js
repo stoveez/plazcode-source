@@ -1328,6 +1328,59 @@ const PlazCodeDeepSeekAntiBan = (() => {
     let popoverOpen = false;
     let savedStateText = null;
     let lastIconKind = "";
+    let lastPopoverKey = "";
+    let activeModalMode = "";
+    let activeModalReason = "";
+    let activeModalTotalMs = 0;
+
+    function positionPopover() {
+      if (!popoverEl || popoverEl.hidden || !pillEl || typeof window === "undefined") return;
+      const bar = document.getElementById("rs-bar");
+      const barRect = bar ? bar.getBoundingClientRect() : null;
+      const pillRect = pillEl.getBoundingClientRect();
+      if (barRect && barRect.width > 0 && barRect.height > 0 && pillRect.width > 0 && window.innerWidth > 0) {
+        const popRect = popoverEl.getBoundingClientRect();
+        const popH = Math.max(220, popRect.height || 380);
+        const popW = Math.max(300, Math.min(328, popRect.width || 328));
+        const maxLeft = Math.max(18, window.innerWidth - popW - 18);
+        let leftPx = Math.min(maxLeft, Math.max(18, Math.round(pillRect.left)));
+        const placeAbove = barRect.top >= popH + 22;
+        const popTop = placeAbove
+          ? Math.max(18, Math.round(barRect.top - 10 - popH))
+          : Math.min(Math.max(18, window.innerHeight - popH - 18), Math.max(18, Math.round(barRect.bottom + 10)));
+        const modalRect = modalEl && !modalEl.hidden ? modalEl.getBoundingClientRect() : null;
+        if (modalRect && modalRect.width > 0 && modalRect.height > 0) {
+          const vOverlap = popTop < modalRect.bottom + 14 && (popTop + popH) > modalRect.top - 14;
+          const hOverlap = leftPx < modalRect.right + 14 && (leftPx + popW) > modalRect.left - 14;
+          if (vOverlap && hOverlap) {
+            const shiftedLeft = Math.round(modalRect.left - popW - 14);
+            if (shiftedLeft >= 18) {
+              leftPx = shiftedLeft;
+            } else {
+              popoverEl.style.left = `${leftPx}px`;
+              popoverEl.style.right = "auto";
+              popoverEl.style.top = `${Math.min(Math.max(18, window.innerHeight - 240), Math.round(modalRect.bottom + 12))}px`;
+              popoverEl.style.bottom = "auto";
+              return;
+            }
+          }
+        }
+        popoverEl.style.left = `${leftPx}px`;
+        popoverEl.style.right = "auto";
+        if (placeAbove) {
+          popoverEl.style.bottom = `${Math.max(18, Math.round(window.innerHeight - barRect.top + 10))}px`;
+          popoverEl.style.top = "auto";
+        } else {
+          popoverEl.style.top = `${popTop}px`;
+          popoverEl.style.bottom = "auto";
+        }
+      } else {
+        popoverEl.style.top = "";
+        popoverEl.style.bottom = "";
+        popoverEl.style.left = "";
+        popoverEl.style.right = "";
+      }
+    }
 
     function ensureUiMounted() {
       const root = document.getElementById("rs-root");
@@ -1349,9 +1402,11 @@ const PlazCodeDeepSeekAntiBan = (() => {
           pillEl.onclick = (e) => {
             e.stopPropagation();
             popoverOpen = !popoverOpen;
+            if (popoverOpen) lastPopoverKey = "";
             if (popoverEl) popoverEl.hidden = !popoverOpen;
             if (pillEl) pillEl.setAttribute("aria-expanded", String(popoverOpen));
             renderUi(engine.getSnapshot());
+            positionPopover();
           };
           const iconSpan = document.createElement("span");
           iconSpan.className = "rs-ds-ab-ico";
@@ -1388,11 +1443,33 @@ const PlazCodeDeepSeekAntiBan = (() => {
           modalEl.className = "rs-ds-ab-modal";
           modalEl.setAttribute("role", "alertdialog");
           modalEl.hidden = true;
+          const head = document.createElement("div");
+          head.className = "rs-ds-ab-modal-head";
+          const ico = document.createElement("span");
+          ico.className = "rs-ds-ab-modal-ico";
+          ico.setAttribute("aria-hidden", "true");
+          const headCopy = document.createElement("div");
+          headCopy.className = "rs-ds-ab-modal-head-copy";
+          const kicker = document.createElement("span");
+          kicker.className = "rs-ds-ab-modal-kicker";
           const title = document.createElement("div");
           title.className = "rs-ds-ab-modal-title";
           title.textContent = T("DeepSeek Anti-Ban Limit");
+          headCopy.appendChild(kicker);
+          headCopy.appendChild(title);
+          const meta = document.createElement("span");
+          meta.className = "rs-ds-ab-modal-meta";
+          head.appendChild(ico);
+          head.appendChild(headCopy);
+          head.appendChild(meta);
           const body = document.createElement("div");
           body.className = "rs-ds-ab-modal-body";
+          const progress = document.createElement("div");
+          progress.className = "rs-ds-ab-modal-progress";
+          progress.hidden = true;
+          const progressFill = document.createElement("div");
+          progressFill.className = "rs-ds-ab-modal-progress-fill";
+          progress.appendChild(progressFill);
           const acts = document.createElement("div");
           acts.className = "rs-ds-ab-modal-acts";
           const primaryBtn = document.createElement("button");
@@ -1405,11 +1482,15 @@ const PlazCodeDeepSeekAntiBan = (() => {
           closeBtn.textContent = T("Close");
           closeBtn.onclick = () => {
             if (modalEl) modalEl.hidden = true;
+            activeModalMode = "";
+            activeModalReason = "";
+            positionPopover();
           };
           acts.appendChild(primaryBtn);
           acts.appendChild(closeBtn);
-          modalEl.appendChild(title);
+          modalEl.appendChild(head);
           modalEl.appendChild(body);
+          modalEl.appendChild(progress);
           modalEl.appendChild(acts);
           root.appendChild(modalEl);
         }
@@ -1418,19 +1499,62 @@ const PlazCodeDeepSeekAntiBan = (() => {
 
     function renderPopover(snap) {
       if (!popoverEl || popoverEl.hidden) return;
+      const nextKey = [
+        snap.label,
+        snap.heat,
+        snap.runTools,
+        snap.runLimit,
+        snap.autoTurns,
+        snap.maxAutoTurns,
+        snap.checkpointEnabled ? 1 : 0,
+        snap.checkpointPaused ? 1 : 0,
+        snap.sends2m,
+        snap.sends10m,
+        snap.tools10m,
+        snap.sends1h,
+        snap.tools1h,
+        snap.sends24h,
+        Math.ceil(snap.cooldownRemainingMs / 1000),
+        Math.ceil(snap.riskLockRemainingMs / 1000),
+      ].join("|");
+      if (popoverEl.childElementCount > 0 && lastPopoverKey === nextKey) {
+        positionPopover();
+        return;
+      }
+      lastPopoverKey = nextKey;
       popoverEl.replaceChildren();
+
+      const badgeState = snap.riskLockRemainingMs > 0
+        ? "risk_lock"
+        : snap.cooldownRemainingMs > 0
+          ? "cooldown"
+          : snap.checkpointPaused
+            ? "checkpoint"
+            : snap.heat < 20
+              ? "safe"
+              : "heated";
 
       const head = document.createElement("div");
       head.className = "rs-ds-ab-pop-head";
+      const titleCol = document.createElement("div");
+      titleCol.className = "rs-ds-ab-pop-title-col";
+      const kicker = document.createElement("span");
+      kicker.className = "rs-ds-ab-kicker";
+      kicker.textContent = T("DeepSeek Shield");
       const hTitle = document.createElement("strong");
       hTitle.textContent = T("DeepSeek Anti-Ban");
+      titleCol.appendChild(kicker);
+      titleCol.appendChild(hTitle);
       const hBadge = document.createElement("span");
       hBadge.className = "rs-ds-ab-pop-badge";
-      hBadge.setAttribute("data-state", snap.riskLockRemainingMs > 0 ? "risk_lock" : snap.cooldownRemainingMs > 0 ? "cooldown" : snap.heat < 20 ? "safe" : "heated");
+      hBadge.setAttribute("data-state", badgeState);
       hBadge.textContent = `${T(snap.label)} · ${snap.heat}%`;
-      head.appendChild(hTitle);
+      head.appendChild(titleCol);
       head.appendChild(hBadge);
       popoverEl.appendChild(head);
+
+      const popBody = document.createElement("div");
+      popBody.className = "rs-ds-ab-pop-body";
 
       const meterWrap = document.createElement("div");
       meterWrap.className = "rs-ds-ab-meter-wrap";
@@ -1439,7 +1563,8 @@ const PlazCodeDeepSeekAntiBan = (() => {
       const mLabel = document.createElement("span");
       mLabel.textContent = T("Heat meter");
       const mVal = document.createElement("span");
-      mVal.textContent = `${snap.heat}% (${snap.heat < 20 ? T("Safe") : snap.heat > 80 ? ">80% Cooldown" : T("Heated")})`;
+      mVal.className = "rs-ds-ab-meter-val";
+      mVal.textContent = `${snap.heat}% · ${snap.heat < 20 ? T("Safe") : snap.heat > 80 ? ">80% Cooldown" : T("Heated")}`;
       meterRow.appendChild(mLabel);
       meterRow.appendChild(mVal);
       const track = document.createElement("div");
@@ -1447,15 +1572,28 @@ const PlazCodeDeepSeekAntiBan = (() => {
       const fill = document.createElement("div");
       fill.className = "rs-ds-ab-meter-fill";
       fill.style.width = `${snap.heat}%`;
+      fill.setAttribute("data-band", (snap.riskLockRemainingMs > 0 || snap.cooldownRemainingMs > 0 || snap.heat >= 80) ? "critical" : snap.heat >= 20 ? "heated" : "safe");
+      fill.setAttribute("data-zero", snap.heat === 0 ? "true" : "false");
       track.appendChild(fill);
       meterWrap.appendChild(meterRow);
       meterWrap.appendChild(track);
-      popoverEl.appendChild(meterWrap);
+      popBody.appendChild(meterWrap);
+
+      const controls = document.createElement("div");
+      controls.className = "rs-ds-ab-controls";
 
       const pipsRow = document.createElement("div");
       pipsRow.className = "rs-ds-ab-pips-row";
-      const pipsLabel = document.createElement("span");
-      pipsLabel.textContent = `${T("Run cycle")} (${snap.runTools}/${snap.runLimit} → 20s reset)`;
+      const pipsCopy = document.createElement("div");
+      pipsCopy.className = "rs-ds-ab-row-copy";
+      const pipsName = document.createElement("span");
+      pipsName.className = "rs-ds-ab-row-name";
+      pipsName.textContent = T("Run cycle");
+      const pipsSub = document.createElement("small");
+      pipsSub.className = "rs-ds-ab-row-sub";
+      pipsSub.textContent = `${snap.runTools}/${snap.runLimit} → 20s reset`;
+      pipsCopy.appendChild(pipsName);
+      pipsCopy.appendChild(pipsSub);
       const pips = document.createElement("div");
       pips.className = "rs-ds-ab-pips";
       for (let i = 1; i <= snap.runLimit; i++) {
@@ -1463,23 +1601,40 @@ const PlazCodeDeepSeekAntiBan = (() => {
         pip.className = i <= snap.runTools ? "rs-ds-ab-pip on" : "rs-ds-ab-pip";
         pips.appendChild(pip);
       }
-      pipsRow.appendChild(pipsLabel);
+      pipsRow.appendChild(pipsCopy);
       pipsRow.appendChild(pips);
-      popoverEl.appendChild(pipsRow);
+      controls.appendChild(pipsRow);
 
       const chkRow = document.createElement("label");
-      chkRow.className = "rs-ds-ab-pips-row";
-      const chkTxt = document.createElement("span");
-      chkTxt.textContent = `${T("Auto-turn checkpoint")} (${snap.autoTurns}/${snap.maxAutoTurns})`;
+      chkRow.className = "rs-ds-ab-pips-row rs-ds-ab-chk-row";
+      const chkCopy = document.createElement("div");
+      chkCopy.className = "rs-ds-ab-row-copy";
+      const chkName = document.createElement("span");
+      chkName.className = "rs-ds-ab-row-name";
+      chkName.textContent = T("Auto-turn checkpoint");
+      const chkSub = document.createElement("small");
+      chkSub.className = "rs-ds-ab-row-sub";
+      chkSub.textContent = `${snap.autoTurns}/${snap.maxAutoTurns}`;
+      chkCopy.appendChild(chkName);
+      chkCopy.appendChild(chkSub);
+      const switchWrap = document.createElement("span");
+      switchWrap.className = "rs-ds-ab-switch-wrap";
       const chk = document.createElement("input");
       chk.type = "checkbox";
+      chk.className = "rs-ds-ab-chk-input";
       chk.checked = snap.checkpointEnabled;
       chk.onchange = () => {
         engine.setCheckpointEnabled(chk.checked);
       };
-      chkRow.appendChild(chkTxt);
-      chkRow.appendChild(chk);
-      popoverEl.appendChild(chkRow);
+      const switchVisual = document.createElement("span");
+      switchVisual.className = "rs-ds-ab-switch";
+      switchVisual.setAttribute("aria-hidden", "true");
+      switchWrap.appendChild(chk);
+      switchWrap.appendChild(switchVisual);
+      chkRow.appendChild(chkCopy);
+      chkRow.appendChild(switchWrap);
+      controls.appendChild(chkRow);
+      popBody.appendChild(controls);
 
       const grid = document.createElement("div");
       grid.className = "rs-ds-ab-grid";
@@ -1500,7 +1655,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
         item.appendChild(vs);
         grid.appendChild(item);
       }
-      popoverEl.appendChild(grid);
+      popBody.appendChild(grid);
 
       const foot = document.createElement("div");
       foot.className = "rs-ds-ab-pop-foot";
@@ -1508,6 +1663,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
         const resetBtn = document.createElement("button");
         resetBtn.type = "button";
         resetBtn.className = "rs-ds-ab-pop-btn";
+        resetBtn.setAttribute("data-variant", "primary");
         resetBtn.textContent = T("Reset Shield");
         resetBtn.onclick = () => { void engine.resetShield(); };
         foot.appendChild(resetBtn);
@@ -1515,6 +1671,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
         const resumeBtn = document.createElement("button");
         resumeBtn.type = "button";
         resumeBtn.className = "rs-ds-ab-pop-btn";
+        resumeBtn.setAttribute("data-variant", "primary");
         resumeBtn.textContent = T("Resume");
         resumeBtn.onclick = () => { engine.resumeCheckpoint(); };
         foot.appendChild(resumeBtn);
@@ -1522,6 +1679,7 @@ const PlazCodeDeepSeekAntiBan = (() => {
         const coolBtn = document.createElement("button");
         coolBtn.type = "button";
         coolBtn.className = "rs-ds-ab-pop-btn";
+        coolBtn.setAttribute("data-variant", "cooldown");
         coolBtn.textContent = T("Cool down now (20s)");
         coolBtn.disabled = snap.cooldownRemainingMs > 0 || (snap.heat === 0 && snap.runTools === 0);
         coolBtn.onclick = () => {
@@ -1529,7 +1687,9 @@ const PlazCodeDeepSeekAntiBan = (() => {
         };
         foot.appendChild(coolBtn);
       }
-      popoverEl.appendChild(foot);
+      popBody.appendChild(foot);
+      popoverEl.appendChild(popBody);
+      positionPopover();
     }
 
     function formatMinSec(ms) {
@@ -1537,6 +1697,45 @@ const PlazCodeDeepSeekAntiBan = (() => {
       const m = Math.floor(total / 60);
       const s = total % 60;
       return m > 0 ? `${m}m ${s < 10 ? "0" : ""}${s}s` : `${s}s`;
+    }
+
+    function syncModalLive(snap, info) {
+      if (!modalEl || modalEl.hidden || !activeModalMode) return;
+      if (!info) {
+        const expired = (activeModalMode === "risk_lock" && snap.riskLockRemainingMs <= 0)
+          || (activeModalMode === "cooldown" && snap.cooldownRemainingMs <= 0)
+          || (activeModalMode === "checkpoint" && activeModalReason === "auto_turns" && !snap.checkpointPaused);
+        if (expired) {
+          modalEl.hidden = true;
+          activeModalMode = "";
+          activeModalReason = "";
+          positionPopover();
+          return;
+        }
+      }
+      const meta = modalEl.querySelector(".rs-ds-ab-modal-meta");
+      const progress = modalEl.querySelector(".rs-ds-ab-modal-progress");
+      const fill = modalEl.querySelector(".rs-ds-ab-modal-progress-fill");
+      const remMs = activeModalMode === "risk_lock"
+        ? (snap.riskLockRemainingMs || (info ? (info.seconds || 0) * 1000 : 0))
+        : activeModalMode === "cooldown"
+          ? (snap.cooldownRemainingMs || (info ? (info.seconds || 0) * 1000 : 0))
+          : 0;
+      const heat = info ? info.heat : snap.heat;
+      if (meta) {
+        if (remMs > 0) meta.textContent = `${formatMinSec(remMs)} · ${heat}%`;
+        else meta.textContent = `${snap.autoTurns}/${snap.maxAutoTurns} · ${heat}%`;
+      }
+      if (progress && fill) {
+        if (remMs > 0 && activeModalTotalMs > 0) {
+          progress.hidden = false;
+          const pct = Math.max(0, Math.min(100, Math.round((remMs / activeModalTotalMs) * 100)));
+          fill.style.width = `${pct}%`;
+        } else {
+          progress.hidden = true;
+          fill.style.width = "0%";
+        }
+      }
     }
 
     function renderUi(snap) {
@@ -1605,13 +1804,31 @@ const PlazCodeDeepSeekAntiBan = (() => {
       }
 
       renderPopover(snap);
+      syncModalLive(snap);
     }
 
     engine.subscribe(renderUi);
     engine.subscribeModal((info) => {
       ensureUiMounted();
       if (!modalEl) return;
+      activeModalMode = info.mode;
+      activeModalReason = info.reason || "";
+      activeModalTotalMs = info.seconds > 0 ? info.seconds * 1000 : 0;
       modalEl.setAttribute("data-mode", info.mode);
+      const ico = modalEl.querySelector(".rs-ds-ab-modal-ico");
+      if (ico) {
+        ico.replaceChildren();
+        const svg = svgIcon(info.mode === "cooldown" ? "hourglass" : info.mode === "risk_lock" ? "heated" : "shield");
+        if (svg) ico.appendChild(svg);
+      }
+      const kicker = modalEl.querySelector(".rs-ds-ab-modal-kicker");
+      if (kicker) {
+        kicker.textContent = info.mode === "risk_lock"
+          ? T("Risk Lock · Tier 2")
+          : info.mode === "cooldown"
+            ? T("Cooldown Active")
+            : T("Safe Checkpoint");
+      }
       const title = modalEl.querySelector(".rs-ds-ab-modal-title");
       const body = modalEl.querySelector(".rs-ds-ab-modal-body");
       const primaryBtn = modalEl.querySelector(".rs-ds-ab-modal-primary");
@@ -1624,6 +1841,9 @@ const PlazCodeDeepSeekAntiBan = (() => {
           primaryBtn.onclick = () => {
             void engine.resetShield();
             if (modalEl) modalEl.hidden = true;
+            activeModalMode = "";
+            activeModalReason = "";
+            positionPopover();
           };
         } else if (info.mode === "checkpoint") {
           primaryBtn.hidden = false;
@@ -1631,13 +1851,20 @@ const PlazCodeDeepSeekAntiBan = (() => {
           primaryBtn.onclick = () => {
             engine.resumeCheckpoint();
             if (modalEl) modalEl.hidden = true;
+            activeModalMode = "";
+            activeModalReason = "";
+            positionPopover();
           };
         } else {
           primaryBtn.hidden = true;
         }
       }
       modalEl.hidden = false;
+      syncModalLive(engine.getSnapshot(), info);
+      positionPopover();
     });
+
+    window.addEventListener("resize", positionPopover);
 
     document.addEventListener("click", (e) => {
       if (!popoverOpen || !popoverEl || !pillEl) return;
