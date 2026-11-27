@@ -1738,7 +1738,7 @@ button.byok-check-row:hover{color:var(--text,#f5f8ff)}
 .byok-tool-card[data-status="err"]{border-left-color:var(--red,#ff696c);background:linear-gradient(145deg,rgba(255,105,108,.11),rgba(255,255,255,.02) 44%,color-mix(in srgb,var(--canvas,#090b10) 92%,transparent))}
 .byok-tool-card summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none}
 .byok-tool-dot{width:8px;height:8px;border-radius:50%;background:var(--green,#31e0a4);box-shadow:0 0 8px rgba(49,224,164,.55);flex:0 0 auto}
-.byok-tool-card[data-status="run"] .byok-tool-dot{background:var(--amber,#ffb33f);box-shadow:0 0 8px rgba(255,179,63,.65);animation:byokPulse 1.4s ease-in-out infinite}
+.byok-tool-card[data-status="run"] .byok-tool-dot{background:var(--amber,#ffb33f);box-shadow:0 0 8px rgba(255,179,63,.65);animation:byokPulse 1.4s ease-in-out 20}
 .byok-tool-card[data-status="err"] .byok-tool-dot{background:var(--red,#ff696c);box-shadow:0 0 8px rgba(255,105,108,.55)}
 @keyframes byokPulse{0%,100%{opacity:1}50%{opacity:.45}}
 html[data-pz-motion=off] .byok-tool-card[data-status="run"] .byok-tool-dot{animation:none}
@@ -3373,7 +3373,7 @@ __PLAZCODE_BACKDROP_FX__
     var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;
     Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;Cnnotice='';Cninfo='';Cnchanging={};
     if(Cnpoll){window.clearInterval(Cnpoll);Cnpoll=null;}
-    if(Byokui&&typeof Byokui.refreshConnections==='function')Byokui.refreshConnections();
+    if(Byokui&&typeof Byokui.refreshConnections==='function'&&Byid('page-chat')&&Byid('page-chat').classList.contains('active'))Byokui.refreshConnections();
     var Back=Cnlastid&&document.querySelector('[data-cn-open="'+Cnlastid+'"]');if(Back)Back.focus();
   }
   function Cncopy(Text,Button){
@@ -3384,7 +3384,7 @@ __PLAZCODE_BACKDROP_FX__
   function Cnfallbackcopy(Text){var Box=document.createElement('textarea');Box.value=Text;Box.setAttribute('readonly','');Box.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(Box);Box.select();try{document.execCommand('copy');}catch(Error){}Box.remove();}
   function Cnrun(Id,Body){
     /* A refused step (for example a folder that is not a project) is said inside the window, next to what the person just did. */
-    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(Reply){Cninfo=Reply&&typeof Reply.notice==='string'?Reply.notice:'';Cnnotice='';Cnchanging={};Catalogcached=null;Cnat=0;Cnwinsig='';if(Byokui&&typeof Byokui.refreshConnections==='function')Byokui.refreshConnections();return Loadcatalog(true);}).catch(function(Failure){Cnnotice=Failure&&Failure.message||String(Failure);Cnat=0;Cnwinsig='';return Loadcatalog(true);});
+    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(Reply){Cninfo=Reply&&typeof Reply.notice==='string'?Reply.notice:'';Cnnotice='';Cnchanging={};Catalogcached=null;Cnat=0;Cnwinsig='';if(Byokui&&typeof Byokui.refreshConnections==='function'&&Byid('page-chat')&&Byid('page-chat').classList.contains('active'))Byokui.refreshConnections();return Loadcatalog(true);}).catch(function(Failure){Cnnotice=Failure&&Failure.message||String(Failure);Cnat=0;Cnwinsig='';return Loadcatalog(true);});
   }
   function Cntoggle(Id,On){
     PendingMcp[Id]=On?'Enabling…':'Disabling…';Catalogsignature='';

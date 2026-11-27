@@ -293,6 +293,7 @@ const PlazCodeByokChatUI = (() => {
     let connectionsList = [];
     let mcpCatalog = [];
     let connectionsLoaded = false;
+    let connectionsUnavailable = false;
     let pendingAppToggle = {};
     let findOpen = false;
     let findQuery = '';
@@ -516,7 +517,12 @@ const PlazCodeByokChatUI = (() => {
     const loadConnections = async (_force = false) => {
       try {
         const [connRes, catRes] = await Promise.all([
-          opts.api('/api/connections').catch(() => null),
+          connectionsUnavailable
+            ? Promise.resolve(null)
+            : opts.api('/api/connections').catch(() => {
+                connectionsUnavailable = true;
+                return null;
+              }),
           opts.api('/api/mcp/catalog').catch(() => null),
         ]);
         if (connRes && Array.isArray(connRes.apps)) connectionsList = connRes.apps;
@@ -3325,7 +3331,13 @@ const PlazCodeByokChatUI = (() => {
     const refresh = async () => {
       syncFromState();
       bindHostEvents();
-      await Promise.all([loadPlatforms(), loadChats(), loadSkills(), loadConnections(true)]);
+      const chatVisible = !!(opts.chatHost && (!opts.chatHost.closest('.page') || opts.chatHost.closest('.page.active')));
+      await Promise.all([
+        loadPlatforms(),
+        loadChats(),
+        loadSkills(),
+        chatVisible ? loadConnections(true) : Promise.resolve(),
+      ]);
     };
 
     if (!initialized) {
