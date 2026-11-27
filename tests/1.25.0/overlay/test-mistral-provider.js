@@ -147,5 +147,98 @@ const turnsHtml = `
     } finally { w.close(); }
   }
 
-  console.log('PASS Mistral provider fixtures: Work (/work) support, Code/Vibe Code rejection & mode:work recovery, preview-pane editor isolation, ProseMirror + textarea, tool hiding.');
+  // 4. Vibe Work (/work) with Tailwind/Radix classes on inactive Code links/tabs must NOT falsely trigger unsupported Code mode
+  for (const composerHtml of [
+    `<form class="composer rounded-2xl"><div contenteditable="plaintext-only" role="textbox" data-placeholder="Type / for quick access"></div><button type="submit" aria-label="Send">Send</button></form>`,
+    `<form class="composer rounded-2xl"><textarea placeholder="Type / for quick access"></textarea><button type="submit" aria-label="Send">Send</button></form>`
+  ]) {
+    const vibeWorkHtml = `
+      <aside>
+        <nav>
+          <a href="/work" class="bg-neutral-800 rounded-md px-3">Work</a>
+          <a href="/code" class="active:bg-neutral-800 data-[state=active]:bg-zinc-800 aria-selected:text-white">Code</a>
+          <button role="tab" aria-selected="false" class="data-[state=active]:bg-muted">Code</button>
+          <button role="tab" data-state="inactive" class="is-selected:border">Vibe Code</button>
+        </nav>
+      </aside>
+    ` + composerHtml;
+    const { w, P } = makePage('https://chat.mistral.ai/work', vibeWorkHtml);
+    try {
+      let diagSnap = null;
+      P.init({ diag: (_ev, data) => { diagSnap = data; } });
+      assert.equal(diagSnap.mode, 'work', 'init diag must report work mode on /work despite Tailwind utility classes');
+      assert.equal(diagSnap.editor, true, 'init diag must report editor:true on /work');
+      assert.equal(P.isFreshChat(), true);
+      assert.equal(P.enforceComposer('startup').mode, 'work');
+      assert.equal(P.enforceComposer('startup').ready, true);
+      assert.equal((await P.ensureComposerReady('startup')).ready, true);
+      assert.equal(P.modeWarning(), '');
+      assert(P.getEditor(), 'Vibe Work composer (plaintext-only / textarea) must be resolved');
+    } finally { w.close(); }
+  }
+
+  // 5. Active Work conversation link with "code" in thread title + /vibe/work vs /vibe/code routes + sidebar plain buttons
+  {
+    const activeWorkTitle = `
+      <aside>
+        <a href="/work" class="bg-neutral-800">Work</a>
+        <a href="/code" class="active:bg-neutral-800">Code</a>
+        <a href="/work/chat-99" aria-current="page">Fix my Luau code</a>
+      </aside>
+      ` + turnsHtml + `
+      <form class="composer rounded-xl">
+        <textarea placeholder="Type / for quick access"></textarea>
+        <button type="submit" aria-label="Send">Send</button>
+      </form>`;
+    const { w, P } = makePage('https://chat.mistral.ai/work/chat-99', activeWorkTitle);
+    try {
+      assert.equal(P.enforceComposer('test').mode, 'work');
+      assert.equal(P.enforceComposer('test').ready, true);
+      assert.equal(P.conversationKey(), 'work:chat-99');
+      assert.equal(P.modeWarning(), '');
+    } finally { w.close(); }
+  }
+
+  {
+    const { w, P } = makePage('https://chat.mistral.ai/vibe/work', `<form><textarea placeholder="Type / for quick access"></textarea><button type="submit" aria-label="Send">Send</button></form>`);
+    try {
+      assert.equal(P.enforceComposer('test').mode, 'work');
+      assert.equal(P.enforceComposer('test').ready, true);
+      assert.equal(P.modeWarning(), '');
+    } finally { w.close(); }
+  }
+
+  {
+    const { w, P } = makePage('https://chat.mistral.ai/vibe/code', `<form><textarea placeholder="Type / for quick access"></textarea><button type="submit" aria-label="Send">Send</button></form>`);
+    try {
+      assert.equal(P.enforceComposer('test').mode, 'unsupported');
+      assert.equal(P.enforceComposer('test').ready, false);
+      assert(/Code mode is not supported/i.test(P.modeWarning()));
+    } finally { w.close(); }
+  }
+
+  {
+    const btnSwitch = `
+      <aside>
+        <button type="button" data-state="active">Code</button>
+        <button type="button" data-state="inactive">Work</button>
+      </aside>
+      <form><textarea placeholder="Type / for quick access"></textarea><button type="submit" aria-label="Send">Send</button></form>`;
+    const { w, P } = makePage('https://chat.mistral.ai/', btnSwitch);
+    try {
+      assert.equal(P.enforceComposer('startup').mode, 'unsupported');
+      const [codeBtn, workBtn] = w.document.querySelectorAll('aside button');
+      workBtn.addEventListener('click', () => {
+        codeBtn.setAttribute('data-state', 'inactive');
+        workBtn.setAttribute('data-state', 'active');
+        w.history.pushState({}, '', '/work');
+      });
+      const res = await P.ensureComposerReady('mode:work');
+      assert.equal(res.ready, true);
+      assert.equal(res.detail, 'work');
+      assert.equal(P.modeWarning(), '');
+    } finally { w.close(); }
+  }
+
+  console.log('PASS Mistral provider fixtures: Work (/work, /vibe/work) support, Tailwind false-active immunity, Code/Vibe Code rejection & mode:work recovery, preview-pane editor isolation, ProseMirror + textarea, tool hiding.');
 })().catch((e) => { console.error(e); process.exit(1); });

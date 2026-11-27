@@ -55,12 +55,16 @@ const RSProvider: PlazCodeProvider = (() => {
     editor: [
       'textarea[placeholder*="Ask" i]',
       'textarea[placeholder*="Message" i]',
+      'textarea[placeholder*="Type" i]',
       'div.ProseMirror[contenteditable]',
       'div.tiptap[contenteditable]',
       '[data-rs-locked="1"]',
       '[contenteditable="true"][role="textbox"]',
+      '[contenteditable="plaintext-only"][role="textbox"]',
+      '[role="textbox"][contenteditable]:not([contenteditable="false"])',
       'textarea:not([disabled])',
       'div[contenteditable="true"]',
+      'div[contenteditable="plaintext-only"]',
     ].join(", "),
     // Exclude artifact code editor / terminal / preview panes so we never type into a preview file.
     nonComposerScope: '#rs-root, nav, aside, [role="dialog"], .monaco-editor, .cm-editor, .xterm, [class*="code-editor"], [class*="preview-pane"], [data-panel="preview"], [class*="sandbox"]',
@@ -69,7 +73,7 @@ const RSProvider: PlazCodeProvider = (() => {
     attachBtn: 'button[aria-label*="Attach" i], button[aria-label*="Joindre" i], button[aria-label*="Upload" i], button[aria-label*="Add" i], button[data-testid*="attach" i]',
     fileInput: 'input[type="file"]',
     attachPreview: '[data-testid*="attachment" i], [class*="attachment" i], [class*="file-preview" i], [class*="thumbnail" i]',
-    sendAria: /^(?:send|submit|ask|envoyer|send message|submit prompt)$/i,
+    sendAria: /^(?:send|submit|ask|envoyer)(?:\s+(?:message|prompt|chat|button))?$|^send[-_]?(?:btn|button)$/i,
     stopAria: /^(?:stop|cancel|abort|arr[êe]ter)(?:\s+(?:generating|generation|response|streaming))?$/i,
     codeWrap: 'pre, [class*="code-block" i], [class*="codeblock" i]',
     errorSurfaces: '[role="alert"], [data-sonner-toast], [class*="toast"], [class*="error-banner"], [class*="error-message"]',
@@ -81,8 +85,10 @@ const RSProvider: PlazCodeProvider = (() => {
     busy: /rate limit|too many requests|try again later|temporarily unavailable|server is busy|usage limit|quota|réessayer plus tard/i,
     codeMode: /\b(?:vibe\s*code|vibecode|code)\b/i,
     workMode: /\bwork\b/i,
+    codeLabel: /^(?:switch\s+to\s+)?(?:vibe\s*code|vibecode|code)(?:\s+mode)?$/i,
+    workLabel: /^(?:switch\s+to\s+)?work(?:\s+mode)?$/i,
     sideBox: /rename|title|search|filter|feedback|report|comment/i,
-    mainBox: /ask|message|prompt|chat|mistral|le chat|work/i,
+    mainBox: /ask|message|prompt|chat|mistral|le chat|work|quick access|type \//i,
   };
 
   const timings = {
@@ -112,32 +118,119 @@ const RSProvider: PlazCodeProvider = (() => {
   // ── Work Mode Detection & Unsupported Code Mode Guard ─────────────────────
   function isControlActive(el: Element | null | undefined): boolean {
     if (!el) return false;
-    if (safeRead(() => el.getAttribute("aria-selected"), null) === "true") return true;
-    if (safeRead(() => el.getAttribute("aria-pressed"), null) === "true") return true;
-    if (safeRead(() => el.getAttribute("aria-checked"), null) === "true") return true;
-    if (safeRead(() => el.getAttribute("aria-current"), null) === "page") return true;
-    if (safeRead(() => el.getAttribute("data-state"), null) === "active") return true;
-    if (safeRead(() => el.getAttribute("data-active"), null) === "true") return true;
+    const ariaSel = safeRead(() => el.getAttribute("aria-selected"), null);
+    const ariaPre = safeRead(() => el.getAttribute("aria-pressed"), null);
+    const ariaChk = safeRead(() => el.getAttribute("aria-checked"), null);
+    const ariaCur = safeRead(() => el.getAttribute("aria-current"), null);
+    const dataState = safeRead(() => el.getAttribute("data-state"), null);
+    const dataAct = safeRead(() => el.getAttribute("data-active"), null);
+    const dataSel = safeRead(() => el.getAttribute("data-selected"), null);
+
+    if (
+      ariaSel === "true" ||
+      ariaPre === "true" ||
+      ariaChk === "true" ||
+      ariaCur === "page" ||
+      ariaCur === "true" ||
+      dataState === "active" ||
+      dataState === "on" ||
+      dataState === "checked" ||
+      dataAct === "true" ||
+      dataSel === "true"
+    ) return true;
+
+    if (
+      ariaSel === "false" ||
+      ariaPre === "false" ||
+      ariaChk === "false" ||
+      ariaCur === "false" ||
+      dataState === "inactive" ||
+      dataState === "off" ||
+      dataState === "unchecked" ||
+      dataAct === "false" ||
+      dataSel === "false"
+    ) return false;
+
     const cls = String(safeRead(() => el.className, "") || "");
-    return /\b(active|selected)\b/i.test(cls);
+    return cls.trim().split(/\s+/).some((tok) => tok && !tok.includes(":") && !tok.includes("[") && /^(?:is-)?(?:active|selected)$/i.test(tok));
+  }
+
+  function controlText(el: Element): string {
+    return String(safeRead(() => el.textContent, "") || "").replace(/\s+/g, " ").trim();
+  }
+
+  function controlHrefPath(el: Element): { raw: string; path: string; query: string } {
+    const raw = String(safeRead(() => el.getAttribute("href"), "") || "").trim();
+    if (!raw) return { raw: "", path: "", query: "" };
+    return safeRead(() => {
+      const u = new URL(raw, location.origin);
+      return { raw, path: (u.pathname || "").toLowerCase(), query: ((u.search || "") + " " + (u.hash || "")).toLowerCase() };
+    }, { raw, path: raw.toLowerCase(), query: "" });
+  }
+
+  function isWorkModeControl(el: Element): boolean {
+    const dataMode = String(safeRead(() => el.getAttribute("data-mode"), "") || "").trim();
+    const aria = String(safeRead(() => el.getAttribute("aria-label"), "") || "").trim();
+    const text = controlText(el);
+    const hrefInfo = controlHrefPath(el);
+    if (hrefInfo.raw && !/^\/(?:vibe\/)?work\/?$/i.test(hrefInfo.path) && !/[?&](?:mode|view|tab)=work(?:&|$|#|\s)/i.test(hrefInfo.query)) {
+      return false;
+    }
+    if (RE.workLabel.test(dataMode) || RE.workLabel.test(text) || RE.workLabel.test(aria)) return true;
+    return /^\/(?:vibe\/)?work\/?$/i.test(hrefInfo.path);
+  }
+
+  function isCodeModeControl(el: Element): boolean {
+    if (isWorkModeControl(el)) return false;
+    const hrefInfo = controlHrefPath(el);
+    if (hrefInfo.raw) {
+      if (/\/work(?:\/|$)/.test(hrefInfo.path)) return false;
+      const isCodeHref =
+        /^\/(?:vibe-?code|code|vibe|vibe\/code)\/?$/i.test(hrefInfo.path) ||
+        /[?&](?:mode|view|tab)=(?:vibe-?code|code)(?:&|$|#|\s)/i.test(hrefInfo.query);
+      if (!isCodeHref) return false;
+    }
+    const dataMode = String(safeRead(() => el.getAttribute("data-mode"), "") || "").trim();
+    const aria = String(safeRead(() => el.getAttribute("aria-label"), "") || "").trim();
+    const text = controlText(el);
+    return RE.codeLabel.test(dataMode) || RE.codeLabel.test(text) || RE.codeLabel.test(aria) || !!hrefInfo.raw;
+  }
+
+  function modeControls(): HTMLElement[] {
+    const seen = new Set<HTMLElement>();
+    const out: HTMLElement[] = [];
+    for (const el of safeQueryAll(document, S.modeControl)) {
+      if (seen.has(el) || safeClosest(el, "#rs-root") || !visible(el)) continue;
+      seen.add(el);
+      out.push(el);
+    }
+    for (const btn of safeQueryAll(document, "nav button, aside button, header button")) {
+      if (seen.has(btn) || safeClosest(btn, "#rs-root") || !visible(btn)) continue;
+      const t = controlText(btn);
+      if (!t || (!RE.workLabel.test(t) && !RE.codeLabel.test(t))) continue;
+      seen.add(btn);
+      out.push(btn);
+    }
+    return out;
   }
 
   function isCodeMode(): boolean {
     const path = (location.pathname || "").toLowerCase();
     const queryAndHash = ((location.search || "") + " " + (location.hash || "")).toLowerCase();
-    if (/\/(?:vibe-?code|vibe|code)(?:\/|$|\?)/.test(path)) return true;
-    if (/[?&](?:mode|view|tab)=(?:vibe-?code|vibe|code)(?:&|$|#|\s)/i.test(queryAndHash)) return true;
+    const isWorkRoute = /\/work(?:\/|$|\?)/.test(path);
+    const isCodeRoute = /\/(?:vibe-?code|code)(?:\/|$|\?)/.test(path) || (/\/vibe(?:\/|$|\?)/.test(path) && !isWorkRoute);
+    const isCodeQuery = /[?&](?:mode|view|tab)=(?:vibe-?code|vibe|code)(?:&|$|#|\s)/i.test(queryAndHash);
+    if (isCodeRoute || isCodeQuery) return true;
 
-    for (const el of safeQueryAll(document, S.modeControl)) {
-      if (safeClosest(el, "#rs-root") || !visible(el) || !isControlActive(el)) continue;
-      const label = [
-        safeRead(() => el.getAttribute("data-mode"), ""),
-        safeRead(() => el.getAttribute("aria-label"), ""),
-        safeRead(() => el.textContent, ""),
-      ].filter(Boolean).join(" ").trim();
-      if (RE.codeMode.test(label) && !RE.workMode.test(label)) return true;
+    let sawActiveWork = false;
+    let sawActiveCode = false;
+    for (const el of modeControls()) {
+      if (!isControlActive(el)) continue;
+      if (isWorkModeControl(el)) sawActiveWork = true;
+      else if (isCodeModeControl(el)) sawActiveCode = true;
     }
-    return false;
+    if (sawActiveWork) return false;
+    return sawActiveCode;
   }
 
   function detectMode(): "work" | "chat" {
@@ -145,30 +238,15 @@ const RSProvider: PlazCodeProvider = (() => {
     const queryAndHash = ((location.search || "") + " " + (location.hash || "")).toLowerCase();
     if (/\/work(?:\/|$|\?)/.test(path) || /[?&](?:mode|view|tab)=work(?:&|$|#|\s)/i.test(queryAndHash)) return "work";
 
-    for (const el of safeQueryAll(document, S.modeControl)) {
-      if (safeClosest(el, "#rs-root") || !visible(el) || !isControlActive(el)) continue;
-      const label = [
-        safeRead(() => el.getAttribute("data-mode"), ""),
-        safeRead(() => el.getAttribute("aria-label"), ""),
-        safeRead(() => el.textContent, ""),
-      ].filter(Boolean).join(" ").trim();
-      if (RE.workMode.test(label)) return "work";
+    for (const el of modeControls()) {
+      if (!isControlActive(el)) continue;
+      if (isWorkModeControl(el)) return "work";
     }
     return "chat";
   }
 
   function findWorkControl(): HTMLElement | null {
-    for (const el of safeQueryAll(document, S.modeControl)) {
-      if (safeClosest(el, "#rs-root") || !visible(el)) continue;
-      const label = [
-        safeRead(() => el.getAttribute("data-mode"), ""),
-        safeRead(() => el.getAttribute("aria-label"), ""),
-        safeRead(() => el.getAttribute("href"), ""),
-        safeRead(() => el.textContent, ""),
-      ].filter(Boolean).join(" ").trim();
-      if (RE.workMode.test(label)) return el;
-    }
-    return null;
+    return modeControls().find((el) => isWorkModeControl(el)) || null;
   }
 
   async function switchMode(target: "work"): Promise<boolean> {
