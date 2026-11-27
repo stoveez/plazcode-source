@@ -1168,10 +1168,10 @@ const PlazCodeByokChatUI = (() => {
       }
       return (
         '<div class="byok-model-dd' + (compact ? ' is-topbar' : '') + '">' +
-        '<button type="button" class="softbtn byok-model-trigger" aria-expanded="' + (dropdownOpen ? 'true' : 'false') + '">' +
+        '<button type="button" class="softbtn byok-model-trigger" aria-expanded="' + (dropdownOpen ? 'true' : 'false') + '" title="' + esc(platTag ? `${label} · ${platTag}` : label) + '">' +
         '<span class="byok-health-dot" data-health="' + esc(active?.model.healthStatus?.status || 'unknown') + '"></span>' +
         '<span class="byok-model-trigger-name" data-i18n-user-content>' + esc(label) + '</span>' +
-        (platTag ? '<span class="byok-model-trigger-plat" data-i18n-user-content>' + esc(platTag) + '</span>' : '') +
+        (!compact && platTag ? '<span class="byok-model-trigger-plat" data-i18n-user-content>' + esc(platTag) + '</span>' : '') +
         '<span class="byok-caret">▾</span></button>' +
         '<div class="byok-dd-menu"' + (dropdownOpen ? '' : ' hidden') + '>' +
         '<div class="byok-dd-list">' + itemsHtml + '</div>' +
@@ -1230,7 +1230,7 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-composer' + (sticky ? ' is-sticky' : '') + '">' +
         slashHtml +
         renderAttachmentsHtml() +
-        '<textarea class="byok-input" data-byok-input data-i18n-user-content dir="auto" rows="' + (sticky ? '2' : '3') + '" placeholder="' + esc(t('Ask anything, attach files, or type / for quick commands…')) + '"></textarea>' +
+        '<textarea class="byok-input" data-byok-input data-i18n-user-content dir="auto" rows="2" placeholder="' + esc(t('Ask anything, attach files, or type / for quick commands…')) + '"></textarea>' +
         '<div class="byok-composer-bar">' +
         '<div class="byok-composer-left">' +
         '<button type="button" class="byok-pill-btn byok-slash-btn' + (slashOpen ? ' active' : '') + '" data-byok-slash>/ ' + esc(t('Commands')) + '</button>' +
@@ -1308,6 +1308,12 @@ const PlazCodeByokChatUI = (() => {
       const host = opts.chatHost;
       if (!host) return;
       const drawer = host.querySelector('[data-byok-drawer]') as HTMLElement | null;
+      const rail = host.querySelector('.byok-chat-rail') as HTMLElement | null;
+      if (rail) rail.hidden = drawerOpen;
+      host.querySelectorAll('[data-deck-tools]').forEach((b) => b.classList.toggle('active', drawerOpen));
+      host.querySelectorAll('[data-rail-tab]').forEach((b) => {
+        b.classList.toggle('active', !drawerOpen && b.getAttribute('data-rail-tab') === railTab);
+      });
       if (!drawer) return;
       drawer.hidden = !drawerOpen;
       if (!drawerOpen) return;
@@ -1456,11 +1462,14 @@ const PlazCodeByokChatUI = (() => {
         const envText = chatMode === 'local'
           ? (wsRoot ? t('Workspace ready ({folder} · {count} tools live)', { folder: wsShort, count: toolCount }) : t('No workspace folder selected'))
           : (st.bridge_connected ? t('Roblox Bridge connected ({count} tools live)', { count: toolCount }) : t('Waiting for Roblox Studio ({count} tools available)', { count: toolCount }));
+        const engineLabel = chatMode === 'local' ? 'AgentScript' : 'RobloxScript';
 
         centerBodyHtml =
           '<div class="byok-welcome-scroll">' +
           '<div class="byok-welcome-card">' +
+          '<div class="byok-hero-split">' +
           '<div class="byok-welcome-head">' +
+          '<div class="byok-hero-eyebrow"><span class="byok-status-dot ' + (envReady ? 'ok' : 'warn') + '"></span><span>' + esc(engineLabel) + '</span></div>' +
           '<h1 class="byok-hero-title">PlazCode Direct Chat</h1>' +
           '<p class="byok-hero-sub">' + esc(t("Hi, what's your plan for today?")) + ' ' + esc(t('Run Roblox Studio commands, AgentScript workspace tools, and your saved skills straight from your own API key. Type / for quick commands.')) + '</p>' +
           '</div>' +
@@ -1478,10 +1487,11 @@ const PlazCodeByokChatUI = (() => {
           '<span class="byok-status-dot ' + (envReady ? 'ok' : 'warn') + '"></span>' +
           '<span>' + esc(envText) + '</span>' +
           '</div>' +
-          '</div>' +
+          '</div></div>' +
           '<div class="byok-starter-grid">' +
-          starterCards.map((c) =>
+          starterCards.map((c, idx) =>
             '<button type="button" class="byok-starter-card" data-byok-starter="' + esc(c.prompt) + '">' +
+            '<div class="byok-starter-top"><span class="byok-starter-num">0' + (idx + 1) + '</span><span class="byok-starter-arrow" aria-hidden="true">↗</span></div>' +
             '<strong data-i18n-user-content>' + esc(c.title) + '</strong>' +
             '<small data-i18n-user-content>' + esc(c.desc) + '</small>' +
             '</button>'
@@ -1549,15 +1559,47 @@ const PlazCodeByokChatUI = (() => {
 
       host.innerHTML =
         '<div class="byok-chat-shell' + (railCollapsed ? ' is-rail-collapsed' : '') + '">' +
-        '<aside class="byok-chat-rail"' + (railCollapsed ? ' hidden' : '') + '>' +
-        '<div class="byok-rail-head">' +
+        '<div class="byok-chat-stage">' +
+        '<header class="byok-stage-topbar">' +
+        '<div class="byok-stage-top-left">' +
+        '<span class="byok-status-dot ' + (active ? 'ok' : 'warn') + '"></span>' +
+        '<div class="byok-chat-title" data-i18n-user-content dir="auto" title="' + esc(activeChat?.title || t('New Chat')) + '">' + esc(activeChat?.title || t('New Chat')) + '</div>' +
+        '<div class="byok-mode-switch compact" role="group">' +
+        '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
+        '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        '</div>' +
+        renderModelSelectorHtml(true) +
+        '</div>' +
+        '<div class="byok-topbar-actions">' +
+        '<button type="button" class="byok-tools-pill' + (drawerOpen && !railCollapsed ? ' active' : '') + '" data-byok-toggle-drawer title="' + esc(t('Toggle Tools & Context')) + '">' +
+        '<span class="byok-status-dot ' + (st.bridge_connected ? 'ok' : 'warn') + '"></span>' +
+        '<span>' + toolCount + ' ' + esc(t('tools')) + '</span>' +
+        '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn' + (findOpen ? ' active' : '') + '" data-byok-find>' + esc(t('FIND')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn" data-byok-export>' + esc(t('EXPORT')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn" data-byok-clear>' + esc(t('CLEAR')) + '</button>' +
+        '<button type="button" class="softbtn byok-tb-btn byok-rail-toggle-btn' + (!railCollapsed ? ' active' : '') + '" data-byok-toggle-rail title="' + esc(t('Toggle sidebar')) + '" aria-label="' + esc(t('Toggle sidebar')) + '">☰</button>' +
+        '</div></header>' +
+        findBarHtml +
+        centerBodyHtml +
+        '<div class="byok-stage-foot">' +
+        renderComposerHtml(hasMsgs) +
+        quickStripHtml +
+        wsNote +
+        '</div></div>' +
+
+        '<section class="byok-studio-deck"' + (railCollapsed ? ' hidden' : '') + '>' +
+        '<div class="byok-deck-head">' +
         '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('WORKSPACE')) + '</span>' +
         '<button type="button" class="accentbtn byok-new-chat" data-byok-new-chat data-pc-i18n>+ ' + esc(t('NEW CHAT')) + '</button>' +
         '</div>' +
         '<div class="byok-rail-tabs" role="tablist">' +
-        '<button type="button" role="tab" class="byok-rail-tab' + (railTab === 'chats' ? ' active' : '') + '" data-rail-tab="chats" aria-selected="' + (railTab === 'chats' ? 'true' : 'false') + '">' + esc(t('Chats')) + ' <span class="byok-tab-count">' + activeChatCount + '</span></button>' +
-        '<button type="button" role="tab" class="byok-rail-tab' + (railTab === 'config' ? ' active' : '') + '" data-rail-tab="config" aria-selected="' + (railTab === 'config' ? 'true' : 'false') + '">' + esc(t('Model & API')) + '</button>' +
+        '<button type="button" role="tab" class="byok-rail-tab' + (!drawerOpen && railTab === 'chats' ? ' active' : '') + '" data-rail-tab="chats" aria-selected="' + (!drawerOpen && railTab === 'chats' ? 'true' : 'false') + '">' + esc(t('Chats')) + ' <span class="byok-tab-count">' + activeChatCount + '</span></button>' +
+        '<button type="button" role="tab" class="byok-rail-tab' + (!drawerOpen && railTab === 'config' ? ' active' : '') + '" data-rail-tab="config" aria-selected="' + (!drawerOpen && railTab === 'config' ? 'true' : 'false') + '">' + esc(t('Model & API')) + '</button>' +
+        '<button type="button" role="tab" class="byok-rail-tab' + (drawerOpen ? ' active' : '') + '" data-deck-tools aria-selected="' + (drawerOpen ? 'true' : 'false') + '">' + esc(t('Tools')) + '</button>' +
         '</div>' +
+
+        '<aside class="byok-chat-rail"' + (drawerOpen ? ' hidden' : '') + '>' +
         '<div class="byok-rail-body">' + renderSidebarTabHtml() + '</div>' +
         '<div class="byok-rail-footer">' +
         '<span class="byok-health-dot" data-health="' + esc(active?.model.healthStatus?.status || 'unknown') + '"></span>' +
@@ -1565,35 +1607,6 @@ const PlazCodeByokChatUI = (() => {
         '<button type="button" class="softbtn byok-config-btn" data-byok-open-config>CONFIG</button>' +
         '</div>' +
         '</aside>' +
-
-        '<div class="byok-chat-stage">' +
-        '<header class="byok-stage-topbar">' +
-        '<div class="byok-stage-top-left">' +
-        '<button type="button" class="softbtn byok-tb-btn byok-rail-toggle-btn" data-byok-toggle-rail title="' + esc(t('Toggle sidebar')) + '" aria-label="' + esc(t('Toggle sidebar')) + '">☰</button>' +
-        '<div class="byok-chat-title" data-i18n-user-content dir="auto">' + esc(activeChat?.title || t('New Chat')) + '</div>' +
-        '<div class="byok-mode-switch compact" role="group">' +
-        '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
-        '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
-        '</div>' +
-        renderModelSelectorHtml(true) +
-        '<button type="button" class="byok-tools-pill" data-byok-toggle-drawer title="' + esc(t('Toggle Tools & Context')) + '">' +
-        '<span class="byok-status-dot ' + (st.bridge_connected ? 'ok' : 'warn') + '"></span>' +
-        '<span>' + toolCount + ' ' + esc(t('tools')) + '</span>' +
-        '</button>' +
-        '</div>' +
-        '<div class="byok-topbar-actions">' +
-        '<button type="button" class="softbtn byok-tb-btn' + (findOpen ? ' active' : '') + '" data-byok-find>' + esc(t('FIND')) + '</button>' +
-        '<button type="button" class="softbtn byok-tb-btn' + (drawerOpen ? ' active' : '') + '" data-byok-toggle-drawer>' + esc(t('TOOLS')) + '</button>' +
-        '<button type="button" class="softbtn byok-tb-btn" data-byok-export>' + esc(t('EXPORT')) + '</button>' +
-        '<button type="button" class="softbtn byok-tb-btn" data-byok-clear>' + esc(t('CLEAR')) + '</button>' +
-        '</div></header>' +
-        findBarHtml +
-        centerBodyHtml +
-        '<div class="byok-stage-foot">' +
-        quickStripHtml +
-        renderComposerHtml(hasMsgs) +
-        wsNote +
-        '</div></div>' +
 
         '<aside class="byok-drawer" data-byok-drawer' + (drawerOpen ? '' : ' hidden') + '>' +
         '<div class="byok-drawer-head">' +
@@ -1607,7 +1620,8 @@ const PlazCodeByokChatUI = (() => {
         '<button type="button" class="softbtn" data-drawer-tab="changes" data-pc-i18n>' + esc(t('Changes')) + '</button>' +
         '</div>' +
         '<div class="byok-drawer-body" data-byok-drawer-body></div>' +
-        '</aside></div>';
+        '</aside>' +
+        '</section></div>';
 
       if (draftVal) {
         const nextInput = host.querySelector('[data-byok-input]') as HTMLTextAreaElement | null;
@@ -1953,14 +1967,24 @@ const PlazCodeByokChatUI = (() => {
           }
           if (target.closest('[data-byok-toggle-rail]')) {
             railCollapsed = !railCollapsed;
+            if (railCollapsed) drawerOpen = false;
             renderChatPage();
             return;
           }
           const rTabBtn = target.closest('[data-rail-tab]') as HTMLElement | null;
           if (rTabBtn) {
+            drawerOpen = false;
+            railCollapsed = false;
             railTab = rTabBtn.getAttribute('data-rail-tab') === 'config' ? 'config' : 'chats';
             if (railTab === 'config') ensureSidebarForm();
             renderChatPage();
+            return;
+          }
+          if (target.closest('[data-deck-tools]')) {
+            drawerOpen = true;
+            railCollapsed = false;
+            if (drawerTab === 'files') loadFiles();
+            else renderChatPage();
             return;
           }
           const rFilterBtn = target.closest('[data-rail-filter]') as HTMLElement | null;
@@ -2119,6 +2143,7 @@ const PlazCodeByokChatUI = (() => {
           }
           if (target.closest('[data-byok-toggle-drawer]')) {
             drawerOpen = !drawerOpen;
+            if (drawerOpen) railCollapsed = false;
             if (drawerOpen && drawerTab === 'files') loadFiles();
             else renderChatPage();
             return;
