@@ -1575,7 +1575,11 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/byok/health/clear", post(byok_chat::health_clear))
         .route("/api/byok/chats", get(byok_chat::chats_get).post(byok_chat::chats_post).delete(byok_chat::chats_delete))
         .route("/api/byok/chats/:id", delete(byok_chat::chats_delete_by_id))
+        .route("/api/byok/chat/mode", post(byok_chat::chat_switch_mode))
+        .route("/api/byok/chat/compact", post(byok_chat::chat_compact))
         .route("/api/byok/chat/send", post(byok_chat::chat_send).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
+        .route("/api/byok/ask", post(byok_chat::ask_send).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
+        .route("/api/byok/ask/tool-result", post(byok_chat::ask_tool_result).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
         .route("/api/byok/chat/stop", post(byok_chat::chat_stop))
         .route("/api/byok/chat/events/:id", get(byok_chat::chat_events))
         .route("/api/byok/files", get(byok_chat::workspace_files))
@@ -3896,7 +3900,7 @@ fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-async fn addon_snapshot(state: &AppState) -> Vec<serde_json::Value> {
+pub(crate) async fn addon_snapshot(state: &AppState) -> Vec<serde_json::Value> {
     let cached = |state: &AppState| state.addon_cache.lock().map(|c| c.0.clone()).unwrap_or_default();
     // Startup asks for the catalogue several times within seconds. A recent, non-empty
     // catalogue is served immediately instead of re-polling every add-on each time.

@@ -523,7 +523,12 @@ async function applyDesktopPreferences(remote: unknown): Promise<boolean> { retu
 async function pullDesktopPreferences(): Promise<boolean> { return desktopPrefSync ? desktopPrefSync.pull() : false; }
 async function pushDesktopPreferences(): Promise<boolean> { return desktopPrefSync ? desktopPrefSync.push() : false; }
 async function initialDesktopPreferencesSync(): Promise<boolean> { return desktopPrefSync ? desktopPrefSync.initial() : false; }
-chrome.storage?.onChanged.addListener((changes, area) => { if (area === "local" && desktopPrefSync) desktopPrefSync.noteLocal(changes); });
+chrome.storage?.onChanged.addListener((changes, area) => {
+  if (area === "local" && desktopPrefSync) desktopPrefSync.noteLocal(changes);
+  if (area === "local" && changes && (changes as any).rsAskByokModel && typeof askBroadcastEngine === "function" && typeof askPorts !== "undefined" && askPorts.size) {
+    askBroadcastEngine().catch(() => {});
+  }
+});
 
 // "anim" (Animation mode) is a persona-driven view of the SAME Roblox bridge:
 // it maps to 17613 everywhere a port/HTTP target is picked, but keeps its own
@@ -3918,7 +3923,7 @@ async function controlledTabAction(kind: string, msg: any, sender: any) {
   if (!tab || tab.id == null) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
   const tabId = tab.id;
   // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
-  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && kind !== "read") {
+  if (((sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId) || (sender && sender.__fromAskByok === true)) && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && kind !== "read") {
     return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
   }
   const entered = await controlEnter(tab, msg, sender);
@@ -4088,7 +4093,7 @@ async function controlV2Tool(msg: any, sender: any) {
   if (name === "tab_open") {
     const url = String(msg.url || "");
     if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url)) return { ok: false, error: "tab_open takes a web address starting with http:// or https://." };
-    const fromAsk = !!(sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId);
+    const fromAsk = !!((sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId) || (sender && sender.__fromAskByok === true));
     let where: Record<string, any> = { url, active: false };
     if (fromAsk && ask.copy && Number.isInteger(ask.origin)) {
       // Next to the person's own tab, in the same window, so the copy is easy to find (and to close).
@@ -4107,7 +4112,7 @@ async function controlV2Tool(msg: any, sender: any) {
   if (!tab || tab.id == null) return { ok: false, error: "no target tab (open a page, or pass url_contains or tabId)" };
   const tabId = tab.id;
   // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
-  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && name !== "tab_screenshot") {
+  if (((sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId) || (sender && sender.__fromAskByok === true)) && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && name !== "tab_screenshot") {
     return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
   }
   const entered = await controlEnter(tab, msg, sender);
@@ -4407,9 +4412,9 @@ async function askDeleteChat(id: string) {
 }
 const askPost = (m: any) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
 // The panel translates text that is one of PlazCode's own sentences; key + values carry a sentence with slots.
-const askReply = (status: string, text: string) => {
+const askReply = (status: string, text: string, extra?: Record<string, any>) => {
   askRemember({ t: status === "done" ? "ai" : status === "stopped" ? "note" : "error", text });
-  askPost({ type: "ask-reply", status, text });
+  askPost({ type: "ask-reply", status, text, ...(extra || {}) });
 };
 const askSay = (text: string, kind?: string, key?: string, values?: Record<string, string>) => { askRemember({ t: kind === "error" ? "error" : "note", text, key, values }); askPost({ type: "ask-note", kind: kind || "note", text, key, values }); };
 // The chat behind the panel runs on the AI chat site the person last used PlazCode in (owner, 2026-11-18: "instead of a backup
@@ -4582,6 +4587,259 @@ async function askShareMark(tab: ChromeTab, on: boolean) {
     } else await chrome.scripting.executeScript({ target: { tabId }, args: [controlWords], func: (w: Record<string, string> | null) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false, w) });
   } catch {}
 }
+let askByokRunId: string | null = null;
+let askByokPoll: any = 0;
+
+async function askReadSelectedByokModel(): Promise<string> {
+  try {
+    const got = await chrome.storage.local.get("rsAskByokModel");
+    return got && typeof got.rsAskByokModel === "string" ? got.rsAskByokModel.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+async function askFetchByokEngines(): Promise<{ modelId: string; models: Array<{ id: string; name: string; platformName: string; presetId: string }>; appOnline: boolean }> {
+  const modelId = await askReadSelectedByokModel();
+  try {
+    const res = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/byok/platforms", { signal: AbortSignal.timeout(3000) });
+    if (!res || !res.ok) return { modelId, models: [], appOnline: false };
+    const data: any = await res.json().catch(() => null);
+    const presets: any[] = Array.isArray(data?.presets) ? data.presets : [];
+    const platforms: any[] = Array.isArray(data?.platforms) ? data.platforms : [];
+    const models: Array<{ id: string; name: string; platformName: string; presetId: string }> = [];
+    for (const p of platforms) {
+      if (!p || !p.enabled) continue;
+      const preset = presets.find((x) => x && x.id === p.presetId);
+      const needsKey = preset ? preset.requiresKey !== false : true;
+      if (needsKey && !(Number(p.apiKeyCount) > 0)) continue;
+      for (const mdl of Array.isArray(p.models) ? p.models : []) {
+        if (mdl && mdl.enabled && mdl.id) {
+          models.push({
+            id: String(mdl.id),
+            name: String(mdl.displayName || mdl.name || mdl.id),
+            platformName: String(p.name || ""),
+            presetId: String(p.presetId || ""),
+          });
+        }
+      }
+    }
+    return { modelId, models, appOnline: true };
+  } catch {
+    return { modelId, models: [], appOnline: false };
+  }
+}
+
+async function askBroadcastEngine(targetPort?: ChromePort) {
+  const info = await askFetchByokEngines();
+  const payload = { type: "ask-engine", ...info };
+  if (targetPort) {
+    try { targetPort.postMessage(payload); } catch {}
+    return;
+  }
+  askPost(payload);
+}
+
+function askRequestApproval(title: unknown, detail: unknown, kicker?: unknown): Promise<boolean> {
+  if (!askPorts.size) return Promise.resolve(false);
+  const id = ++ask.seq;
+  const answer = new Promise<boolean>((resolve) => {
+    ask.approvals.set(id, resolve);
+    setTimeout(() => { if (ask.approvals.delete(id)) resolve(false); }, 300000);
+  });
+  askPost({
+    type: "ask-approve",
+    id,
+    title: String(title || "PlazCode wants to do something").slice(0, 240),
+    detail: String(detail || "").slice(0, 600),
+    kicker: String(kicker || "").slice(0, 80),
+  });
+  return answer;
+}
+
+function askByokStopActive() {
+  if (askByokPoll) { clearTimeout(askByokPoll); askByokPoll = 0; }
+  const rid = askByokRunId;
+  askByokRunId = null;
+  if (rid) {
+    bridgeFetch(RUST_ROBLOX_HTTP + "/api/byok/chat/stop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId: rid }),
+    }).catch(() => {});
+  }
+}
+
+async function askHandleByokClientTool(runId: string, evData: any) {
+  const callId = String(evData?.callId || "");
+  const name = String(evData?.name || "");
+  const args = evData?.args && typeof evData.args === "object" ? evData.args : {};
+  let res: any = await controlV2Tool({ type: name, ...args }, { __fromAskByok: true });
+  if (res && res.confirm && askByokRunId === runId) {
+    const allowed = await askRequestApproval(res.confirm, "", "");
+    if (allowed && askByokRunId === runId) {
+      res = await controlV2Tool({ type: name, ...args, confirmed: true }, { __fromAskByok: true });
+    } else {
+      res = { ok: false, error: "The user declined this action." };
+    }
+  }
+  if (askByokRunId !== runId) return;
+  const images = Array.isArray(res?.images)
+    ? res.images
+        .filter((im: any) => im && im.data)
+        .map((im: any, idx: number) => ({
+          name: "tab-" + idx + ".jpg",
+          mimeType: String(im.mimeType || "image/jpeg"),
+          dataBase64: String(im.data),
+        }))
+    : [];
+  const output = String(res?.text || res?.error || (res?.ok ? "Done." : "Tool failed."));
+  await bridgeFetch(RUST_ROBLOX_HTTP + "/api/byok/ask/tool-result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ runId, callId, ok: !!res?.ok, output, images }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+async function askRunViaByok(params: {
+  modelId: string;
+  text: string;
+  images: Array<{ mimeType: string; data: string }>;
+  control: boolean;
+  share: { tabId: number | undefined; title: string; url: string } | null;
+  work: { tabId: number | undefined; title: string; url: string } | null;
+}): Promise<boolean> {
+  const prior = ask.log.slice(0, -1).filter((e) => e && (e.t === "me" || e.t === "ai") && e.text).slice(-20);
+  const history = prior.map((e) => ({ role: e.t === "me" ? "user" : "assistant", content: String(e.text || "") }));
+  const attachments = params.images.map((im, i) => ({
+    name: "screen-" + i + ".jpg",
+    mimeType: im.mimeType || "image/jpeg",
+    dataBase64: im.data,
+  }));
+
+  let res: Response;
+  try {
+    res = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/byok/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        modelId: params.modelId,
+        message: params.text,
+        history,
+        attachments,
+        share: params.share,
+        control: params.control,
+        work: params.work,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    askReply(
+      "error",
+      "The PlazCode desktop app is not reachable, so the selected API model could not run. Open the PlazCode app, or switch Ask PlazCode back to Browser AI tab.",
+      { canFallbackBrowser: true }
+    );
+    return false;
+  }
+
+  const data: any = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.ok || !data.runId) {
+    const errObj = data?.error;
+    const msg = typeof errObj === "string"
+      ? errObj
+      : [errObj?.message, errObj?.suggestion].filter(Boolean).join(" ") || "The selected API model could not answer this question.";
+    askReply("error", msg, { canFallbackBrowser: true });
+    return false;
+  }
+
+  const runId = String(data.runId);
+  askByokRunId = runId;
+  let cursor = 0;
+  let draft = "";
+  let lastError = "";
+  let pollErrors = 0;
+
+  const scheduleNext = () => {
+    if (askByokRunId !== runId) return;
+    askByokPoll = setTimeout(pollOnce, 180);
+  };
+
+  const pollOnce = async () => {
+    if (askByokRunId !== runId) return;
+    try {
+      const er = await bridgeFetch(
+        RUST_ROBLOX_HTTP + "/api/byok/chat/events/" + encodeURIComponent(runId) + "?after=" + cursor,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (askByokRunId !== runId) return;
+      if (!er || !er.ok) throw new Error("poll failed");
+      const evData: any = await er.json();
+      pollErrors = 0;
+      const events: any[] = Array.isArray(evData?.events) ? evData.events : [];
+      for (const ev of events) {
+        cursor = Math.max(cursor, Number(ev?.seq || 0) + 1);
+        if (ev.kind === "delta") {
+          draft += String(ev.data?.text || "");
+          if (ask.busy) askPost({ type: "ask-partial", text: draft.slice(0, 60000) });
+        } else if (ev.kind === "info" && ev.data?.message) {
+          askPost({ type: "ask-step", text: String(ev.data.message).slice(0, 200) });
+        } else if (ev.kind === "tool_start") {
+          askPost({ type: "ask-step", text: ("Using " + String(ev.data?.name || "tool") + "...").slice(0, 200) });
+        } else if (ev.kind === "client_tool") {
+          await askHandleByokClientTool(runId, ev.data);
+          if (askByokRunId !== runId) return;
+        } else if (ev.kind === "error") {
+          const e = ev.data || {};
+          lastError = [e.message, e.suggestion].filter(Boolean).join(" ") || String(e || "API model error.");
+        } else if (ev.kind === "done") {
+          askByokRunId = null;
+          askByokPoll = 0;
+          ask.busy = false;
+          if (lastError) {
+            askReply("error", lastError, { canFallbackBrowser: true });
+          } else if (!ev.data?.cancelled) {
+            askReply("done", String(ev.data?.text || draft || "").slice(0, 60000));
+          }
+          askSave();
+          askPost({ type: "ask-busy", busy: false });
+          return;
+        }
+      }
+      if (evData?.done) {
+        askByokRunId = null;
+        askByokPoll = 0;
+        ask.busy = false;
+        if (lastError) askReply("error", lastError, { canFallbackBrowser: true });
+        else askReply("done", draft.slice(0, 60000));
+        askSave();
+        askPost({ type: "ask-busy", busy: false });
+        return;
+      }
+      scheduleNext();
+    } catch {
+      pollErrors += 1;
+      if (pollErrors >= 5) {
+        askByokRunId = null;
+        askByokPoll = 0;
+        ask.busy = false;
+        askReply(
+          "error",
+          "Lost connection to the PlazCode desktop app while waiting for the API model.",
+          { canFallbackBrowser: true }
+        );
+        askSave();
+        askPost({ type: "ask-busy", busy: false });
+        return;
+      }
+      scheduleNext();
+    }
+  };
+
+  scheduleNext();
+  return true;
+}
+
 async function askQuestion(m: any) {
   await askRestored;
   if (ask.busy) return askSay("PlazCode is still answering. Wait for it, or press Stop.", "error");
@@ -4592,9 +4850,14 @@ async function askQuestion(m: any) {
   ask.origin = null; ask.copy = false;
   let accepted = false;
   try {
+    const byokModelId = await askReadSelectedByokModel();
     if (m.share && m.shareTabId === -1) {
       let images: Array<{ mimeType: string; data: string }> = [];
       try { images = [{ mimeType: "image/jpeg", data: await desktopPicture() }]; } catch (error: any) { askSay(String(error && error.message || error), "error"); }
+      if (byokModelId) {
+        accepted = await askRunViaByok({ modelId: byokModelId, text, images, control: !!m.control, share: { tabId: -1, title: "Your whole screen", url: "" }, work: null });
+        return;
+      }
       const ready = await askEnsure();
       if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
       const reply = await chrome.tabs.sendMessage(ask.tabId!, { type: "rs-ask-run", ask: { text, images, control: !!m.control, share: { tabId: -1, title: "Your whole screen", url: "" } } });
@@ -4609,12 +4872,16 @@ async function askQuestion(m: any) {
       try { const pic = await controlPicture(tab, await canDebug()); images = [{ mimeType: "image/jpeg", data: pic.data }]; }
       catch (error: any) { askPost({ type: "ask-permission", text: String(error && error.message || error) }); }
     }
-    const ready = await askEnsure();
-    if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
     ask.origin = tab && tab.id != null ? tab.id : null; ask.copy = !!(m.control && tab);
     // A copy opened for an earlier question about this same tab is offered again (if it is still open) instead of a new one.
     let work: { tabId: number | undefined; title: string; url: string } | null = null;
     if (ask.copy && tab && tab.id != null && ask.work != null && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch (error) { if (typeof safeDebug === "function") safeDebug("askWorkTab", error); ask.work = null; } }
+    if (byokModelId) {
+      accepted = await askRunViaByok({ modelId: byokModelId, text, images, control: !!(m.control && tab), work, share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null });
+      return;
+    }
+    const ready = await askEnsure();
+    if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
     const reply = await chrome.tabs.sendMessage(ask.tabId!, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), work, share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
     if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
     accepted = true;
@@ -4633,11 +4900,7 @@ async function askFromChat(msg: any, sender: any) {
   // The reply as the AI writes it (2026-11-18), shown in the panel as a draft until the finished answer arrives.
   if (msg.type === "ask_partial") { if (ask.busy) askPost({ type: "ask-partial", text: String(msg.text || "").slice(0, 60000) }); return { ok: true }; }
   if (msg.type === "ask_approve") {
-    if (!askPorts.size) return { ok: true, allowed: false };
-    const id = ++ask.seq;
-    const answer = new Promise<boolean>((resolve) => { ask.approvals.set(id, resolve); setTimeout(() => { if (ask.approvals.delete(id)) resolve(false); }, 300000); });
-    askPost({ type: "ask-approve", id, title: String(msg.title || "PlazCode wants to do something").slice(0, 240), detail: String(msg.detail || "").slice(0, 600), kicker: String(msg.kicker || "").slice(0, 80) });
-    return { ok: true, allowed: await answer };
+    return { ok: true, allowed: await askRequestApproval(msg.title, msg.detail, msg.kicker) };
   }
   return { ok: false };
 }
@@ -4645,10 +4908,15 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
   if (port.name !== "plazcode-ask" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/ask\.html/.test(String(port.sender.url || ""))) return;
   askPorts.add(port);
   // The chat so far goes first, so a panel that was closed and opened again shows the same conversation.
-  askRestored.then(() => { try { if (ask.log.length) port.postMessage({ type: "ask-history", items: ask.log }); } catch {} port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 }); });
+  askRestored.then(() => { try { if (ask.log.length) port.postMessage({ type: "ask-history", items: ask.log }); } catch {} port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 }); askBroadcastEngine(port); });
   port.onMessage.addListener(async (m) => {
     if (!CONTROL_V2 || !m) return;
     controlKeepWords(m.words);
+    if (m.engines === "list") askBroadcastEngine(port);
+    if (typeof m.setAskModel === "string") {
+      try { await chrome.storage.local.set({ rsAskByokModel: m.setAskModel.trim() }); } catch {}
+      askBroadcastEngine();
+    }
     if (typeof m.say === "string") askQuestion(m);
     if (m.chats === "list") { try { port.postMessage(await askChatsList()); } catch {} }
     if (typeof m.openChat === "string") askOpenChat(m.openChat);
@@ -4657,6 +4925,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
     if (m.stop) {
       // Stop answers at once, even when the background chat is gone or does not answer (owner, 2026-11-14: Stop took very long).
+      askByokStopActive();
       if (ask.tabId != null && Number.isInteger(ask.tabId)) chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {});
       for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
       ask.busy = false; askReply("stopped", "Stopped."); askPost({ type: "ask-busy", busy: false });

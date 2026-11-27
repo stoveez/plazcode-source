@@ -21,7 +21,11 @@ for (const route of [
   "/api/byok/models/health",
   "/api/byok/health/clear",
   "/api/byok/chats",
+  "/api/byok/chat/mode",
+  "/api/byok/chat/compact",
   "/api/byok/chat/send",
+  "/api/byok/ask",
+  "/api/byok/ask/tool-result",
   "/api/byok/chat/stop",
   "/api/byok/chat/events/:id",
   "/api/byok/files",
@@ -67,6 +71,11 @@ const presets = [
 ];
 
 const mockState = {
+  studioOnline: true,
+  prefs: { rsByokChatMode: "roblox", rsPermMode: "sandbox", rsPlanMode: false, rsByokEffort: "default", rsAskByokModel: "" },
+  patchedPrefs: [],
+  streamDone: false,
+  streamEvents: [],
   platforms: [
     {
       id: "plat_openai",
@@ -163,6 +172,72 @@ async function fakeApi(reqPath, options = {}) {
   if (reqPath.startsWith("/api/byok/files")) {
     return { ok: true, ready: true, root: "C:\\Demo", files: ["src/Main.luau", "default.project.json"] };
   }
+  if (reqPath === "/api/byok/chat/send") {
+    return { ok: true, runId: "run_live_1", chatId: "chat_live_1", title: "Live timer & stop demo" };
+  }
+  if (reqPath.startsWith("/api/byok/chat/events/run_live_1")) {
+    const after = Number(reqPath.split("after=")[1] || 0);
+    const events = mockState.streamEvents.filter((e) => e.seq >= after);
+    return { ok: true, done: mockState.streamDone, events };
+  }
+  if (reqPath === "/api/byok/chat/stop") {
+    mockState.streamDone = true;
+    return { ok: true, stopped: 1 };
+  }
+  if (reqPath === "/api/byok/chat/mode") {
+    const b = JSON.parse(options.body);
+    const ch = mockState.chats.find((c) => c.id === b.chatId);
+    if (ch) {
+      const fromLabel = ch.mode === "local" ? "AgentScript" : "RobloxScript";
+      const toLabel = b.mode === "local" ? "AgentScript" : "RobloxScript";
+      ch.mode = b.mode;
+      ch.messages.push({
+        id: "sys_mode_" + Date.now(),
+        role: "system",
+        kind: "mode_switch",
+        content: `Switched mode from ${fromLabel} to ${toLabel}. Connected tools and environment are now ${toLabel}.`,
+        createdAt: Date.now()
+      });
+    }
+    return { ok: true, switched: true, chat: ch };
+  }
+  if (reqPath === "/api/byok/chat/compact") {
+    const b = JSON.parse(options.body);
+    const ch = mockState.chats.find((c) => c.id === b.chatId);
+    if (ch) {
+      ch.messages = [
+        {
+          id: "sys_compact_" + Date.now(),
+          role: "system",
+          kind: "compact",
+          content: "[Compacted Context Summary — 2 earlier messages]\n\nSummary: checked ServerScriptService.",
+          createdAt: Date.now()
+        },
+        ...ch.messages.slice(-1)
+      ];
+    }
+    return { ok: true, chat: ch, beforeCount: 3, afterCount: 2, savedChars: 120, method: "deterministic" };
+  }
+  if (reqPath === "/api/connections") {
+    return {
+      ok: true,
+      apps: [
+        { id: "blender", name: "Blender", state: "ready", line: "Connected in background" },
+        { id: "figma", name: "Figma", state: "not_set_up", line: "Needs Allow" },
+        { id: "godot", name: "Godot", state: "needs_attention", line: "Pick project folder" },
+        { id: "unity", name: "Unity", state: "not_set_up", line: "Needs Allow" },
+        { id: "blockbench", name: "Blockbench", state: "not_set_up", line: "Needs Allow" }
+      ]
+    };
+  }
+  if (reqPath === "/api/mcp/catalog") {
+    return {
+      ok: true,
+      servers: [
+        { id: "playwright", name: "Browser", description: "Web automation", enabled: false }
+      ]
+    };
+  }
   return { ok: true };
 }
 
@@ -192,16 +267,19 @@ const ui = ctx.PlazCodeByokChatUI.mount({
     workspace_ready: true,
     workspace_root: "C:\\MyRobloxProject",
     bridge_connected: true,
+    roblox_connected: mockState.studioOnline,
     tools: [
       { name: "script_read", description: "Read one script source safely" },
       { name: "luau_check", description: "Run Luau static checks" }
     ],
     telemetry: { commands_run: 4, commands_succeeded: 4, commands_failed: 0 }
   }),
-  getPrefs: () => ({ rsByokChatMode: "roblox", rsPermMode: "sandbox", rsPlanMode: false, rsByokEffort: "default" }),
-  patchPref: async () => ({}),
+  getPrefs: () => mockState.prefs,
+  patchPref: async (k, v) => { mockState.prefs[k] = v; mockState.patchedPrefs.push({ k, v }); return {}; },
   navigateToModels: () => { mockState.navigatedModels++; },
-  navigateToChat: () => {}
+  navigateToChat: () => {},
+  openConnection: (id) => { mockState.openedConnection = id; },
+  navigateToConnections: () => { mockState.navigatedConnections = (mockState.navigatedConnections || 0) + 1; }
 });
 
 (async () => {
@@ -384,7 +462,154 @@ const ui = ctx.PlazCodeByokChatUI.mount({
   assert(slottedModal.querySelector("[data-am-add-model]"), "+ ADD MODEL ID button exists in slotted Add Model modal");
   assert(slottedModal.querySelector("[data-am-test]"), "TEST API CONNECTION button exists in slotted Add Model modal");
 
-  console.log("PASS byok-chat: Rust wiring, AES-GCM/routes, Direct Chat workbench, error cards, Tools/Files/Changes drawer, Add Model modal & slotted layout.");
+  // Studio disconnect/reconnect gating for RobloxScript mode (even with bridge_connected: true)
+  chatHost.querySelector("[data-byok-new-chat]").click();
+  mockState.studioOnline = false;
+  ui.syncState();
+  const robloxTopBtn = chatHost.querySelector('.byok-mode-pill[data-byok-mode="roblox"]');
+  const agentTopBtn = chatHost.querySelector('.byok-mode-pill[data-byok-mode="local"]');
+  assert.equal(robloxTopBtn.disabled, true, "RobloxScript pill disabled when Studio is disconnected");
+  assert(agentTopBtn.classList.contains("active"), "AgentScript forced active when Studio is disconnected");
+  assert(chatHost.textContent.includes("Roblox Studio not connected — using AgentScript"), "checklist warns Studio disconnected");
+  chatHost.querySelector('[data-rail-tab="config"]').click();
+  const robloxSideBtn = chatHost.querySelector('.byok-engine-btn[data-byok-mode="roblox"]');
+  assert.equal(robloxSideBtn.disabled, true, "sidebar RobloxScript button also disabled while Studio is offline");
+
+  // Synced Ask PlazCode engine picker in BOTH Model & API sidebar AND Settings -> Models
+  const sideAskSel = chatHost.querySelector("[data-byok-ask-model]");
+  const modelsAskSel = modelsHost.querySelector("[data-byok-ask-model]");
+  assert(sideAskSel && modelsAskSel, "Ask PlazCode engine dropdown rendered in both Model & API tab and Model settings");
+  modelsAskSel.value = "mdl_gpt4o";
+  modelsAskSel.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert(mockState.patchedPrefs.some((p) => p.k === "rsAskByokModel" && p.v === "mdl_gpt4o"), "changing Ask model patches rsAskByokModel");
+  assert.equal(chatHost.querySelector("[data-byok-ask-model]").value, "mdl_gpt4o", "Model & API tab selector stays synced");
+
+  // Reconnecting Studio unlocks RobloxScript automatically
+  mockState.studioOnline = true;
+  ui.syncState();
+  assert.equal(chatHost.querySelector('.byok-mode-pill[data-byok-mode="roblox"]').disabled, false, "RobloxScript re-enables when Studio connects");
+  chatHost.querySelector('[data-rail-tab="chats"]').click();
+
+  // Streaming run: live tool timer + % progress bar + instant Stop button
+  mockState.streamDone = false;
+  mockState.streamEvents = [
+    { seq: 0, kind: "tool_start", data: { id: "t_live", name: "run_command", args: { timeout_seconds: 10 }, startedAt: Date.now() - 2500, budgetMs: 25000 } }
+  ];
+  const inp = chatHost.querySelector("[data-byok-input]");
+  inp.value = "Run check";
+  chatHost.querySelector("[data-byok-send]").click();
+  await new Promise((r) => setTimeout(r, 320));
+  const timerEl = chatHost.querySelector('[data-tool-timer="t_live"]');
+  const pctEl = chatHost.querySelector('[data-tool-pct="t_live"]');
+  const barEl = chatHost.querySelector('[data-tool-progress="t_live"]');
+  assert(timerEl && /\ds$/.test(timerEl.textContent), "running command card displays elapsed seconds timer");
+  assert(pctEl && /^~\d+%$/.test(pctEl.textContent), "running command card displays estimated % badge");
+  assert(barEl && /width:\s*\d+%/.test(barEl.getAttribute("style") || ""), "running command card renders progress fill bar");
+
+  // Stop button calls /api/byok/chat/stop and transitions immediately
+  const stopBtn = chatHost.querySelector("[data-byok-stop]");
+  assert(stopBtn, "Stop button visible while run is active");
+  stopBtn.click();
+  await new Promise((r) => setTimeout(r, 30));
+  const stopCall = mockState.calls.find((c) => c.reqPath === "/api/byok/chat/stop");
+  assert(stopCall && stopCall.body.runId === "run_live_1", "Stop button invokes /api/byok/chat/stop with runId");
+
+  // Finished command card renders exact duration & 100% completion
+  mockState.streamDone = false;
+  mockState.streamEvents = [
+    { seq: 0, kind: "tool_start", data: { id: "t_done", name: "script_read", args: {}, startedAt: Date.now() - 2400, budgetMs: 12000 } },
+    { seq: 1, kind: "tool_result", data: { id: "t_done", name: "script_read", status: "ok", output: "ok", startedAt: Date.now() - 2400, durationMs: 2400, budgetMs: 12000 } }
+  ];
+  chatHost.querySelector("[data-byok-new-chat]").click();
+  chatHost.querySelector("[data-byok-input]").value = "Inspect";
+  chatHost.querySelector("[data-byok-send]").click();
+  await new Promise((r) => setTimeout(r, 320));
+  assert.equal(chatHost.querySelector('[data-tool-timer="t_done"]').textContent, "2.4s", "finished tool card shows exact elapsed seconds");
+  assert.equal(chatHost.querySelector('[data-tool-pct="t_done"]').textContent, "100%", "finished tool card shows 100%");
+  chatHost.querySelector("[data-byok-stop]").click();
+  await new Promise((r) => setTimeout(r, 80));
+  assert(chatHost.querySelector("[data-byok-send]"), "composer returns to Send once run stops");
+
+  // Batch 2 checks:
+  // 1) Centered SVG inside attach button (no off-center raw '+' character)
+  const attachBtn = chatHost.querySelector(".byok-attach-btn");
+  assert(attachBtn && attachBtn.querySelector("svg") && !attachBtn.textContent.trim(), "attach button uses centered SVG icon");
+
+  // 2) Reasoning block (wrapped body, no <pre> cutoff) + rich paragraph spacing + unverified claim pill
+  mockState.chats.push({
+    id: "chat_rich",
+    title: "Spacing & Reasoning",
+    mode: "roblox",
+    modelId: "mdl_gpt4o",
+    messageCount: 2,
+    modifiedCount: 0,
+    updatedAt: 2000,
+    messages: [
+      { id: "r1", role: "user", content: "Check it", createdAt: 2000 },
+      {
+        id: "r2",
+        role: "assistant",
+        reasoning: "First thought.Second thought wrapped cleanly.",
+        content: "## Summary\nFirst check finished.Now moving on.\n\n- Item one\n- Item two\n\n```ts\nconst a = foo.Bar();\n```",
+        toolCalls: [{ id: "tc_arg", name: "run_command", args: { command: "npm test" }, status: "ok", output: "PASS", durationMs: 420 }],
+        unverifiedClaim: true,
+        createdAt: 2001
+      }
+    ],
+    modifiedFiles: []
+  });
+  await ui.refresh();
+  chatHost.querySelector('[data-open-chat="chat_rich"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  const reasoningEl = chatHost.querySelector(".byok-reasoning");
+  assert(reasoningEl && !reasoningEl.querySelector("pre") && reasoningEl.querySelector(".byok-reasoning-body"), "reasoning uses wrapped container instead of clipping <pre>");
+  assert(chatHost.querySelector(".byok-tool-arg").textContent.includes("npm test"), "command card shows inline command preview");
+  assert(chatHost.querySelector(".byok-msg-assistant .byok-md-p").textContent.includes("finished. Now moving on."), "mashed sentences get spaced cleanly");
+  assert(chatHost.querySelector(".byok-codeblock pre").textContent.includes("foo.Bar()"), "code block stays verbatim");
+  assert(chatHost.querySelector(".byok-unverified-pill"), "unverified claim warning badge rendered when flagged");
+
+  // 3) Switching RobloxScript -> AgentScript inside active chat notifies backend immediately
+  chatHost.querySelector('.byok-mode-pill[data-byok-mode="local"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  const modeCall = mockState.calls.find((c) => c.reqPath === "/api/byok/chat/mode" && c.body.chatId === "chat_rich");
+  assert(modeCall && modeCall.body.mode === "local", "switching mode notifies /api/byok/chat/mode");
+  assert(chatHost.querySelector('.byok-system-notice[data-kind="mode_switch"]'), "mode switch pill rendered in thread");
+
+  // 4) /compact slash command is listed and compacts conversation via API
+  chatHost.querySelector("[data-byok-slash]").click();
+  assert(chatHost.querySelector('[data-slash-cmd="/compact"]'), "/compact command shown in slash menu");
+  chatHost.querySelector('[data-slash-cmd="/compact"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(mockState.calls.some((c) => c.reqPath === "/api/byok/chat/compact"), "/compact invokes /api/byok/chat/compact");
+  assert(chatHost.querySelector('.byok-system-notice[data-kind="compact"]'), "compacted summary block rendered");
+
+  // 5) Paste image & video into composer attaches media cleanly
+  const pasteEv = new window.Event("paste", { bubbles: true, cancelable: true });
+  const fakePng = new window.File([new Uint8Array([137, 80, 78, 71])], "shot.png", { type: "image/png" });
+  const fakeVid = new window.File([new Uint8Array([0, 0, 0, 24])], "clip.mp4", { type: "video/mp4" });
+  Object.defineProperty(pasteEv, "clipboardData", {
+    value: {
+      items: [
+        { kind: "file", getAsFile: () => fakePng },
+        { kind: "file", getAsFile: () => fakeVid }
+      ],
+      files: [fakePng, fakeVid]
+    }
+  });
+  chatHost.querySelector("[data-byok-input]").dispatchEvent(pasteEv);
+  await new Promise((r) => setTimeout(r, 40));
+  assert(chatHost.querySelector(".byok-att-row"), "pasted media renders attachment row");
+  assert(chatHost.querySelector(".byok-att-thumb"), "pasted image renders thumbnail preview");
+  assert(chatHost.querySelector(".byok-att-video-chip"), "pasted video renders grouped video chip");
+
+  // 6) Beginner-friendly Apps / MCP Connections tab in drawer
+  chatHost.querySelector("[data-byok-open-apps]").click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(chatHost.textContent.includes("Blender") && chatHost.textContent.includes("Figma") && chatHost.textContent.includes("Blockbench"), "Apps tab lists Blender, Figma, Blockbench");
+  chatHost.querySelector('[data-byok-connect-app="figma"]').click();
+  assert.equal(mockState.openedConnection, "figma", "clicking Connect opens PlazCode connection checklist");
+
+  console.log("PASS byok-chat: Rust wiring, AES-GCM/routes, Studio gating, Ask engine picker, tool timer/progress, Stop button, Direct Chat workbench, error cards, drawer, Add Model modal, mode notices, /compact, reply spacing, media paste & MCP Apps.");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[derive(Clone,Serialize,Deserialize)]
 struct Chat {id:String,provider:String,updated:i64,history:Vec<Message>,handoff:Value,#[serde(default)]omitted:usize}
 #[derive(Clone,Serialize,Deserialize)]
-struct Message{id:String,role:String,text:String}
+struct Message{id:String,role:String,text:String,#[serde(default,skip_serializing_if="Vec::is_empty")]tool_calls:Vec<Value>}
 #[derive(Default,Serialize,Deserialize)]
 pub struct Archive{chats:Vec<Chat>,#[serde(skip)]path:PathBuf,#[serde(skip)]load_error:Option<String>}
 impl Archive {

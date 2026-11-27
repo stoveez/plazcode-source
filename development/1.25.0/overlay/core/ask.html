@@ -100,6 +100,18 @@
  html[data-studio] .sharing .share canvas{border-color:transparent;border-image:var(--st-rim) 1;box-shadow:0 8px 22px -10px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
  html[data-studio] .share-txt b{font-weight:650}
  html[data-studio] .share-txt small{font:500 10.5px/1.5 var(--st-mono);color:var(--st-dim)}
+ .ask-engine-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#c4c8d4}
+ .ask-engine-row label{flex:0 0 auto;font-weight:600;white-space:nowrap}
+ .ask-engine-select{flex:1 1 auto;min-width:0;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:#161922;color:#eef0f6;font:600 12px/1.3 system-ui,sans-serif;padding:5px 8px}
+ .ask-engine-select:focus{outline:2px solid var(--a);outline-offset:1px}
+ .ask-fallback-btn{display:inline-block;margin-top:8px;padding:6px 11px;font-size:12.5px}
+ html[data-studio] .ask-engine-row{border-top-color:var(--st-line-soft);color:var(--st-soft)}
+ html[data-studio] .ask-engine-row label{font:600 11px/1 var(--st-mono);letter-spacing:.04em;color:var(--st-dim)}
+ html[data-studio] .ask-engine-select{border-radius:0;border:1px solid var(--st-line);background:rgba(0,0,0,.28);color:var(--st-text);font:600 12px/1.3 var(--st-sans);padding:5px 8px}
+ html[data-studio] .ask-engine-select:focus{outline:none;border-color:rgba(var(--st-rgb)/.9);box-shadow:0 0 0 2px rgba(var(--st-rgb)/.18)}
+ html[data-studio][data-theme-tone="light"] .ask-engine-row{border-top-color:var(--st-line-soft);color:var(--st-soft)}
+ html[data-studio][data-theme-tone="light"] .ask-engine-select{background:#ffffff;color:#171a20;border-color:rgba(30,66,120,.28)}
+ html[data-studio][data-theme-tone="light"] .ask-fallback-btn{background:#ffffff;color:#1a3b6e;border-color:rgba(30,66,120,.45)}
  html[data-studio] label.sw{position:relative;overflow:hidden;justify-content:space-between;flex-direction:row-reverse;gap:12px;margin-top:6px;padding:7px 2px;color:var(--st-soft)}
  html[data-studio] label.sw:first-of-type{margin-top:12px;border-top:1px solid var(--st-line-soft);padding-top:12px}
  html[data-studio] label.sw input{appearance:none;-webkit-appearance:none;flex:none;margin:0;width:38px;height:22px;border-radius:999px;cursor:pointer;border:1px solid var(--st-line);
@@ -164,6 +176,7 @@
  <button id="menu" type="button" class="menu" aria-label="History" title="History" aria-expanded="false" aria-controls="history"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
  <h1>Ask PlazCode</h1>
  <div class="share"><canvas id="peek" width="224" height="140" aria-hidden="true"></canvas><div class="share-txt"><b id="shareTitle">Not sharing</b><small id="shareSite">Turn on sharing so PlazCode can see your screen.</small></div></div>
+ <div id="askEngineRow" class="ask-engine-row" hidden><label for="askEngine" id="askEngineLabel">Powered by</label><select id="askEngine" class="ask-engine-select" aria-label="Ask PlazCode engine"></select></div>
  <label class="sw"><input type="checkbox" id="sharing" checked> Share my whole screen</label>
  <label class="sw"><input type="checkbox" id="control"> <span id="controlText">Let PlazCode do things for me</span></label>
 </header>

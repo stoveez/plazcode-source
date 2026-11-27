@@ -125,6 +125,8 @@ pub struct DesktopPreferences {
     pub workshop_registry_url: String,
     #[serde(rename = "rsByokActiveModel", default, skip_serializing_if = "Option::is_none")]
     pub byok_active_model: Option<String>,
+    #[serde(rename = "rsAskByokModel", default, skip_serializing_if = "Option::is_none")]
+    pub ask_byok_model: Option<String>,
     #[serde(rename = "rsByokChatMode", default = "default_byok_chat_mode")]
     pub byok_chat_mode: String,
     #[serde(rename = "rsByokEffort", default = "default_byok_effort")]
@@ -199,6 +201,7 @@ impl Default for DesktopPreferences {
             task_ledger: true,
             workshop_registry_url: default_workshop_registry_url(),
             byok_active_model: None,
+            ask_byok_model: None,
             byok_chat_mode: default_byok_chat_mode(),
             byok_effort: default_byok_effort(),
         }
@@ -471,6 +474,14 @@ impl DesktopPreferences {
                 *model = trimmed;
             }
         }
+        if let Some(model) = &mut self.ask_byok_model {
+            let trimmed = model.trim().to_string();
+            if trimmed.is_empty() || trimmed.len() > 200 {
+                self.ask_byok_model = None;
+            } else {
+                *model = trimmed;
+            }
+        }
     }
 }
 
@@ -540,7 +551,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
     let mut kept = Vec::new();
     let mut refused = Vec::new();
     for (key, val) in patch {
-        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel";
+        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel" || key == "rsAskByokModel";
         if !known { continue; }
         let mut candidate = value.clone();
         if let Some(object) = candidate.as_object_mut() { object.insert(key.clone(), val.clone()); }
@@ -550,7 +561,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
 }
 
 fn is_known_key(base_value: &serde_json::Value, key: &str) -> bool {
-    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel"
+    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel" || key == "rsAskByokModel"
 }
 
 fn changed_keys(before: &DesktopPreferences, after: &DesktopPreferences) -> Vec<String> {

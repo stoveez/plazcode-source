@@ -18,6 +18,7 @@
   } catch {}
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const log = $("log"), q = $<HTMLTextAreaElement>("q"), go = $<HTMLButtonElement>("go"), stop = $<HTMLButtonElement>("stop"), step = $("step"), sharing = $<HTMLInputElement>("sharing"), control = $<HTMLInputElement>("control");
+  const engineRow = $("askEngineRow"), engineSelect = $<HTMLSelectElement>("askEngine");
   const menu = $<HTMLButtonElement>("menu"), history = $("history"), chats = $("chats"), noChats = $("noChats"), newChat = $<HTMLButtonElement>("newChat");
   const peek = $<HTMLCanvasElement>("peek"), shareTitle = $("shareTitle"), shareSite = $("shareSite"), banner = $("banner"), bannerText = $("bannerText");
   const fixedWindow = Number(new URLSearchParams(location.search).get("window")) || null;
@@ -47,9 +48,43 @@
       }
     }, 350);
   }
+  function renderEngine(m: { modelId?: unknown; models?: Array<{ id?: unknown; name?: unknown; platformName?: unknown }>; appOnline?: boolean }) {
+    if (!engineRow || !engineSelect) return;
+    const list = Array.isArray(m.models) ? m.models : [];
+    const cur = typeof m.modelId === "string" ? m.modelId.trim() : "";
+    engineRow.hidden = !list.length && !cur;
+    while (engineSelect.firstChild) engineSelect.removeChild(engineSelect.firstChild);
+    const labelEl = $("askEngineLabel");
+    if (labelEl) labelEl.textContent = t("Powered by");
+    const defOpt = document.createElement("option");
+    defOpt.value = "";
+    defOpt.textContent = t("Browser AI tab");
+    engineSelect.append(defOpt);
+    let found = !cur;
+    for (const item of list) {
+      const id = String(item && item.id || "").trim();
+      const name = String(item && item.name || id);
+      const plat = String(item && item.platformName || "").trim();
+      if (!id) continue;
+      if (id === cur) found = true;
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = t("API") + " · " + name + (plat ? " (" + plat + ")" : "");
+      engineSelect.append(opt);
+    }
+    if (cur && !found) {
+      const miss = document.createElement("option");
+      miss.value = cur;
+      miss.textContent = t(m.appOnline === false ? "API model (app offline)" : "Unavailable API model");
+      engineSelect.append(miss);
+    }
+    engineSelect.value = cur;
+    engineSelect.disabled = busy;
+  }
   function onPortMessage(m: any) {
     if (!m) return;
     if (m.type === "ask-busy") { if (m.enabled === false) { add("error", t("Ask PlazCode is not switched on in this version.")); go.disabled = true; return; } setBusy(!!m.busy); }
+    else if (m.type === "ask-engine") renderEngine(m);
     else if (m.type === "ask-history") {
       // A panel that was closed and opened again: show the same conversation.
       log.textContent = "";
@@ -66,7 +101,25 @@
     else if (m.type === "ask-work") { if (Number.isInteger(m.tabId)) { workTab = m.tabId; watch(m.tabId); add("note", t("PlazCode opened a copy of your tab to work in. Your own tab stays untouched.")); } }
     else if (m.type === "ask-step") step.textContent = t(m.text);
     else if (m.type === "ask-partial") { if (busy) showDraft(String(m.text || "")); }
-    else if (m.type === "ask-reply") { endDraft(); add(m.status === "done" ? "ai" : m.status === "stopped" ? "note" : "error", m.status === "done" ? m.text : t(m.text)); setBusy(false); }
+    else if (m.type === "ask-reply") {
+      endDraft();
+      const box = add(m.status === "done" ? "ai" : m.status === "stopped" ? "note" : "error", m.status === "done" ? m.text : t(m.text));
+      if (m.status === "error" && m.canFallbackBrowser === true) {
+        const sw = document.createElement("button");
+        sw.type = "button";
+        sw.className = "ask-fallback-btn";
+        sw.textContent = t("Switch to Browser AI tab");
+        sw.addEventListener("click", () => {
+          post({ setAskModel: "" });
+          sw.disabled = true;
+          sw.textContent = t("Switched to Browser AI tab");
+          add("note", t("Ask PlazCode now uses your browser AI tab. Ask again whenever you're ready."));
+        });
+        box.append(document.createElement("br"), sw);
+        log.scrollTop = log.scrollHeight;
+      }
+      setBusy(false);
+    }
     else if (m.type === "ask-permission") { bannerText.textContent = t("PlazCode could not take a picture of the tab.") + " " + t(m.text); banner.hidden = false; }
     else if (m.type === "ask-share") {
       shared = Number.isInteger(m.tabId) ? m.tabId : null;
@@ -119,7 +172,7 @@
     else { const end = log.scrollHeight - log.scrollTop - log.clientHeight < 40; draft.textContent = text; if (end) log.scrollTop = log.scrollHeight; }
   };
   const endDraft = () => { showTyping(false); if (draft) { draft.remove(); draft = null; } };
-  const setBusy = (value: boolean) => { busy = value; go.disabled = value; stop.hidden = !value; showTyping(value); if (!value) { step.textContent = ""; workTab = null; endDraft(); } if (lastChats) drawChats(lastChats); };
+  const setBusy = (value: boolean) => { busy = value; go.disabled = value; stop.hidden = !value; if (engineSelect) engineSelect.disabled = value; showTyping(value); if (!value) { step.textContent = ""; workTab = null; endDraft(); } if (lastChats) drawChats(lastChats); };
   // History (owner, 2026-11-14): the three-line button opens the list of every Ask PlazCode chat; picking one shows it again and the next
   // question goes into that same AI chat. While PlazCode is answering, the list can be read but the chat cannot be switched.
   const intro = () => { const p = document.createElement("p"); p.className = "note"; p.textContent = t("Ask anything about the page you're on. PlazCode sees a picture of it with each question."); log.append(p); };
@@ -230,6 +283,7 @@
   let controlTouched = false;
   control.addEventListener("change", () => { controlTouched = true; });
   sharing.addEventListener("change", () => { wholeScreen = true; follow(); });
+  if (engineSelect) engineSelect.addEventListener("change", () => { post({ setAskModel: engineSelect.value }); });
   // Sharing follows the tab the person is looking at.
   chrome.tabs.onActivated.addListener((info: { windowId?: number }) => { if (wholeScreen) return; if (!fixedWindow || info.windowId === fixedWindow) follow(); });
   chrome.tabs.onUpdated.addListener((tabId: number, change: { url?: string; title?: string }) => { if (tabId === shared && (change.url || change.title)) follow(); });

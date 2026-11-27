@@ -61,12 +61,6 @@ const PlazCodeByokChatUI = (() => {
 
 
 
-  ;
-
-
-
-
-
 
   ;
 
@@ -75,17 +69,7 @@ const PlazCodeByokChatUI = (() => {
 
 
 
-
   ;
-
-
-
-
-
-
-
-  ;
-
 
 
 
@@ -98,21 +82,6 @@ const PlazCodeByokChatUI = (() => {
 
   ;
 
-
-
-
-
-
-
-
-  ;
-
-
-
-
-
-
-  ;
 
 
 
@@ -133,6 +102,8 @@ const PlazCodeByokChatUI = (() => {
 
 
 
+  ;
+
 
 
 
@@ -141,6 +112,43 @@ const PlazCodeByokChatUI = (() => {
 
 
   ;
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ;
+
+
 
 
 
@@ -269,6 +277,7 @@ const PlazCodeByokChatUI = (() => {
     let pinnedChatIds = readStorageSet('pc_byok_pinned_chats');
     let archivedChatIds = readStorageSet('pc_byok_archived_chats');
     let chatMode = 'roblox';
+    let askByokModelId = '';
     let planMode = false;
     let effort = 'default';
     let permMode = 'sandbox';
@@ -280,10 +289,20 @@ const PlazCodeByokChatUI = (() => {
     let fileQuery = '';
     let workspaceFiles = [];
     let skillsList = [];
+    let compactingChat = false;
+    let connectionsList = [];
+    let mcpCatalog = [];
+    let connectionsLoaded = false;
+    let pendingAppToggle = {};
     let findOpen = false;
     let findQuery = '';
     let slashOpen = false;
     let activeRunId = null;
+    let pendingSend = false;
+    let cancelPendingSend = false;
+    let stoppingRun = false;
+    let pollTickFn = null;
+    let toolTickTimer = 0;
     let streamText = '';
     let streamReasoning = '';
     let streamTools = [];
@@ -386,6 +405,44 @@ const PlazCodeByokChatUI = (() => {
       return list[0];
     };
 
+    const studioConnected = () => {
+      const st = opts.getState ? opts.getState() || {} : {};
+      return st.roblox_connected === true;
+    };
+
+    const effectiveChatMode = () =>
+      chatMode === 'roblox' && !studioConnected() ? 'local' : chatMode;
+
+    const getConnectedAskModels = () => {
+      const out = [];
+      for (const p of platforms) {
+        if (!p.enabled) continue;
+        const preset = presets.find((pr) => pr.id === p.presetId);
+        const needsKey = preset ? preset.requiresKey : true;
+        if (needsKey && (p.apiKeyCount || 0) <= 0) continue;
+        for (const m of p.models || []) {
+          if (m.enabled) out.push({ platform: p, model: m });
+        }
+      }
+      return out;
+    };
+
+    const renderAskEngineSelectHtml = () => {
+      const list = getConnectedAskModels();
+      if (!list.length && !askByokModelId) return '';
+      const hasSelected = !askByokModelId || list.some((x) => x.model.id === askByokModelId);
+      const optionsHtml =
+        '<option value=""' + (!askByokModelId ? ' selected' : '') + '>' + esc(t('Browser AI tab')) + '</option>' +
+        list.map((x) =>
+          '<option value="' + esc(x.model.id) + '"' + (x.model.id === askByokModelId ? ' selected' : '') + '>' +
+          esc((x.model.displayName || x.model.name) + ' · ' + x.platform.name) + '</option>'
+        ).join('') +
+        (!hasSelected
+          ? '<option value="' + esc(askByokModelId) + '" selected>' + esc(t('Unavailable API model')) + '</option>'
+          : '');
+      return '<select class="byok-ask-model-select" data-byok-ask-model aria-label="' + esc(t('Ask PlazCode engine')) + '">' + optionsHtml + '</select>';
+    };
+
     const syncFromState = () => {
       const prefs = opts.getPrefs ? opts.getPrefs() || {} : {};
       if (prefs.rsByokChatMode === 'local' || prefs.rsByokChatMode === 'roblox') chatMode = prefs.rsByokChatMode;
@@ -396,6 +453,7 @@ const PlazCodeByokChatUI = (() => {
       if (typeof prefs.rsByokActiveModel === 'string' && prefs.rsByokActiveModel && !activeModelId) {
         activeModelId = prefs.rsByokActiveModel;
       }
+      askByokModelId = typeof prefs.rsAskByokModel === 'string' ? prefs.rsAskByokModel.trim() : '';
     };
 
     const loadPlatforms = async () => {
@@ -439,9 +497,65 @@ const PlazCodeByokChatUI = (() => {
           activeChat = loaded;
           if (loaded.mode) chatMode = loaded.mode;
           if (loaded.modelId) activeModelId = loaded.modelId;
+          if (loaded.mode === 'roblox' && !studioConnected()) {
+            streamInfo = t('Roblox Studio is not connected — using AgentScript until Studio connects.');
+          }
           renderChatPage();
         }
       } catch (_e) {}
+    };
+
+    const CORE_APP_META = [
+      { id: 'blender', name: 'Blender', tag: 'BL', blurb: t('3D modeling, materials & scene renders') },
+      { id: 'figma', name: 'Figma', tag: 'FG', blurb: t('Read frames, layout & edit designs') },
+      { id: 'godot', name: 'Godot', tag: 'GD', blurb: t('Scenes, nodes & GDScript project tools') },
+      { id: 'unity', name: 'Unity', tag: 'UN', blurb: t('Editor scenes, C# scripts & assets') },
+      { id: 'blockbench', name: 'Blockbench', tag: 'BB', blurb: t('Voxel meshes, textures & animations') },
+    ];
+
+    const loadConnections = async (_force = false) => {
+      try {
+        const [connRes, catRes] = await Promise.all([
+          opts.api('/api/connections').catch(() => null),
+          opts.api('/api/mcp/catalog').catch(() => null),
+        ]);
+        if (connRes && Array.isArray(connRes.apps)) connectionsList = connRes.apps;
+        if (catRes && Array.isArray(catRes.servers)) mcpCatalog = catRes.servers;
+        connectionsLoaded = true;
+      } catch (_e) {}
+      renderDrawer();
+    };
+
+    const getCreativeAppsSummary = () => {
+      const st = opts.getState ? opts.getState() || {} : {};
+      const byId = {};
+      for (const app of connectionsList) {
+        if (app && app.id) byId[app.id] = app;
+      }
+      const servers = {};
+      if (Array.isArray(st.servers)) {
+        for (const s of st.servers) {
+          if (s && s.id) servers[s.id] = s;
+        }
+      }
+      return CORE_APP_META.map((meta) => {
+        const rep = byId[meta.id];
+        let state = rep?.state || 'not_set_up';
+        if (!rep) {
+          if (meta.id === 'blender' && st.blender_connected) state = 'ready';
+          else if (meta.id === 'figma' && st.figma?.connected) state = 'ready';
+          else if (meta.id === 'blockbench' && (st.blockbench?.app?.connected || st.blockbench?.web?.connected)) state = 'ready';
+          else if (servers[meta.id]?.alive) state = 'ready';
+          else if (mcpCatalog.find((s) => s.id === meta.id && s.enabled)) state = 'needs_attention';
+        }
+        return {
+          id: meta.id,
+          name: rep?.name || meta.name,
+          tag: meta.tag,
+          state,
+          line: rep?.line || meta.blurb,
+        };
+      });
     };
 
     const loadFiles = async () => {
@@ -457,19 +571,86 @@ const PlazCodeByokChatUI = (() => {
     // =========================================================================
     // Markdown / Code Formatting (XSS-safe: always escapes HTML first)
     // =========================================================================
+    const normalizeProseSpacing = (raw) => {
+      const chunks = String(raw || '').split('`');
+      for (let idx = 0; idx < chunks.length; idx += 2) {
+        chunks[idx] = chunks[idx]
+          .replace(/\r\n/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/(https?:\/\/[^\s<>]+)|([a-z]{3,}[.!?])([A-Z][a-z]{2,})/g, (_m, u, a, b) =>
+            u ? u : a + ' ' + b
+          );
+      }
+      return chunks.join('`');
+    };
+
+    const formatInlineMd = (raw) =>
+      esc(normalizeProseSpacing(raw))
+        .replace(/`([^`\n]+)`/g, '<code class="byok-inline-code">$1</code>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[^*\w])\*([^*\n]+?)\*(?=[^*\w]|$)/g, '$1<em>$2</em>');
+
+    const renderProseBlocks = (prose) => {
+      const normalized = normalizeProseSpacing(prose).trim();
+      if (!normalized) return '';
+      const lines = normalized.split('\n');
+      let out = '';
+      let para = [];
+      const flushPara = () => {
+        if (!para.length) return;
+        out += '<p class="byok-md-p">' + formatInlineMd(para.join('\n')).replace(/\n/g, '<br>') + '</p>';
+        para = [];
+      };
+      let i = 0;
+      while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (!trimmed) {
+          flushPara();
+          i++;
+          continue;
+        }
+        const hMatch = /^#{1,3}\s+(.+)$/.exec(trimmed);
+        if (hMatch) {
+          flushPara();
+          out += '<h4 class="byok-md-h">' + formatInlineMd(hMatch[1]) + '</h4>';
+          i++;
+          continue;
+        }
+        if (/^\s*[-*•]\s+/.test(line)) {
+          flushPara();
+          const items = [];
+          while (i < lines.length && /^\s*[-*•]\s+/.test(lines[i])) {
+            items.push('<li>' + formatInlineMd(lines[i].replace(/^\s*[-*•]\s+/, '')) + '</li>');
+            i++;
+          }
+          out += '<ul class="byok-md-list">' + items.join('') + '</ul>';
+          continue;
+        }
+        if (/^\s*\d+[.)]\s+/.test(line)) {
+          flushPara();
+          const items = [];
+          while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+            items.push('<li>' + formatInlineMd(lines[i].replace(/^\s*\d+[.)]\s+/, '')) + '</li>');
+            i++;
+          }
+          out += '<ol class="byok-md-list">' + items.join('') + '</ol>';
+          continue;
+        }
+        para.push(line);
+        i++;
+      }
+      flushPara();
+      return out ? '<div class="byok-prose" data-i18n-user-content dir="auto">' + out + '</div>' : '';
+    };
+
     const renderRichContent = (raw) => {
       const text = String(raw || '');
       const parts = text.split(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/g);
       let html = '';
       for (let i = 0; i < parts.length; i += 3) {
         const prose = parts[i] || '';
-        if (prose) {
-          const escaped = esc(prose)
-            .replace(/`([^`\n]+)`/g, '<code class="byok-inline-code">$1</code>')
-            .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
-          html += '<div class="byok-prose" data-i18n-user-content dir="auto">' + escaped + '</div>';
-        }
+        if (prose) html += renderProseBlocks(prose);
         if (i + 2 < parts.length) {
           const lang = esc(parts[i + 1] || 'text');
           const code = parts[i + 2] || '';
@@ -506,13 +687,121 @@ const PlazCodeByokChatUI = (() => {
       );
     };
 
+    const formatElapsedSec = (ms) => {
+      const clamped = Math.max(0, Number.isFinite(ms) ? ms : 0);
+      if (clamped < 10000) return (clamped / 1000).toFixed(1) + 's';
+      const secs = Math.round(clamped / 1000);
+      if (secs < 60) return secs + 's';
+      const mins = Math.floor(secs / 60);
+      const rem = secs % 60;
+      return mins + 'm ' + rem + 's';
+    };
+
+    const estimateToolExpectedMs = (tc) => {
+      if (tc.name === 'run_command') {
+        const asked = Number(tc.args && tc.args.timeout_seconds);
+        if (Number.isFinite(asked) && asked > 0) return Math.min(600000, Math.max(5000, asked * 1000));
+        return Math.min(tc.budgetMs || 60000, 30000);
+      }
+      if (/^(read_file|list_directory|script_read|file_info|env_info|workspace_info)$/.test(tc.name)) return 4000;
+      if (/^(luau_check|analyze_luau|execute_luau|grep_files|search_files|read_files|read_scripts|screen_capture|screen_record)$/.test(tc.name)) return 15000;
+      return Math.min(Math.max(tc.budgetMs ? tc.budgetMs * 0.35 : 10000, 4000), 45000);
+    };
+
+    const computeToolProgress = (tc, now) => {
+      const running = tc.status === 'running';
+      const expected = estimateToolExpectedMs(tc);
+      if (running) {
+        const elapsedMs = Math.max(0, tc.startedAt ? now - tc.startedAt : 0);
+        const pct = Math.min(95, Math.max(3, Math.round(95 * (1 - Math.exp(-(elapsedMs / expected) * 1.5)))));
+        return { elapsedMs, pct, running: true, hasTiming: true };
+      }
+      const hasTiming = typeof tc.durationMs === 'number' || typeof tc.startedAt === 'number';
+      const elapsedMs = typeof tc.durationMs === 'number'
+        ? Math.max(0, tc.durationMs)
+        : (tc.startedAt ? Math.max(0, now - tc.startedAt) : 0);
+      const pct = tc.status === 'ok'
+        ? 100
+        : Math.min(95, Math.max(8, Math.round(95 * (1 - Math.exp(-(elapsedMs / expected) * 1.5)))));
+      return { elapsedMs, pct, running: false, hasTiming };
+    };
+
+    const syncToolTickTimer = () => {
+      const hasRunning = !!activeRunId && streamTools.some((tc) => tc.status === 'running');
+      if (!hasRunning) {
+        if (toolTickTimer) {
+          clearInterval(toolTickTimer);
+          toolTickTimer = 0;
+        }
+        return;
+      }
+      if (toolTickTimer) return;
+      toolTickTimer = setInterval(() => {
+        const host = opts.chatHost;
+        if (!host || !activeRunId || !streamTools.some((tc) => tc.status === 'running')) {
+          clearInterval(toolTickTimer);
+          toolTickTimer = 0;
+          return;
+        }
+        const now = Date.now();
+        for (const tc of streamTools) {
+          if (tc.status !== 'running') continue;
+          const p = computeToolProgress(tc, now);
+          const safeId = tc.id.replace(/["\\]/g, '\\$&');
+          const tEl = host.querySelector(`[data-tool-timer="${safeId}"]`);
+          if (tEl) tEl.textContent = formatElapsedSec(p.elapsedMs);
+          const pEl = host.querySelector(`[data-tool-pct="${safeId}"]`);
+          if (pEl) pEl.textContent = '~' + p.pct + '%';
+          const bEl = host.querySelector(`[data-tool-progress="${safeId}"]`);
+          if (bEl) bEl.style.width = p.pct + '%';
+        }
+      }, 200);
+    };
+
+    const summarizeToolArgs = (args) => {
+      if (!args || typeof args !== 'object') return '';
+      const raw = args.command ?? args.cmd ?? args.path ?? args.query ?? args.pattern ?? args.action ?? args.code;
+      if (typeof raw !== 'string') return '';
+      const clean = raw.replace(/\s+/g, ' ').trim();
+      return clean.length > 46 ? clean.slice(0, 45) + '…' : clean;
+    };
+
+    const renderReasoningHtml = (rawText, streaming) => {
+      const cleaned = normalizeProseSpacing(rawText).trim();
+      if (!cleaned) return '';
+      const lineCount = cleaned.split('\n').filter((l) => l.trim().length > 0).length;
+      const metaText = streaming ? t('Thinking…') : t('{count} lines', { count: lineCount || 1 });
+      return (
+        '<details class="byok-reasoning"' + (streaming ? ' open' : '') + '>' +
+        '<summary><span class="byok-reasoning-chev" aria-hidden="true">▸</span>' +
+        '<span class="byok-reasoning-badge" aria-hidden="true">✦</span>' +
+        '<span class="byok-reasoning-title" data-pc-i18n>' + esc(t('Reasoning')) + '</span>' +
+        '<span class="byok-reasoning-meta">' + esc(metaText) + '</span></summary>' +
+        '<div class="byok-reasoning-body" data-i18n-user-content dir="auto">' + esc(cleaned) + '</div>' +
+        '</details>'
+      );
+    };
+
     const renderToolCard = (tc) => {
       const statusCls = tc.status === 'ok' ? 'ok' : tc.status === 'running' ? 'run' : 'err';
       const argsStr = typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args || {}, null, 2);
+      const argHint = summarizeToolArgs(tc.args);
+      const prog = computeToolProgress(tc, Date.now());
+      const pctLabel = prog.running ? '~' + prog.pct + '%' : prog.pct + '%';
+      const pctTitle = t('Estimated progress against command timeout budget');
       return (
         '<details class="byok-tool-card" data-status="' + esc(statusCls) + '">' +
-        '<summary><span class="byok-tool-dot"></span><span class="byok-tool-name" data-i18n-user-content>' + esc(tc.name) + '</span>' +
+        '<summary><span class="byok-tool-chev" aria-hidden="true">▸</span>' +
+        '<span class="byok-tool-dot"></span>' +
+        '<span class="byok-tool-name" data-i18n-user-content>' + esc(tc.name) + '</span>' +
+        (argHint ? '<span class="byok-tool-arg" data-i18n-user-content dir="ltr">' + esc(argHint) + '</span>' : '') +
+        '<span class="byok-tool-spacer"></span>' +
+        (prog.hasTiming ? '<span class="byok-tool-timer" data-tool-timer="' + esc(tc.id) + '">' + esc(formatElapsedSec(prog.elapsedMs)) + '</span>' : '') +
+        (prog.hasTiming ? '<span class="byok-tool-pct" data-tool-pct="' + esc(tc.id) + '" title="' + esc(pctTitle) + '">' + esc(pctLabel) + '</span>' : '') +
         '<span class="byok-tool-status">' + esc(tc.status) + '</span></summary>' +
+        (prog.hasTiming
+          ? '<div class="byok-tool-progress" aria-hidden="true"><div class="byok-tool-progress-fill" data-tool-progress="' + esc(tc.id) + '" style="width:' + prog.pct + '%"></div></div>'
+          : '') +
         '<div class="byok-tool-body" data-i18n-user-content dir="ltr">' +
         '<div class="byok-tool-sec"><strong>Args</strong><pre>' + esc(argsStr) + '</pre></div>' +
         (tc.output ? '<div class="byok-tool-sec"><strong>Output</strong><pre>' + esc(tc.output) + '</pre></div>' : '') +
@@ -1183,10 +1472,34 @@ const PlazCodeByokChatUI = (() => {
 
     const renderAttachmentsHtml = () => {
       if (!attachments.length && !stagedSkillFolders.length) return '';
-      const chips = attachments.map((a, idx) =>
-        '<span class="byok-att-chip" data-i18n-user-content>' + esc(a.name) +
-        '<button type="button" class="byok-att-rm" data-rm-att="' + idx + '" aria-label="Remove">×</button></span>'
-      );
+      const chips = [];
+      const seenVideos = new Set();
+      attachments.forEach((a, idx) => {
+        if (a.sourceVideo) {
+          if (seenVideos.has(a.sourceVideo)) return;
+          seenVideos.add(a.sourceVideo);
+          const count = attachments.filter((x) => x.sourceVideo === a.sourceVideo).length;
+          chips.push(
+            '<span class="byok-att-chip byok-att-video-chip" data-i18n-user-content>🎬 ' +
+            esc(a.sourceVideo) + ' · ' + esc(t('{count} frames', { count })) +
+            '<button type="button" class="byok-att-rm" data-rm-video="' + esc(a.sourceVideo) + '" aria-label="Remove">×</button></span>'
+          );
+          return;
+        }
+        const safeImg =
+          a.mimeType.startsWith('image/') &&
+          a.dataBase64 &&
+          /^(image\/(?:png|jpeg|jpg|webp|gif))$/i.test(a.mimeType) &&
+          /^[A-Za-z0-9+/=\r\n]+$/.test(a.dataBase64)
+            ? '<img class="byok-att-thumb" src="data:' + esc(a.mimeType) + ';base64,' + esc(a.dataBase64) + '" alt="">'
+            : '';
+        chips.push(
+          '<span class="byok-att-chip" data-i18n-user-content>' +
+          safeImg +
+          '<span>' + esc(a.name) + '</span>' +
+          '<button type="button" class="byok-att-rm" data-rm-att="' + idx + '" aria-label="Remove">×</button></span>'
+        );
+      });
       for (let i = 0; i < stagedSkillFolders.length; i++) {
         const s = stagedSkillFolders[i];
         const summary = `${s.source} (${s.skillCount} skill${s.skillCount === 1 ? '' : 's'})`;
@@ -1201,8 +1514,10 @@ const PlazCodeByokChatUI = (() => {
 
     const SLASH_COMMANDS = [
       { cmd: '/tools', desc: t('Toggle live Tools & Context drawer') },
+      { cmd: '/apps', desc: t('Connect Blender, Figma, Godot, Unity & Blockbench') },
       { cmd: '/model', desc: t('Open Add Model & API Key panel') },
       { cmd: '/plan', desc: t('Toggle Plan mode before editing') },
+      { cmd: '/compact', desc: t('Compact older messages to free context space') },
       { cmd: '/roblox', desc: t('Switch engine to RobloxScript') },
       { cmd: '/agent', desc: t('Switch engine to AgentScript') },
       { cmd: '/export', desc: t('Export this conversation to Markdown') },
@@ -1210,14 +1525,20 @@ const PlazCodeByokChatUI = (() => {
     ];
 
     const renderComposerHtml = (sticky) => {
-      const sending = !!activeRunId;
-      const isLocal = chatMode === 'local';
+      const sending = !!activeRunId || pendingSend;
+      const effMode = effectiveChatMode();
+      const isLocal = effMode === 'local';
+      const studioOn = studioConnected();
       const st = opts.getState ? opts.getState() || {} : {};
-      const readyLabel = sending
-        ? t('Streaming…')
-        : isLocal
-          ? (st.workspace_ready ? t('Ready · Workspace') : t('Ready · Local'))
-          : (st.bridge_connected ? t('Ready · Bridge On') : t('Ready · Waiting Studio'));
+      const readyLabel = compactingChat
+        ? t('Compacting…')
+        : stoppingRun
+          ? t('Stopping…')
+          : sending
+            ? t('Streaming…')
+          : isLocal
+            ? (st.workspace_ready ? t('Ready · Workspace') : t('Ready · Local'))
+            : (studioOn ? t('Ready · Studio On') : t('Ready · Waiting Studio'));
       const slashHtml = slashOpen
         ? '<div class="byok-slash-menu" data-byok-slash-menu>' +
           SLASH_COMMANDS.map((c) =>
@@ -1234,7 +1555,9 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-composer-bar">' +
         '<div class="byok-composer-left">' +
         '<button type="button" class="byok-pill-btn byok-slash-btn' + (slashOpen ? ' active' : '') + '" data-byok-slash>/ ' + esc(t('Commands')) + '</button>' +
-        '<label class="softbtn byok-attach-btn" title="' + esc(t('Attach files or images')) + '">+<input type="file" multiple hidden data-byok-file></label>' +
+        '<label class="softbtn byok-attach-btn" title="' + esc(t('Attach files, images, or videos')) + '" aria-label="' + esc(t('Attach files, images, or videos')) + '">' +
+        '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>' +
+        '<input type="file" multiple hidden accept="image/*,video/*,.txt,.md,.json,.lua,.luau,.ts,.tsx,.js,.jsx,.rs,.py,.css,.html,.xml,.yaml,.yml,.toml,.csv" data-byok-file></label>' +
         (isLocal
           ? '<select class="byok-pill-sel" data-byok-perm aria-label="Permissions">' +
             '<option value="sandbox"' + (permMode === 'sandbox' ? ' selected' : '') + '>' + esc(t('Access: Sandbox')) + '</option>' +
@@ -1254,7 +1577,7 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-composer-right">' +
         '<span class="byok-composer-status" data-i18n-user-content>' + esc(readyLabel) + '</span>' +
         (sending
-          ? '<button type="button" class="dangerbtn byok-stop-btn" data-byok-stop data-pc-i18n>' + esc(t('Stop')) + '</button>'
+          ? '<button type="button" class="dangerbtn byok-stop-btn" data-byok-stop data-pc-i18n' + (stoppingRun ? ' disabled' : '') + '>' + esc(stoppingRun ? t('Stopping…') : t('Stop')) + '</button>'
           : '<button type="button" class="accentbtn byok-send-btn" data-byok-send data-pc-i18n>' + esc(t('Send')) + '</button>') +
         '</div></div></div>'
       );
@@ -1353,6 +1676,49 @@ const PlazCodeByokChatUI = (() => {
           '<input type="text" class="byok-file-search" data-byok-tool-search value="' + esc(toolQuery) + '" placeholder="' + esc(t('Search tools (e.g. script, luau, read)…')) + '">' +
           '<div class="byok-hint" data-pc-i18n>' + esc(t('Click any tool to prefill a ready command prompt in chat.')) + '</div>' +
           listHtml;
+      } else if (drawerTab === 'apps') {
+        const apps = getCreativeAppsSummary();
+        const extraServers = mcpCatalog.filter((s) => !CORE_APP_META.some((c) => c.id === s.id));
+        const appCardsHtml = apps.map((app) => {
+          const badgeText = app.state === 'ready'
+            ? t('Connected')
+            : app.state === 'needs_attention'
+              ? t('Needs attention')
+              : app.state === 'setting_up'
+                ? t('Setting up')
+                : t('Not connected');
+          const btnLabel = app.state === 'ready' ? t('Manage') : t('Connect');
+          return (
+            '<div class="byok-app-card" data-state="' + esc(app.state) + '">' +
+            '<div class="byok-app-top">' +
+            '<span class="byok-app-badge" data-app="' + esc(app.id) + '">' + esc(app.tag) + '</span>' +
+            '<div class="byok-app-info"><strong data-i18n-user-content>' + esc(app.name) + '</strong>' +
+            '<small data-i18n-user-content>' + esc(app.line) + '</small></div>' +
+            '<button type="button" class="' + (app.state === 'ready' ? 'softbtn' : 'accentbtn') + ' byok-app-connect" data-byok-connect-app="' + esc(app.id) + '">' + esc(btnLabel) + '</button>' +
+            '</div>' +
+            '<div class="byok-app-status"><span class="byok-status-dot ' + (app.state === 'ready' ? 'ok' : 'warn') + '"></span><span>' + esc(badgeText) + '</span></div>' +
+            '</div>'
+          );
+        }).join('');
+        const extraHtml = extraServers.length
+          ? '<details class="byok-advanced"><summary data-pc-i18n>' + esc(t('More MCP servers')) + ' (' + extraServers.length + ')</summary><div class="byok-mcp-extra-list">' +
+            extraServers.map((srv) => {
+              const busy = !!pendingAppToggle[srv.id];
+              return (
+                '<div class="byok-mcp-extra-row">' +
+                '<div class="byok-mcp-extra-text"><strong data-i18n-user-content>' + esc(srv.name) + '</strong>' +
+                (srv.description ? '<small data-i18n-user-content>' + esc(srv.description) + '</small>' : '') + '</div>' +
+                '<button type="button" class="toggle' + (srv.enabled ? ' on' : '') + '" role="switch" aria-checked="' + (srv.enabled ? 'true' : 'false') + '" data-byok-toggle-mcp="' + esc(srv.id) + '"' + (busy ? ' disabled' : '') + '></button>' +
+                '</div>'
+              );
+            }).join('') +
+            '</div></details>'
+          : '';
+        body.innerHTML =
+          '<div class="byok-hint" data-pc-i18n>' + esc(t('Connect 3D, design, or game tools once — your API AI can use them directly here.')) + '</div>' +
+          '<div class="byok-app-list">' + appCardsHtml + '</div>' +
+          extraHtml +
+          '<button type="button" class="softbtn byok-open-full-conn" data-byok-open-connections data-pc-i18n>' + esc(t('Open Apps & servers')) + '</button>';
       } else if (drawerTab === 'files') {
         const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
         const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
@@ -1388,6 +1754,9 @@ const PlazCodeByokChatUI = (() => {
         );
       }
       const formState = ensureSidebarForm();
+      const effMode = effectiveChatMode();
+      const studioOn = studioConnected();
+      const askSelHtml = renderAskEngineSelectHtml();
       const enabledSkills = skillsList.filter((s) => s && s.enabled !== false).slice(0, 10);
       const skillsHtml = enabledSkills.length
         ? enabledSkills.map((s) => '<span class="byok-skill-chip" data-i18n-user-content>' + esc(s.title || s.name || 'Skill') + '</span>').join('')
@@ -1400,9 +1769,12 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-field">' +
         '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('TOOL ENGINE')) + '</span>' +
         '<div class="byok-engine-seg" role="group">' +
-        '<button type="button" class="byok-engine-btn' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
-        '<button type="button" class="byok-engine-btn' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        '<button type="button" class="byok-engine-btn' + (effMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox"' + (studioOn ? '' : ' disabled aria-disabled="true" title="' + esc(t('Connect Roblox Studio to use RobloxScript')) + '"') + '>RobloxScript</button>' +
+        '<button type="button" class="byok-engine-btn' + (effMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
         '</div></div>' +
+        (askSelHtml
+          ? '<div class="byok-field"><span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('ASK PLAZCODE ENGINE')) + '</span>' + askSelHtml + '</div>'
+          : '') +
         '<div class="byok-field">' +
         '<span class="byok-eyebrow-label" data-pc-i18n>' + esc(t('SKILLS')) + '</span>' +
         '<div class="byok-skill-chips">' + skillsHtml + '</div>' +
@@ -1417,16 +1789,18 @@ const PlazCodeByokChatUI = (() => {
       const draftVal = existingInput ? existingInput.value : '';
 
       const st = opts.getState ? opts.getState() || {} : {};
+      const effMode = effectiveChatMode();
+      const studioOn = studioConnected();
       const allTools = Array.isArray(st.tools) ? st.tools : [];
       const toolCount = allTools.length;
       const wsRoot = st.workspace_ready && st.workspace_root ? String(st.workspace_root) : '';
       const wsShort = wsRoot ? (wsRoot.split(/[\\/]/).filter(Boolean).pop() || wsRoot) : t('No workspace folder');
       const active = resolveActiveModel();
       const activeChatCount = chats.filter((c) => !archivedChatIds.has(c.id)).length;
-      const hasMsgs = !!(activeChat && activeChat.messages && activeChat.messages.length > 0) || !!activeRunId;
+      const hasMsgs = !!(activeChat && activeChat.messages && activeChat.messages.length > 0) || !!activeRunId || pendingSend;
       const fq = findQuery.trim().toLowerCase();
 
-      const starterCards = chatMode === 'local'
+      const starterCards = effMode === 'local'
         ? [
             { title: t('Map Workspace Structure'), desc: t('Summarize key entry points, config files, and architecture.'), prompt: t('Audit the project structure and summarize key entry points') },
             { title: t('Fix Type & Lint Issues'), desc: t('Find broken imports, type mismatches, and failing checks.'), prompt: t('Find and fix type or lint issues in the workspace') },
@@ -1440,7 +1814,7 @@ const PlazCodeByokChatUI = (() => {
             { title: t('Audit UI Responsiveness'), desc: t('Review StarterGui layouts, constraints, and text scaling.'), prompt: t('Audit the UI layout for responsiveness and scale') },
           ];
 
-      const quickChips = chatMode === 'local'
+      const quickChips = effMode === 'local'
         ? [
             { label: t('Project Overview'), prompt: t('Audit the project structure and summarize key entry points') },
             { label: t('Run Tests'), prompt: t('Run the project tests and report any failures') },
@@ -1458,11 +1832,13 @@ const PlazCodeByokChatUI = (() => {
       if (!hasMsgs) {
         const platReady = !!(platforms.some((p) => p.enabled && (p.apiKeyCount > 0 || presets.find((pr) => pr.id === p.presetId)?.requiresKey === false)));
         const modelReady = !!active;
-        const envReady = chatMode === 'local' ? !!wsRoot : !!st.bridge_connected;
-        const envText = chatMode === 'local'
-          ? (wsRoot ? t('Workspace ready ({folder} · {count} tools live)', { folder: wsShort, count: toolCount }) : t('No workspace folder selected'))
-          : (st.bridge_connected ? t('Roblox Bridge connected ({count} tools live)', { count: toolCount }) : t('Waiting for Roblox Studio ({count} tools available)', { count: toolCount }));
-        const engineLabel = chatMode === 'local' ? 'AgentScript' : 'RobloxScript';
+        const envReady = effMode === 'local' ? !!wsRoot : studioOn;
+        const envText = effMode === 'local'
+          ? (studioOn
+              ? (wsRoot ? t('Workspace ready ({folder} · {count} tools live)', { folder: wsShort, count: toolCount }) : t('No workspace folder selected'))
+              : t('Roblox Studio not connected — using AgentScript'))
+          : (studioOn ? t('Roblox Studio connected ({count} tools live)', { count: toolCount }) : t('Waiting for Roblox Studio ({count} tools available)', { count: toolCount }));
+        const engineLabel = effMode === 'local' ? 'AgentScript' : 'RobloxScript';
 
         centerBodyHtml =
           '<div class="byok-welcome-scroll">' +
@@ -1487,6 +1863,10 @@ const PlazCodeByokChatUI = (() => {
           '<span class="byok-status-dot ' + (envReady ? 'ok' : 'warn') + '"></span>' +
           '<span>' + esc(envText) + '</span>' +
           '</div>' +
+          '<button type="button" class="byok-check-row" data-byok-open-apps>' +
+          '<span class="byok-status-dot ' + (getCreativeAppsSummary().some((a) => a.state === 'ready') ? 'ok' : 'warn') + '"></span>' +
+          '<span>' + esc(t('Apps & MCP ({count} connected — Blender, Figma, Godot, Unity, Blockbench)', { count: getCreativeAppsSummary().filter((a) => a.state === 'ready').length })) + '</span>' +
+          '</button>' +
           '</div></div>' +
           '<div class="byok-starter-grid">' +
           starterCards.map((c, idx) =>
@@ -1501,29 +1881,46 @@ const PlazCodeByokChatUI = (() => {
         const msgsHtml = (activeChat?.messages || []).map((m) => {
           const isMatch = fq && String(m.content || '').toLowerCase().includes(fq);
           const matchCls = isMatch ? ' is-find-match' : '';
+          if (m.role === 'system') {
+            const sysKind = m.kind === 'compact' ? 'compact' : 'mode_switch';
+            if (sysKind === 'compact') {
+              const firstLine = String(m.content || '').split('\n')[0] || t('Compacted earlier conversation');
+              return (
+                '<details class="byok-system-notice' + matchCls + '" data-kind="compact">' +
+                '<summary data-i18n-user-content>' + esc(firstLine) + '</summary>' +
+                '<div class="byok-system-body" data-i18n-user-content dir="auto">' + renderRichContent(m.content) + '</div>' +
+                '</details>'
+              );
+            }
+            return '<div class="byok-system-notice' + matchCls + '" data-kind="' + esc(sysKind) + '" data-i18n-user-content dir="auto">' + esc(m.content) + '</div>';
+          }
           if (m.role === 'user') {
             const atts = (m.attachments || []).map((a) => '<span class="byok-msg-att" data-i18n-user-content>' + esc(a.name) + '</span>').join('');
             return '<div class="byok-msg byok-msg-user' + matchCls + '"><div class="byok-bubble">' + (atts ? '<div class="byok-msg-atts">' + atts + '</div>' : '') + renderRichContent(m.content) + '</div></div>';
           }
           const tools = (m.toolCalls || []).map(renderToolCard).join('');
           const errHtml = m.error ? renderErrorCard(m.error) : '';
+          const unverifiedHtml = m.unverifiedClaim
+            ? '<div class="byok-unverified-pill" data-pc-i18n>' + esc(t('No tools ran on this turn — verify any claimed checks.')) + '</div>'
+            : '';
           return (
             '<div class="byok-msg byok-msg-assistant' + matchCls + '">' +
             (m.modelLabel ? '<div class="byok-msg-model" data-i18n-user-content>' + esc(m.modelLabel) + '</div>' : '') +
-            (m.reasoning ? '<details class="byok-reasoning"><summary data-pc-i18n>' + esc(t('Reasoning')) + '</summary><pre data-i18n-user-content>' + esc(m.reasoning) + '</pre></details>' : '') +
+            (m.reasoning ? renderReasoningHtml(m.reasoning, false) : '') +
             tools +
             (m.content ? '<div class="byok-bubble">' + renderRichContent(m.content) + '</div>' : '') +
+            unverifiedHtml +
             errHtml +
             '</div>'
           );
         }).join('');
 
         let streamingHtml = '';
-        if (activeRunId) {
+        if (activeRunId || pendingSend) {
           streamingHtml =
             '<div class="byok-msg byok-msg-assistant is-streaming">' +
             (streamInfo ? '<div class="byok-stream-info" data-i18n-user-content>' + esc(streamInfo) + '</div>' : '') +
-            (streamReasoning ? '<details class="byok-reasoning" open><summary data-pc-i18n>' + esc(t('Reasoning')) + '</summary><pre data-i18n-user-content>' + esc(streamReasoning) + '</pre></details>' : '') +
+            (streamReasoning ? renderReasoningHtml(streamReasoning, true) : '') +
             streamTools.map(renderToolCard).join('') +
             (streamText ? '<div class="byok-bubble">' + renderRichContent(streamText) + '</div>' : '<div class="byok-thinking" data-pc-i18n>' + esc(t('Thinking…')) + '</div>') +
             (streamError ? renderErrorCard(streamError) : '') +
@@ -1549,7 +1946,7 @@ const PlazCodeByokChatUI = (() => {
           '</div>'
         : '';
 
-      const wsNote = chatMode === 'local'
+      const wsNote = effMode === 'local'
         ? '<div class="byok-ws-sub" title="' + esc(wsRoot || wsShort) + '"><span data-pc-i18n>' + esc(t('Workspace folder')) + '</span>: <span data-i18n-user-content>' + esc(wsShort) + '</span></div>'
         : '';
 
@@ -1565,14 +1962,18 @@ const PlazCodeByokChatUI = (() => {
         '<span class="byok-status-dot ' + (active ? 'ok' : 'warn') + '"></span>' +
         '<div class="byok-chat-title" data-i18n-user-content dir="auto" title="' + esc(activeChat?.title || t('New Chat')) + '">' + esc(activeChat?.title || t('New Chat')) + '</div>' +
         '<div class="byok-mode-switch compact" role="group">' +
-        '<button type="button" class="byok-mode-pill' + (chatMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox">RobloxScript</button>' +
-        '<button type="button" class="byok-mode-pill' + (chatMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
+        '<button type="button" class="byok-mode-pill' + (effMode === 'roblox' ? ' active' : '') + '" data-byok-mode="roblox"' + (studioOn ? '' : ' disabled aria-disabled="true" title="' + esc(t('Connect Roblox Studio to use RobloxScript')) + '"') + '>RobloxScript</button>' +
+        '<button type="button" class="byok-mode-pill' + (effMode === 'local' ? ' active' : '') + '" data-byok-mode="local">AgentScript</button>' +
         '</div>' +
         renderModelSelectorHtml(true) +
         '</div>' +
         '<div class="byok-topbar-actions">' +
-        '<button type="button" class="byok-tools-pill' + (drawerOpen && !railCollapsed ? ' active' : '') + '" data-byok-toggle-drawer title="' + esc(t('Toggle Tools & Context')) + '">' +
-        '<span class="byok-status-dot ' + (st.bridge_connected ? 'ok' : 'warn') + '"></span>' +
+        '<button type="button" class="softbtn byok-apps-pill' + (drawerOpen && !railCollapsed && drawerTab === 'apps' ? ' active' : '') + '" data-byok-open-apps title="' + esc(t('Connect Blender, Figma, Godot, Unity & Blockbench')) + '">' +
+        '<span class="byok-status-dot ' + (getCreativeAppsSummary().some((a) => a.state === 'ready') ? 'ok' : 'warn') + '"></span>' +
+        '<span>' + esc(t('Apps')) + ' · ' + getCreativeAppsSummary().filter((a) => a.state === 'ready').length + '</span>' +
+        '</button>' +
+        '<button type="button" class="byok-tools-pill' + (drawerOpen && !railCollapsed && drawerTab !== 'apps' ? ' active' : '') + '" data-byok-toggle-drawer title="' + esc(t('Toggle Tools & Context')) + '">' +
+        '<span class="byok-status-dot ' + (effMode === 'local' ? (wsRoot ? 'ok' : 'warn') : (studioOn ? 'ok' : 'warn')) + '"></span>' +
         '<span>' + toolCount + ' ' + esc(t('tools')) + '</span>' +
         '</button>' +
         '<button type="button" class="softbtn byok-tb-btn' + (findOpen ? ' active' : '') + '" data-byok-find>' + esc(t('FIND')) + '</button>' +
@@ -1616,6 +2017,7 @@ const PlazCodeByokChatUI = (() => {
         '<div class="byok-drawer-stats" data-byok-drawer-stats data-i18n-user-content></div>' +
         '<div class="byok-drawer-tabs">' +
         '<button type="button" class="softbtn" data-drawer-tab="tools" data-pc-i18n>' + esc(t('Tools')) + '</button>' +
+        '<button type="button" class="softbtn" data-drawer-tab="apps" data-pc-i18n>' + esc(t('Apps')) + '</button>' +
         '<button type="button" class="softbtn" data-drawer-tab="files" data-pc-i18n>' + esc(t('Files')) + '</button>' +
         '<button type="button" class="softbtn" data-drawer-tab="changes" data-pc-i18n>' + esc(t('Changes')) + '</button>' +
         '</div>' +
@@ -1644,7 +2046,246 @@ const PlazCodeByokChatUI = (() => {
         if (firstMatch) firstMatch.scrollIntoView({ block: 'center' });
         else msgBox.scrollTop = msgBox.scrollHeight;
       }
+      syncToolTickTimer();
       localizeNode(host);
+    };
+
+    const switchChatMode = (nextMode) => {
+      if (nextMode === 'roblox' && !studioConnected()) {
+        streamInfo = t('Connect Roblox Studio to use RobloxScript mode.');
+        renderChatPage();
+        return;
+      }
+      const prevMode = effectiveChatMode();
+      chatMode = nextMode;
+      opts.patchPref('rsByokChatMode', chatMode);
+      const nextLabel = nextMode === 'local' ? 'AgentScript' : 'RobloxScript';
+      if (prevMode !== nextMode) {
+        streamInfo = t('Switched to {mode} — your connected AI will be notified automatically.', { mode: nextLabel });
+        if (activeChat && !activeChat.id.startsWith('pending_') && !activeRunId && !pendingSend) {
+          opts.api('/api/byok/chat/mode', {
+            method: 'POST',
+            body: JSON.stringify({ chatId: activeChat.id, mode: nextMode }),
+          }).then((res) => {
+            if (res && res.chat) {
+              activeChat = res.chat;
+            }
+            renderChatPage();
+          }).catch(() => {});
+        }
+      }
+      renderChatPage();
+    };
+
+    const runCompactChat = async () => {
+      if (activeRunId || pendingSend || compactingChat) return;
+      if (!activeChat || activeChat.id.startsWith('pending_') || (activeChat.messages || []).length < 3) {
+        streamInfo = t('Not enough messages to compact yet.');
+        renderChatPage();
+        return;
+      }
+      compactingChat = true;
+      streamInfo = t('Compacting older conversation context…');
+      renderChatPage();
+      try {
+        const res = await opts.api('/api/byok/chat/compact', {
+          method: 'POST',
+          body: JSON.stringify({
+            chatId: activeChat.id,
+            modelId: resolveActiveModel()?.model.id,
+          }),
+        });
+        if (res && res.ok && res.chat) {
+          activeChat = res.chat;
+          streamInfo = t('Compacted {before} messages into a summary ({saved} chars freed).', {
+            before: Number(res.beforeCount || 0),
+            saved: Number(res.savedChars || 0),
+          });
+          loadChats();
+        } else {
+          streamInfo = res?.error || t('Could not compact conversation.');
+        }
+      } catch (e) {
+        streamInfo = e?.message || t('Could not compact conversation.');
+      } finally {
+        compactingChat = false;
+        renderChatPage();
+      }
+    };
+
+    const extractVideoFramesFallback = async (file) => {
+      if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+        return [{
+          name: file.name || 'video.mp4',
+          mimeType: 'text/plain',
+          textPreview: `[Attached video: ${file.name || 'video'} (${Math.max(1, Math.round((file.size || 0) / 1024))} KB)]`,
+          sourceVideo: file.name || 'video',
+        }];
+      }
+      const video = document.createElement('video');
+      const url = URL.createObjectURL(file);
+      try {
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        await new Promise((resolve, reject) => {
+          const tmr = setTimeout(() => reject(new Error('timeout')), 10000);
+          video.onloadeddata = () => { clearTimeout(tmr); resolve(); };
+          video.onerror = () => { clearTimeout(tmr); reject(new Error('decode')); };
+          video.src = url;
+        });
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 360;
+        const ratio = Math.min(1, 1280 / Math.max(w, h));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(w * ratio));
+        canvas.height = Math.max(1, Math.round(h * ratio));
+        const ctx = canvas.getContext('2d');
+        const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
+        const count = Math.min(6, Math.max(2, Math.ceil(dur)));
+        const out = [];
+        for (let i = 0; i < count; i++) {
+          const ts = count === 1 ? 0 : (dur - 0.05) * (i / (count - 1));
+          if (Math.abs(video.currentTime - ts) > 0.02) {
+            await new Promise((resolve) => {
+              const tmr = setTimeout(resolve, 2500);
+              video.onseeked = () => { clearTimeout(tmr); resolve(); };
+              video.currentTime = ts;
+            });
+          }
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
+            if (b64) {
+              out.push({
+                name: `${file.name} - frame ${i + 1} at ${ts.toFixed(1)}s.jpg`,
+                mimeType: 'image/jpeg',
+                dataBase64: b64,
+                sourceVideo: file.name,
+              });
+            }
+          }
+        }
+        if (out.length) return out;
+      } catch (_e) {
+      } finally {
+        try { video.pause(); video.removeAttribute('src'); video.load(); } catch {}
+        try { URL.revokeObjectURL(url); } catch {}
+      }
+      return [{
+        name: file.name || 'video.mp4',
+        mimeType: 'text/plain',
+        textPreview: `[Attached video: ${file.name || 'video'} (${Math.max(1, Math.round((file.size || 0) / 1024))} KB)]`,
+        sourceVideo: file.name || 'video',
+      }];
+    };
+
+    const normalizeAttachedFile = (raw, idx) => {
+      if (raw.name && raw.name.trim() && raw.name !== 'image.png') return raw;
+      const ext = raw.type?.startsWith('video/') ? (raw.type.split('/')[1] || 'mp4') : (raw.type?.split('/')[1] || 'png');
+      const prefix = raw.type?.startsWith('video/') ? 'pasted-video' : 'screenshot';
+      try {
+        return new File([raw], `${prefix}-${Date.now()}-${idx}.${ext}`, { type: raw.type || 'image/png' });
+      } catch {
+        return raw;
+      }
+    };
+
+    const attachInputFiles = async (rawFiles) => {
+      const files = rawFiles.filter(Boolean).map(normalizeAttachedFile);
+      if (!files.length) return;
+      const mediaFiles = [];
+      const textFiles = [];
+      for (const f of files) {
+        const mime = (f.type || '').toLowerCase();
+        const nameLower = (f.name || '').toLowerCase();
+        if (
+          mime.startsWith('image/') ||
+          mime.startsWith('video/') ||
+          /\.(png|jpe?g|webp|gif|bmp|mp4|mov|webm|mkv|avi|m4v)$/.test(nameLower)
+        ) {
+          mediaFiles.push(f);
+        } else {
+          textFiles.push(f);
+        }
+      }
+
+      const mediaHelper = (globalThis).PlazCodeMedia;
+      if (mediaFiles.length) {
+        for (const mf of mediaFiles) {
+          const isVideo = (mf.type || '').startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(mf.name || '');
+          try {
+            if (mediaHelper && typeof mediaHelper.prepare === 'function') {
+              const prep = await mediaHelper.prepare([mf], {
+                nativeVideo: false,
+                frames: true,
+                convert: (file, vid) =>
+                  opts.api('/api/media/convert?video=' + (vid ? 'true' : 'false'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: file,
+                  }),
+              });
+              const items = Array.isArray(prep?.files) ? prep.files : [];
+              for (const item of items) {
+                if (item && item.data) {
+                  attachments.push({
+                    name: String(item.name || mf.name),
+                    mimeType: String(item.mimeType || 'image/jpeg'),
+                    dataBase64: String(item.data),
+                    ...(isVideo ? { sourceVideo: mf.name } : {}),
+                  });
+                }
+              }
+              if (prep?.notice) streamInfo = String(prep.notice);
+              renderChatPage();
+              continue;
+            }
+          } catch (err) {
+            streamInfo = String(err?.message || err || '');
+          }
+          if (isVideo) {
+            const frames = await extractVideoFramesFallback(mf);
+            attachments.push(...frames);
+            renderChatPage();
+          } else {
+            await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const res = String(reader.result || '');
+                const b64 = res.includes(',') ? res.split(',')[1] : res;
+                attachments.push({
+                  name: mf.name,
+                  mimeType: mf.type || 'image/png',
+                  dataBase64: b64,
+                });
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsDataURL(mf);
+            });
+            renderChatPage();
+          }
+        }
+      }
+
+      for (const tf of textFiles) {
+        await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            attachments.push({
+              name: tf.name,
+              mimeType: tf.type || 'text/plain',
+              textPreview: String(reader.result || '').slice(0, 12000),
+            });
+            resolve();
+          };
+          reader.onerror = () => resolve();
+          reader.readAsText(tf);
+        });
+        renderChatPage();
+      }
     };
 
     const runSlashAction = (cmd) => {
@@ -1660,6 +2301,12 @@ const PlazCodeByokChatUI = (() => {
         drawerOpen = !drawerOpen;
         if (drawerOpen) drawerTab = 'tools';
         renderChatPage();
+      } else if (c === '/apps') {
+        drawerOpen = true;
+        railCollapsed = false;
+        drawerTab = 'apps';
+        loadConnections(true);
+        renderChatPage();
       } else if (c === '/model') {
         renderChatPage();
         openAddModelModal();
@@ -1667,14 +2314,12 @@ const PlazCodeByokChatUI = (() => {
         planMode = !planMode;
         opts.patchPref('rsPlanMode', planMode);
         renderChatPage();
+      } else if (c === '/compact') {
+        runCompactChat();
       } else if (c === '/roblox') {
-        chatMode = 'roblox';
-        opts.patchPref('rsByokChatMode', 'roblox');
-        renderChatPage();
+        switchChatMode('roblox');
       } else if (c === '/agent') {
-        chatMode = 'local';
-        opts.patchPref('rsByokChatMode', 'local');
-        renderChatPage();
+        switchChatMode('local');
       } else if (c === '/export') {
         exportActiveChat();
         renderChatPage();
@@ -1707,15 +2352,19 @@ const PlazCodeByokChatUI = (() => {
         runSlashAction(text);
         return;
       }
-      if (activeRunId) return;
+      if (activeRunId || pendingSend) return;
 
       lastUserPrompt = text;
+      pendingSend = true;
+      cancelPendingSend = false;
+      stoppingRun = false;
+      const sendMode = effectiveChatMode();
       const chosen = resolveActiveModel();
       if (!activeChat) {
         activeChat = {
           id: 'pending_' + Date.now(),
           title: text.slice(0, 48) || 'New Chat',
-          mode: chatMode,
+          mode: sendMode,
           modelId: chosen?.model.id || null,
           messages: [],
           modifiedFiles: [],
@@ -1746,7 +2395,7 @@ const PlazCodeByokChatUI = (() => {
         chatId: activeChat.id.startsWith('pending_') ? undefined : activeChat.id,
         modelId: chosen?.model.id,
         message: text,
-        mode: chatMode,
+        mode: sendMode,
         attachments: sendAtts,
         planMode,
         effort,
@@ -1760,13 +2409,21 @@ const PlazCodeByokChatUI = (() => {
         attachments: sendAtts,
         createdAt: Date.now(),
       });
+      renderChatPage();
 
       try {
         const res = await opts.api('/api/byok/chat/send', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
+        pendingSend = false;
         if (!res || !res.ok) {
+          stoppingRun = false;
+          cancelPendingSend = false;
+          if (res?.error?.code === 'studio_not_connected') {
+            chatMode = 'local';
+            opts.patchPref('rsByokChatMode', 'local');
+          }
           streamError = res?.error || {
             code: 'send_failed',
             message: res?.error || 'Could not start chat run.',
@@ -1780,10 +2437,22 @@ const PlazCodeByokChatUI = (() => {
         activeChat.id = res.chatId;
         if (res.title) activeChat.title = res.title;
         activeRunId = res.runId;
+        if (cancelPendingSend) {
+          cancelPendingSend = false;
+          stoppingRun = true;
+          streamInfo = t('Stopping…');
+          opts.api('/api/byok/chat/stop', {
+            method: 'POST',
+            body: JSON.stringify({ runId: res.runId, chatId: res.chatId }),
+          }).then(() => { if (pollTickFn) pollTickFn(); }).catch(() => {});
+        }
         renderChatPage();
         startEventPolling(res.runId);
         loadChats();
       } catch (e) {
+        pendingSend = false;
+        stoppingRun = false;
+        cancelPendingSend = false;
         activeChat.messages.push({
           id: 'err_' + Date.now(),
           role: 'assistant',
@@ -1807,6 +2476,7 @@ const PlazCodeByokChatUI = (() => {
         if (!activeRunId || activeRunId !== runId) {
           clearInterval(pollTimer);
           pollTimer = 0;
+          pollTickFn = null;
           return;
         }
         try {
@@ -1825,12 +2495,17 @@ const PlazCodeByokChatUI = (() => {
                 name: String(ev.data?.name || ''),
                 args: ev.data?.args || {},
                 status: 'running',
+                startedAt: typeof ev.data?.startedAt === 'number' ? ev.data.startedAt : Date.now(),
+                budgetMs: typeof ev.data?.budgetMs === 'number' ? ev.data.budgetMs : undefined,
               });
             } else if (ev.kind === 'tool_result') {
               const hit = streamTools.find((tc) => tc.id === ev.data?.id);
               if (hit) {
                 hit.status = String(ev.data?.status || 'ok');
                 hit.output = String(ev.data?.output || '');
+                if (typeof ev.data?.startedAt === 'number') hit.startedAt = ev.data.startedAt;
+                if (typeof ev.data?.durationMs === 'number') hit.durationMs = ev.data.durationMs;
+                if (typeof ev.data?.budgetMs === 'number') hit.budgetMs = ev.data.budgetMs;
               }
             } else if (ev.kind === 'error') {
               streamError = ev.data;
@@ -1839,7 +2514,15 @@ const PlazCodeByokChatUI = (() => {
           if (res?.done) {
             clearInterval(pollTimer);
             pollTimer = 0;
+            pollTickFn = null;
+            if (toolTickTimer) {
+              clearInterval(toolTickTimer);
+              toolTickTimer = 0;
+            }
             activeRunId = null;
+            pendingSend = false;
+            cancelPendingSend = false;
+            stoppingRun = false;
             if (res.chat) activeChat = res.chat;
             streamText = '';
             streamReasoning = '';
@@ -1853,7 +2536,8 @@ const PlazCodeByokChatUI = (() => {
           }
         } catch (_e) {}
       };
-      pollTimer = window.setInterval(tick, 220);
+      pollTickFn = tick;
+      pollTimer = setInterval(tick, 220);
     };
 
     // =========================================================================
@@ -1909,19 +2593,30 @@ const PlazCodeByokChatUI = (() => {
         '<button type="button" class="softbtn' + (clearFlashed ? ' byok-cleared-flash' : '') + '" data-byok-clear-health data-pc-i18n>' + esc(t('Clear status')) + '</button>' +
         '<button type="button" class="accentbtn" data-byok-add-model data-pc-i18n>+ ' + esc(t('Add Model')) + '</button>';
 
+      const askSelHtml = renderAskEngineSelectHtml();
+      const askCardHtml = askSelHtml
+        ? '<div class="byok-ask-power-card">' +
+          '<div class="byok-ask-power-head"><strong data-pc-i18n>' + esc(t('Ask PlazCode engine')) + '</strong>' +
+          '<small data-pc-i18n>' + esc(t('Choose whether the browser Ask PlazCode panel uses your browser AI tab or a connected API model.')) + '</small></div>' +
+          askSelHtml +
+          '</div>'
+        : '';
+
       if (opts.modelsActionsHost) {
         opts.modelsActionsHost.innerHTML = actionsHtml;
         localizeNode(opts.modelsActionsHost);
         host.innerHTML =
           bannerHtml +
-          '<div class="byok-plat-list">' + platHtml + '</div>';
+          '<div class="byok-plat-list">' + platHtml + '</div>' +
+          askCardHtml;
       } else {
         host.innerHTML =
           '<div class="byok-models-head">' +
           '<div><h3 data-pc-i18n>' + esc(t('Model')) + '</h3><p data-pc-i18n>' + esc(t('Manage AI platforms, multi-key rotation, and model health checks.')) + '</p></div>' +
           '<div class="byok-models-head-actions">' + actionsHtml + '</div></div>' +
           bannerHtml +
-          '<div class="byok-plat-list">' + platHtml + '</div>';
+          '<div class="byok-plat-list">' + platHtml + '</div>' +
+          askCardHtml;
       }
 
       localizeNode(host);
@@ -2064,11 +2759,49 @@ const PlazCodeByokChatUI = (() => {
             loadChatById(cid);
             return;
           }
+          if (target.closest('[data-byok-open-apps]')) {
+            drawerOpen = true;
+            railCollapsed = false;
+            drawerTab = 'apps';
+            loadConnections(true);
+            renderChatPage();
+            return;
+          }
+          const connAppBtn = target.closest('[data-byok-connect-app]');
+          if (connAppBtn) {
+            const appId = connAppBtn.getAttribute('data-byok-connect-app') || '';
+            if (appId && typeof opts.openConnection === 'function') {
+              opts.openConnection(appId);
+            } else if (typeof opts.navigateToConnections === 'function') {
+              opts.navigateToConnections();
+            }
+            return;
+          }
+          if (target.closest('[data-byok-open-connections]')) {
+            if (typeof opts.navigateToConnections === 'function') opts.navigateToConnections();
+            return;
+          }
+          const mcpTogBtn = target.closest('[data-byok-toggle-mcp]');
+          if (mcpTogBtn) {
+            const sid = mcpTogBtn.getAttribute('data-byok-toggle-mcp') || '';
+            const srv = mcpCatalog.find((s) => s.id === sid);
+            if (sid && srv) {
+              pendingAppToggle[sid] = true;
+              renderDrawer();
+              opts.api('/api/mcp/toggle', {
+                method: 'POST',
+                body: JSON.stringify({ id: sid, enabled: !srv.enabled }),
+              }).finally(() => {
+                delete pendingAppToggle[sid];
+                loadConnections(true);
+              });
+            }
+            return;
+          }
           const modeBtn = target.closest('[data-byok-mode]');
           if (modeBtn) {
-            chatMode = modeBtn.getAttribute('data-byok-mode') === 'local' ? 'local' : 'roblox';
-            opts.patchPref('rsByokChatMode', chatMode);
-            renderChatPage();
+            const nextMode = modeBtn.getAttribute('data-byok-mode') === 'local' ? 'local' : 'roblox';
+            switchChatMode(nextMode);
             return;
           }
           if (target.closest('[data-byok-plan]')) {
@@ -2118,6 +2851,13 @@ const PlazCodeByokChatUI = (() => {
             renderChatPage();
             return;
           }
+          const rmVideo = target.closest('[data-rm-video]');
+          if (rmVideo) {
+            const vname = rmVideo.getAttribute('data-rm-video') || '';
+            attachments = attachments.filter((a) => a.sourceVideo !== vname);
+            renderChatPage();
+            return;
+          }
           const rmAtt = target.closest('[data-rm-att]');
           if (rmAtt) {
             const idx = Number(rmAtt.getAttribute('data-rm-att'));
@@ -2130,8 +2870,23 @@ const PlazCodeByokChatUI = (() => {
             return;
           }
           if (target.closest('[data-byok-stop]')) {
+            if (pendingSend && !activeRunId) {
+              cancelPendingSend = true;
+              stoppingRun = true;
+              streamInfo = t('Stopping…');
+              renderChatPage();
+              return;
+            }
             if (activeRunId) {
-              opts.api('/api/byok/chat/stop', { method: 'POST', body: JSON.stringify({ runId: activeRunId }) }).catch(() => {});
+              stoppingRun = true;
+              streamInfo = t('Stopping…');
+              const rid = activeRunId;
+              const cid = activeChat?.id;
+              renderChatPage();
+              opts.api('/api/byok/chat/stop', {
+                method: 'POST',
+                body: JSON.stringify({ runId: rid, chatId: cid }),
+              }).then(() => { if (pollTickFn) pollTickFn(); }).catch(() => {});
             }
             return;
           }
@@ -2151,8 +2906,9 @@ const PlazCodeByokChatUI = (() => {
           const dTab = target.closest('[data-drawer-tab]');
           if (dTab) {
             const nextTab = dTab.getAttribute('data-drawer-tab');
-            drawerTab = nextTab === 'changes' ? 'changes' : nextTab === 'files' ? 'files' : 'tools';
+            drawerTab = nextTab === 'changes' ? 'changes' : nextTab === 'files' ? 'files' : nextTab === 'apps' ? 'apps' : 'tools';
             if (drawerTab === 'files') loadFiles();
+            else if (drawerTab === 'apps') loadConnections(!connectionsLoaded);
             else renderDrawer();
             return;
           }
@@ -2192,27 +2948,15 @@ const PlazCodeByokChatUI = (() => {
           } else if (target.matches('[data-byok-effort]')) {
             effort = (target).value;
             opts.patchPref('rsByokEffort', effort);
+          } else if (target.matches('[data-byok-ask-model]')) {
+            askByokModelId = (target).value.trim();
+            opts.patchPref('rsAskByokModel', askByokModelId);
+            renderModelsPanel();
+            renderChatPage();
           } else if (target.matches('[data-byok-file]')) {
             const input = target;
             const files = Array.from(input.files || []);
-            for (const f of files) {
-              const reader = new FileReader();
-              if (f.type.startsWith('image/')) {
-                reader.onload = () => {
-                  const res = String(reader.result || '');
-                  const b64 = res.includes(',') ? res.split(',')[1] : res;
-                  attachments.push({ name: f.name, mimeType: f.type, dataBase64: b64 });
-                  renderChatPage();
-                };
-                reader.readAsDataURL(f);
-              } else {
-                reader.onload = () => {
-                  attachments.push({ name: f.name, mimeType: f.type || 'text/plain', textPreview: String(reader.result || '').slice(0, 12000) });
-                  renderChatPage();
-                };
-                reader.readAsText(f);
-              }
-            }
+            if (files.length) attachInputFiles(files);
             input.value = '';
           }
         });
@@ -2332,15 +3076,41 @@ const PlazCodeByokChatUI = (() => {
           return { action: 'stage_folder', source: entries[0]?.name || 'Dropped skills', files };
         };
 
+        chatHost.addEventListener('paste', (ev) => {
+          const target = ev.target;
+          if (!target || (!target.matches('[data-byok-input]') && !target.closest('.byok-composer'))) return;
+          const dt = (ev).clipboardData;
+          if (!dt) return;
+          const files = [];
+          const seen = new Set();
+          const pushFile = (f) => {
+            if (!f) return;
+            const key = `${f.name}|${f.size}|${f.type}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            files.push(f);
+          };
+          for (const item of Array.from(dt.items || [])) {
+            if (item.kind === 'file') pushFile(item.getAsFile());
+          }
+          for (const f of Array.from(dt.files || [])) pushFile(f);
+          if (!files.length) return;
+          ev.preventDefault();
+          attachInputFiles(files);
+        });
+
+        const hasAnyFileDrop = (dt) =>
+          !!dt && (hasSkillDrop(dt) || Array.from(dt.types || []).includes('Files') || (dt.files && dt.files.length > 0));
+
         let byokDragDepth = 0;
         chatHost.addEventListener('dragenter', (ev) => {
-          if (!hasSkillDrop(ev.dataTransfer)) return;
+          if (!hasAnyFileDrop(ev.dataTransfer)) return;
           ev.preventDefault();
           byokDragDepth++;
           chatHost.classList.add('byok-skill-dragover');
         });
         chatHost.addEventListener('dragover', (ev) => {
-          if (!hasSkillDrop(ev.dataTransfer)) return;
+          if (!hasAnyFileDrop(ev.dataTransfer)) return;
           ev.preventDefault();
           if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
         });
@@ -2349,10 +3119,15 @@ const PlazCodeByokChatUI = (() => {
           if (!byokDragDepth) chatHost.classList.remove('byok-skill-dragover');
         });
         chatHost.addEventListener('drop', (ev) => {
-          if (!hasSkillDrop(ev.dataTransfer)) return;
+          if (!hasAnyFileDrop(ev.dataTransfer)) return;
           ev.preventDefault();
           byokDragDepth = 0;
           chatHost.classList.remove('byok-skill-dragover');
+          if (!hasSkillDrop(ev.dataTransfer)) {
+            const files = Array.from(ev.dataTransfer?.files || []);
+            if (files.length) attachInputFiles(files);
+            return;
+          }
           readSkillDrop(ev.dataTransfer).then(async (stageReq) => {
             const res = await opts.api('/api/skills', { method: 'POST', body: JSON.stringify(stageReq) });
             if (!res || !res.ok || !res.staged_id) throw Error(res?.error || 'Could not read dropped skill folder.');
@@ -2527,6 +3302,16 @@ const PlazCodeByokChatUI = (() => {
           }
         });
 
+        mHost.addEventListener('change', (ev) => {
+          const target = ev.target;
+          if (target && target.matches('[data-byok-ask-model]')) {
+            askByokModelId = (target).value.trim();
+            opts.patchPref('rsAskByokModel', askByokModelId);
+            renderModelsPanel();
+            renderChatPage();
+          }
+        });
+
         mHost.addEventListener('toggle', (ev) => {
           const acc = ev.target;
           if (acc && acc.matches('[data-plat-acc]')) {
@@ -2540,7 +3325,7 @@ const PlazCodeByokChatUI = (() => {
     const refresh = async () => {
       syncFromState();
       bindHostEvents();
-      await Promise.all([loadPlatforms(), loadChats(), loadSkills()]);
+      await Promise.all([loadPlatforms(), loadChats(), loadSkills(), loadConnections(true)]);
     };
 
     if (!initialized) {
@@ -2562,9 +3347,11 @@ const PlazCodeByokChatUI = (() => {
 
     return {
       refresh,
+      refreshConnections: () => loadConnections(true),
       openAddModel: () => openAddModelModal(),
       syncState: () => {
         syncFromState();
+        renderModelsPanel();
         renderChatPage();
       },
     };

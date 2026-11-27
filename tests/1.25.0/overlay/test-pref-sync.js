@@ -77,7 +77,7 @@ function world({ appUp = true, app = {}, saved = null } = {}) {
   assert(waits.at(-1) >= 8000 && waits.at(-1) <= 10000, "backs off to about 10 s: " + waits.join(","));
 
   // 6. The extension's own switches are shared now, and the engine never is.
-  for (const key of ["rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"]) assert(Sync.KEYS.includes(key), key);
+  for (const key of ["rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck", "rsAskByokModel"]) assert(Sync.KEYS.includes(key), key);
   assert(!Sync.KEYS.includes("rs-engine"));
   const rs = fs.readFileSync("agent/src/preferences.rs", "utf8");
   for (const key of Sync.KEYS) assert(rs.includes('rename = "' + key + '"'), "the app stores " + key);

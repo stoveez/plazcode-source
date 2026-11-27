@@ -21,7 +21,7 @@ const PlazCodePrefSync = (() => {
     "rsForgeMode", "rsAutoFix", "rsBgMode", "rsTabKeepAwake", "rsCustomPrompt", "rsAppearance",
     "rsSidebarCollapsed", "rsExplorerAutoSync", "rsSkillAutoLearn", "rsSharedLearning", "rsAutoUpdate", "rsLuauCheck", "rsLuauMode",
     "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck",
-    "rsCompactOutputs", "rsParallelReads", "rsTaskLedger",
+    "rsCompactOutputs", "rsParallelReads", "rsTaskLedger", "rsAskByokModel",
   ];
   const PENDING_KEY = "rs-desktop-pending";
   const META_KEY = "rs-desktop-pending-meta";
