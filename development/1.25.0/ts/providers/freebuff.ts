@@ -268,6 +268,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // What PlazCode itself puts into a chat: proof that a chat is no longer new.
   const ARTEFACT = /⟦RS-SYS⟧|(^|\n)\s*Output of '[^'\n]+':|\(System note:/;
   const isArtefact = (el: Element): boolean => ARTEFACT.test(safeRead(() => el.textContent, "") || "");
+  function turnVisible(el: Element | null): boolean {
+    if (visible(el)) return true;
+    if (!el || safeClosest(el, "#rs-root") || !safeRead(() => el.classList.contains("rs-hidden"), false)) return false;
+    for (let cur: Element | null = el; cur && cur !== document.body && cur !== document.documentElement; cur = safeRead((): Element | null => cur!.parentElement, null)) {
+      if (safeRead(() => (cur as HTMLElement).hidden, false)) return false;
+      const s = safeStyle(cur);
+      if (s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) === 0) return false;
+    }
+    return true;
+  }
   function rawItems(): Element[] {
     const ed = getEditor();
     const sels = [
@@ -281,7 +291,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const out: Element[] = [];
     for (const s of sels) {
       for (const el of safeQueryAll(document, s)) {
-        if (seen.has(el) || !visible(el) || notATurn(el, ed)) continue;
+        if (seen.has(el) || !turnVisible(el) || notATurn(el, ed)) continue;
         seen.add(el);
         out.push(el);
       }
@@ -291,7 +301,7 @@ const RSProvider: PlazCodeProvider = (() => {
       const log = safeQuery(document, "[role='log'], [role='feed'], main [class*='thread'], main [class*='messages']");
       if (log) {
         for (const el of safeRead(() => log.children, [])) {
-          if (safeRead(() => el.nodeType, 0) === 1 && visible(el) && !notATurn(el, ed)) out.push(el);
+          if (safeRead(() => el.nodeType, 0) === 1 && turnVisible(el) && !notATurn(el, ed)) out.push(el);
         }
       }
     }
@@ -317,7 +327,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => (item as HTMLElement).innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item as HTMLElement).innerText, "") || safeRead(() => item.textContent, "") || "").trim());
   }
 
   function itemText(item: Element | null): string {
@@ -340,13 +350,25 @@ const RSProvider: PlazCodeProvider = (() => {
 
   const _idMap = new WeakMap<Element, number>();
   let _idSeq = 0;
-  function itemKey(item: Element | null): number | null {
+  function itemKey(item: Element | null): number | string | null {
     if (!item) return null;
+    const p = safeRead(() => item.parentElement, null);
+    const own =
+      safeRead(() => item.getAttribute("data-message-id"), null) ||
+      safeRead(() => item.getAttribute("data-turn-id"), null) ||
+      safeRead(() => item.getAttribute("data-id"), null) ||
+      safeRead(() => item.getAttribute("data-item-id"), null) ||
+      (p && (
+        safeRead(() => p.getAttribute("data-message-id"), null) ||
+        safeRead(() => p.getAttribute("data-turn-id"), null) ||
+        safeRead(() => p.getAttribute("data-id"), null)
+      ));
+    if (own != null && String(own).trim() !== "") return String(own);
     let id = _idMap.get(item);
     if (!id) { id = ++_idSeq; _idMap.set(item, id); }
     return id;
   }
-  const lastAssistantId = (): number | null => itemKey(lastAssistant());
+  const lastAssistantId = (): number | string | null => itemKey(lastAssistant());
 
   // A chat with an address (/chat/<id>) is a saved chat. Without one it only
   // counts as started once a user turn exists, so a greeting from the site

@@ -82,6 +82,34 @@ const FEEDBACK = `
     ok("Chat mode: the bar takes the visible chat box, not its wider invisible wrapper", () => {
       assert.equal(chatMode.editor, "main"); assert.equal(chatMode.anchor, "box"); assert.equal(chatMode.anchorWidth, chatMode.boxWidth);
     });
+
+    await page.setContent(`<!doctype html><html><head><style>.rs-hidden > *:not(.rs-chip){display:none!important}</style></head><body style="margin:0;background:#111;color:#ddd"><main style="padding-top:40px">
+      <div id="a1" data-message-role="assistant" data-message-id="m-a1"><pre><code>{"command":"list_commands"}</code></pre></div>
+      <div id="u1" class="rs-hidden" data-message-role="user" data-message-id="m-u1"><div class="body">Output of 'list_commands':\nworkspace_info, read_file</div></div>
+      <div id="hiddenWrap" style="display:none"><div id="uHidden" class="rs-hidden" data-message-role="user">Output of 'read_file':\nhidden</div></div>
+      <div id="a2" data-message-role="assistant" data-message-id="m-a2"><div class="prose">PlazCode is ready.</div></div>
+      ${COMPOSER}
+    </main></body></html>`);
+    await page.addScriptTag({ content: SOURCE + ";window.__p=RSProvider;window.__p.init({diag(){}});" });
+    const hiddenCheck = await page.evaluate(() => {
+      const p = window.__p, u1 = document.getElementById("u1"), items = p.allItems();
+      return {
+        u1Height: Math.round(u1.getBoundingClientRect().height),
+        ids: items.map((el) => el.id),
+        userCount: p.userCount(),
+        u1IsUser: p.isUserItem(items[1]),
+        u1Text: p.classifyText(items[1], ".rs-chip"),
+        a1Key: p.itemKey(document.getElementById("a1")),
+      };
+    });
+    ok("real Chromium: 0px pre-hidden result turn stays in allItems between command and follow-up turns", () => {
+      assert.equal(hiddenCheck.u1Height, 0);
+      assert.deepEqual(hiddenCheck.ids, ["a1", "u1", "a2"]);
+      assert.equal(hiddenCheck.userCount, 1);
+      assert.equal(hiddenCheck.u1IsUser, true);
+      assert(hiddenCheck.u1Text.includes("Output of 'list_commands':"));
+      assert.equal(hiddenCheck.a1Key, "m-a1");
+    });
   } finally { await browser.close(); }
   console.log("PASS " + checks + " Freebuff chat box checks.");
 })().catch((e) => { console.error(e); process.exitCode = 1; });

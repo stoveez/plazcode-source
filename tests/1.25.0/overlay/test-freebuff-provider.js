@@ -538,5 +538,64 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     f.w.close();
   }
 
+  // ── 10. Pre-hidden (.rs-hidden) result turns stay in allItems and itemKey tracks DOM message ids ─
+  {
+    const f = load(SAVED_CHAT,
+      '<div id="a1" data-message-role="assistant" data-message-id="msg-a1"><pre><code>{"command":"list_commands"}</code></pre></div>' +
+      '<div id="u1" class="rs-hidden" data-message-role="user" data-message-id="msg-u1"><div class="prose">Output of \'list_commands\':\nworkspace_info, read_file</div></div>' +
+      '<div id="u2" class="rs-hidden" data-message-role="user" data-id="msg-u2"><div class="prose">ERROR in list_commands:\n{"result":{"ok":false}}</div></div>' +
+      '<div id="hiddenPlain" style="display:none" data-message-role="user">Hidden non-PlazCode turn</div>' +
+      '<div style="display:none"><div id="hiddenAnc" class="rs-hidden" data-message-role="user">Output of \'read_file\':\nhidden</div></div>' +
+      '<div id="a2" data-message-role="assistant" data-message-id="msg-a2"><div class="prose">PlazCode is ready.</div></div>' +
+      COMPOSER);
+    const origRect = f.w.HTMLElement.prototype.getBoundingClientRect;
+    f.w.HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.classList && this.classList.contains('rs-hidden')) return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+      return origRect.call(this);
+    };
+    ok('keeps 0x0 .rs-hidden injected result turns in allItems so next points to resultAfter instead of skipping to next assistant', () => {
+      const items = f.p.allItems();
+      assert.equal(items.length, 4);
+      assert.equal(items[0].id, 'a1');
+      assert.equal(items[1].id, 'u1');
+      assert.equal(items[2].id, 'u2');
+      assert.equal(items[3].id, 'a2');
+      assert.equal(f.p.userCount(), 2);
+      assert.equal(RSParse.isInjectedFeedback(f.p.classifyText(items[1], '.rs-chip')), true);
+      assert.equal(RSParse.isInjectedFeedback(f.p.classifyText(items[2], '.rs-chip')), true);
+    });
+    ok('still excludes genuinely hidden non-rs-hidden turns and rs-hidden turns under hidden ancestors', () => {
+      const ids = new Set(f.p.allItems().map((el) => el.id));
+      assert(!ids.has('hiddenPlain'));
+      assert(!ids.has('hiddenAnc'));
+    });
+    ok('itemKey returns stable DOM ids across node replacement and unique keys for unlabelled turns', () => {
+      assert.equal(f.p.itemKey(f.w.document.getElementById('a1')), 'msg-a1');
+      assert.equal(f.p.itemKey(f.w.document.getElementById('u2')), 'msg-u2');
+      const remount = f.w.document.createElement('div');
+      remount.setAttribute('data-message-role', 'assistant');
+      remount.setAttribute('data-message-id', 'msg-a1');
+      assert.equal(f.p.itemKey(remount), 'msg-a1');
+      const bare1 = f.w.document.createElement('div');
+      const bare2 = f.w.document.createElement('div');
+      assert.notEqual(f.p.itemKey(bare1), f.p.itemKey(bare2));
+    });
+    f.w.close();
+  }
+  {
+    const f = load(NEW_CHAT,
+      '<div id="sys" class="rs-hidden" data-message-role="user">⟦RS-SYS⟧\nCONTEXT: startup</div>' + COMPOSER);
+    const origRect = f.w.HTMLElement.prototype.getBoundingClientRect;
+    f.w.HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.id === 'sys') return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+      return origRect.call(this);
+    };
+    ok('pre-hidden 0x0 startup message still marks un-addressed chat as started', () => {
+      assert.equal(f.p.allItems().length, 1);
+      assert.equal(f.p.chatIsEmpty(), false);
+    });
+    f.w.close();
+  }
+
   console.log('PASS ' + checks + ' Freebuff provider checks.');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
